@@ -1,0 +1,226 @@
+{include file='common/head.html'}
+
+<div class="layui-body">
+
+	{if([$list])}
+    <div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this" lay-id="t1">菜单列表</li>
+	    <li lay-id="t2">菜单新增</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	   <div class="layui-tab-item layui-show">
+				<table class="layui-table" id="menuTable">
+	                <thead>
+	                    <tr>
+	                        <th>序号</th>
+	                        <th>菜单名称</th>
+	                        <th>菜单编码</th>
+	                        <th>父编码</th>
+	                        <th>排序</th>
+	                        <th>URL</th>
+	                        <th>状态</th>
+	                        <th>操作</th>
+	                    </tr>
+	                </thead>
+	                <tbody>
+	                {foreach $menus(key,value)}
+	                    <tr data-tt-id='[value->mcode]' data-tt-parent-id="[value->pcode]">
+	                        <td>[num]</td>
+	                        <td>
+	                            <i class="fa [value->ico]" aria-hidden="true"></i> 
+	                            [value->name]</td>
+	                        <td>[value->mcode]</td>
+	                        <td>[value->pcode]</td>
+	                        <td>[value->sorting]</td>
+	                        <td>[value->url]</td>
+
+	                        <td>
+	                            {if($value->status)}
+	                            <a href="{url./admin/'.C.'/mod/mcode/'.$value->mcode.'/field/status/value/0}"><i class='fa fa-toggle-on' title="点击关闭显示"></i></a>
+	                            {else}
+	                            <a href="{url./admin/'.C.'/mod/mcode/'.$value->mcode.'/field/status/value/1}"><i class='fa fa-toggle-off' title="点击开启显示"></i></a>
+	                            {/if}
+	                        </td>
+	                        
+	                        <td>
+	                            {fun=get_btn_del($value->mcode,'mcode')}
+	                            {fun=get_btn_mod($value->mcode,'mcode')}
+	                        </td>
+	                    </tr>
+	                {/foreach}
+	                </tbody>
+            	</table>
+            	<script>
+            	$("#menuTable").treetable({ expandable: true,column: 1,indent:20,stringCollapse:'收缩',stringExpand:'展开' });
+            	</script>
+          </div>
+          
+          <div class="layui-tab-item">
+            <form action="{url./admin/Menu/add}" method="post" class="layui-form">
+                <input type="hidden" name="formcheck" value="{$formcheck}" > 
+                <div class="layui-form-item">
+				    <label class="layui-form-label">父菜单</label>
+				    <div class="layui-input-block">
+				      <select name="pcode" lay-verify="required">
+				        <option value="0">顶级菜单 </option>
+                       	 {$menu_select}
+				      </select>
+				    </div>
+				 </div>
+				 
+				 <div class="layui-form-item">
+                     <label class="layui-form-label">菜单名称</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="name" required  lay-verify="required" placeholder="请输入菜单名称"  class="layui-input">
+                     </div>
+                </div>
+
+				 <div class="layui-form-item">
+                     <label class="layui-form-label">URL</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="url"  placeholder="请输入菜单URL"  class="layui-input">
+                     </div>
+                </div>
+                
+				<div class="layui-form-item">
+                     <label class="layui-form-label">排序</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="sorting"  placeholder="请输入菜单排序" value="255"  class="layui-input">
+                     </div>
+                </div> 
+                
+                 <div class="layui-form-item">
+                     <label class="layui-form-label">状态</label>
+                     <div class="layui-input-block">
+                     	<input type="radio" name="status" value="1" title="显示" checked>
+						<input type="radio" name="status" value="0" title="隐藏">
+                     </div>
+                </div>                               
+
+                <div class="layui-form-item">
+                     <label class="layui-form-label">桌面快捷图</label>
+                     <div class="layui-input-block">
+                     	<input type="radio" name="shortcut" value="1" title="是" checked>
+						<input type="radio" name="shortcut" value="0" title="否">
+                     </div>
+                </div>
+                
+ 				<div class="layui-form-item">
+                     <label class="layui-form-label">快捷图标</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="ico"  placeholder="请输入菜单快捷图标"  class="layui-input">
+                     </div>
+                </div>  
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">功能按钮</label>
+                     <div class="layui-input-block">
+                     	{foreach $actions(key,value)}
+                     	<input type="checkbox" name="actions[]" value="[value->value]" title="[value->item]">
+                     	{/foreach}
+                     </div>
+                </div>                 
+                
+               <div class="layui-form-item">
+					 <div class="layui-input-block">
+					    <button class="layui-btn" lay-submit lay-filter="formDemo">立即提交</button>
+					    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+					 </div>
+				</div>
+            </form>
+        </div>
+      </div>
+     </div>
+	{/if} 
+	
+	{if([$mod])}
+	
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this">菜单修改</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	<div class="layui-tab-item layui-show">
+	  	 <form action="{url./admin/Menu/mod/mcode/'.[$get.mcode].'}{$backurl}" method="post" class="layui-form">
+                <input type="hidden" name="formcheck" value="{$formcheck}" > 
+                <div class="layui-form-item">
+				    <label class="layui-form-label">父菜单</label>
+				    <div class="layui-input-block">
+				      <select name="pcode" lay-verify="required">
+				        <option value="0">顶级菜单 </option>
+                       	 {$menu_select}
+				      </select>
+				    </div>
+				 </div>
+				 
+				 <div class="layui-form-item">
+                     <label class="layui-form-label">菜单名称</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="name" required  lay-verify="required" value="{$menu->name}"  placeholder="请输入菜单名称"  class="layui-input">
+                     </div>
+                </div>
+
+				 <div class="layui-form-item">
+                     <label class="layui-form-label">URL</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="url" value="{$menu->url}"  placeholder="请输入菜单URL"   class="layui-input">
+                     </div>
+                </div>
+                
+				<div class="layui-form-item">
+                     <label class="layui-form-label">排序</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="sorting" value="{$menu->sorting}"   placeholder="请输入菜单排序" value="255"  class="layui-input">
+                     </div>
+                </div> 
+                
+                 <div class="layui-form-item">
+                     <label class="layui-form-label">状态</label>
+                     <div class="layui-input-block">
+                     	<input type="radio" name="status" value="1" title="显示" {if([$menu->status]==1)}checked="checked"{/if}>
+						<input type="radio" name="status" value="0" title="隐藏" {if([$menu->status]==0)}checked="checked"{/if}>
+                     </div>
+                </div>                               
+
+                <div class="layui-form-item">
+                     <label class="layui-form-label">桌面快捷图</label>
+                     <div class="layui-input-block">
+                     	<input type="radio" name="shortcut" value="1" title="是" {if([$menu->shortcut]==1)}checked="checked"{/if}>
+						<input type="radio" name="shortcut" value="0" title="否" {if([$menu->shortcut]==0)}checked="checked"{/if}>
+                     </div>
+                </div>
+                
+ 				<div class="layui-form-item">
+                     <label class="layui-form-label">快捷图标</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="ico" value="{$menu->ico}"  placeholder="请输入菜单快捷图标"  class="layui-input">
+                     </div>
+                </div>  
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">功能按钮</label>
+                     <div class="layui-input-block">
+                     	{foreach $actions(key,value)}
+                     	<input type="checkbox" name="actions[]" value="[value->value]"  {if(in_array($value->value,[$menu->actions]))}checked="checked"{/if} title="[value->item]">
+                     	{/foreach}
+                     </div>
+                </div>                 
+                
+               <div class="layui-form-item">
+					 <div class="layui-input-block">
+					    <button class="layui-btn" lay-submit>立即提交</button>
+					    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+					    {fun=get_btn_back()}
+					 </div>
+			   </div>	  	 
+	  	 </form>
+	  	 </div>
+	  </div>
+	</div>
+
+	{/if} 
+    
+</div>
+
+{include file='common/foot.html'}

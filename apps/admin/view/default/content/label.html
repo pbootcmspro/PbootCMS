@@ -1,0 +1,254 @@
+{include file='common/head.html'}
+
+<div class="layui-body">
+
+	{if([$list])}
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this" lay-id="t1">标签内容</li>
+	    <li lay-id="t2">标签管理</li>
+	    <li lay-id="t3">新增标签</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	<div class="layui-tab-item layui-show">
+	  		<form action="{url./admin/Label/index}" method="post" class="layui-form">
+	  			<input type="hidden" name="formcheck" value="{$formcheck}" > 
+	  			{foreach $labels(key,value)}
+	  				{if($value->type==1)} <!-- 文本 -->
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">[value->description]<br><span class="layui-badge layui-bg-gray">{label:[value->name]}</span></label>
+		                     <div class="layui-input-block">
+		                     	<input type="text" name="[value->name]" value="[value->value]" placeholder="请输入[value->description]"  class="layui-input">
+		                     </div>
+		                </div>
+	                {/if}
+	                
+	                {if($value->type==2)}<!-- 日期 -->
+	                	 <div class="layui-form-item">
+		                     <label class="layui-form-label">[value->description]<br><span class="layui-badge layui-bg-gray">{label:[value->name]}</span></label>
+		                     <div class="layui-input-block">
+		                     	<input type="text" name="[value->name]" readonly value="[value->value]" placeholder="请选择[value->description]"  class="layui-input datetime">
+		                     </div>
+		                </div>
+	                {/if}
+	                
+	                {if($value->type==3)}<!-- 图片 -->
+	                	<div class="layui-form-item">
+		                     <label class="layui-form-label">[value->description]<br><span class="layui-badge layui-bg-gray">{label:[value->name]}</span></label>
+		                     <div class="layui-input-inline">
+		                     	<input type="text" name="[value->name]" id="[value->name]" value="[value->value]" placeholder="请上传[value->description]"  class="layui-input">
+		                     </div>
+		                     <button type="button" class="layui-btn upload" data-des="[value->name]">
+							 	 <i class="layui-icon">&#xe67c;</i>上传图片
+							 </button>
+							 <div id="[value->name]_box" class="pic">{if($value->value)}<dl><dt><img src="{SITE_DIR}[value->value]" data-url="[value->value]"></dt><dd>删除</dd></dl>{/if}</div>
+		                </div>
+	                {/if}
+	                
+	                {if($value->type==4)}<!-- 文件 -->
+	                	<div class="layui-form-item">
+		                     <label class="layui-form-label">[value->description]<br><span class="layui-badge layui-bg-gray">{label:[value->name]}</span></label>
+		                     <div class="layui-input-inline">
+		                     	<input type="text" name="[value->name]" id="[value->name]" value="[value->value]" placeholder="请上传[value->description]"  class="layui-input">
+		                     </div>
+		                     <button type="button" class="layui-btn file" data-des="[value->name]">
+							 	 <i class="layui-icon">&#xe67c;</i>上传文件
+							 </button>
+		                </div>
+	                {/if}
+	                
+	                {if($value->type==5)}<!-- 编辑器 -->
+	                	<div class="layui-form-item">
+		                     <label class="layui-form-label">[value->description]<br><span class="layui-badge layui-bg-gray">{label:[value->name]}</span></label>
+		                     <div class="layui-input-block">
+		                     	<script type="text/plain" id="[value->name]" name="[value->name]" style="width:100%;height:240px;">{fun=decode_string($value->value)}</script>
+		                     </div>
+		                </div>
+		                <script>
+							//初始化编辑器
+							$(document).ready(function (e) {
+								var ue = UE.getEditor('[value->name]',{
+									maximumWords:500 
+								});
+							})
+						</script>
+	                {/if}
+	                
+	                {if($value->type==6)} <!-- 开关 -->
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">[value->description]<br><span class="layui-badge layui-bg-gray">{label:[value->name]}</span></label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="[value->name]" value="1" title="开启" {if($value->value)}checked{/if}>
+      							<input type="radio" name="[value->name]" value="0" title="关闭" {if(!$value->value)}checked{/if}>
+		                     </div>
+		                </div>
+	                {/if}
+	                
+	                {if($value->type==7)} <!-- 多行文本 -->
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">[value->description]<br><span class="layui-badge layui-bg-gray">{label:[value->name]}</span></label>
+		                     <div class="layui-input-block">
+		                     	<textarea name="[value->name]" class="layui-textarea" placeholder="请输入[value->description]">{fun=str_replace("<br>","\r\n",html_entity_decode($value->value))}</textarea>
+		                     </div>
+		                </div>
+	                {/if}
+	                
+	  			{/foreach}
+	  			<div class="layui-form-item">
+					 <div class="layui-input-block">
+					    <button class="layui-btn" lay-submit>立即提交</button>
+					    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+					 </div>
+				</div>
+	  		</form>
+	  	</div>
+	  	
+	  	<div class="layui-tab-item">
+	  		<table class="layui-table">
+            	<thead>
+                    <tr>
+                        <th>序号</th>
+                        <th>名称</th>
+                        <th>描述</th>
+                        <th>类型</th>
+                        <th>添加人员</th>
+                        <th>修改人员</th>
+                        <th>添加时间</th>
+                        <th>修改时间</th>
+                        <th>操作</th>
+                    </tr>
+        		</thead>
+                <tbody>
+                {foreach $labels(key,value,num)}
+                    <tr>
+                        <td>[num]</td>
+                        <td>[value->name]</td>
+                        <td>[value->description]</td>
+                        <td>
+                        {if($value->type==1)}单行文本{/if}
+                        {if($value->type==7)}多行文本{/if}
+                        {if($value->type==2)}时间{/if}
+                        {if($value->type==3)}图片{/if}
+                        {if($value->type==4)}附件{/if}
+                        {if($value->type==5)}编辑器{/if}
+                        {if($value->type==6)}开关{/if}
+                        </td>
+                        <td>[value->create_user]</td>
+                        <td>[value->update_user]</td>
+                        <td>[value->create_time]</td>
+                        <td>[value->update_time]</td>
+                        <td>
+                            {fun=get_btn_del($value->id)}
+                            {fun=get_btn_mod($value->id)}
+                        </td>
+                    </tr>
+                {/foreach}
+                </tbody>
+            </table>
+	  	</div>
+	  	
+	  	<div class="layui-tab-item">
+	  		 <form action="{url./admin/Label/add}" method="post" class="layui-form">
+	  		 	<input type="hidden" name="formcheck" value="{$formcheck}" > 
+	  		 	<div class="layui-form-item">
+                     <label class="layui-form-label">标签名称</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="name" required  lay-verify="required" placeholder="请输入标签名称"  class="layui-input">
+                     	<div class="layui-form-mid layui-word-aux">只能含有字母、数字、下划线</div>
+                     </div>
+                     
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">标签描述</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="description" required  lay-verify="required" placeholder="请输入标签描述"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">标签类型</label>
+                     <div class="layui-input-block">
+                     	<select name="type" lay-verify="required">
+	                    	<option value="1">单行文本</option>
+	                    	<option value="7">多行文本</option>
+	                    	<option value="2">时间</option>
+	                    	<option value="3">图片</option>
+	                    	<option value="4">附件</option>
+	                    	<option value="5">编辑器</option>
+	                    	<option value="6">开关</option>
+	                    </select>
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+					 <div class="layui-input-block">
+					    <button class="layui-btn" lay-submit>立即提交</button>
+					    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+					 </div>
+				</div>
+	  		 </form>
+	  	</div>
+	  	
+	  </div>
+	</div>
+	{/if} 
+	
+	
+	{if([$mod])}
+	
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this">标签修改</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	<div class="layui-tab-item layui-show">
+	  		  <form action="{url./admin/Label/mod/id/'.[$get.id].'}{$backurl}" method="post" class="layui-form">
+	  		  	<input type="hidden" name="formcheck" value="{$formcheck}" > 
+	  		  	<div class="layui-form-item">
+                     <label class="layui-form-label">标签名称</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="name" required  lay-verify="required" value="{$label->name}"  placeholder="请输入标签名称"  class="layui-input">
+                     	<div class="layui-form-mid layui-word-aux">只能含有字母、数字、下划线</div>
+                     </div>
+                     
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">标签描述</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="description" required  lay-verify="required"  value="{$label->description}" placeholder="请输入标签描述"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">标签类型</label>
+                     <div class="layui-input-block">
+                     	<select name="type" lay-verify="required">
+	                    	<option value="1" {if([$label->type]==1)}selected{/if}>单行文本</option>
+	                    	<option value="7" {if([$label->type]==7)}selected{/if}>多行文本</option>
+	                    	<option value="2" {if([$label->type]==2)}selected{/if}>时间</option>
+	                    	<option value="3" {if([$label->type]==3)}selected{/if}>图片</option>
+	                    	<option value="4" {if([$label->type]==4)}selected{/if}>附件</option>
+	                    	<option value="5" {if([$label->type]==5)}selected{/if}>编辑器</option>
+	                    	<option value="6" {if([$label->type]==6)}selected{/if}>开关</option>
+	                    </select>
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+					 <div class="layui-input-block">
+					    <button class="layui-btn" lay-submit>立即提交</button>
+					    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+					    {fun=get_btn_back()}
+					 </div>
+				</div>
+	  		  </form>
+	  	</div>
+	  </div>
+	 </div>
+	{/if}
+
+</div>
+{include file='common/ueditor.html'}
+{include file='common/foot.html'}

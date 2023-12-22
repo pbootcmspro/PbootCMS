@@ -1,0 +1,187 @@
+{include file='common/head.html'}
+
+<div class="layui-body">
+	{if([$list])}
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this" lay-id="t1">幻灯片列表</li>
+	    <li lay-id="t2">幻灯片新增</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	<div class="layui-tab-item layui-show">
+	  		<form action="{url./admin/Slide/mod}" method="post" class="layui-form" onkeydown="if(event.keyCode==13) return false;">
+		    <input type="hidden" name="formcheck" value="{$formcheck}" > 
+	  		<table class="layui-table">
+            	<thead>
+                    <tr>
+                    	<th>分组(gid)</th>
+                        <th>图片</th>
+                        <th>链接</th>
+                        <th>标题</th>
+                        <th>副标题</th>
+                        <th>排序</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {foreach $slides(key,value)}
+                    <tr>
+                    	<td>[value->gid]</td>
+                        <td><img src="{SITE_DIR}[value->pic]" style="height:30px;"></td>
+                        <td>[value->link]</td>
+                        <td>[value->title]</td>
+                        <td>[value->subtitle]</td>
+                        <td class="table-input">
+                        <input type="hidden" name="listall[]" value="[value->id]">
+                        <input type="text" lay-ignore class="layui-input" name="sorting[]" value="[value->sorting]">
+                        </td>
+                        <td>
+                            {fun=get_btn_del($value->id)}
+                            {fun=get_btn_mod($value->id)}
+                        </td>
+                    </tr>
+                    {/foreach}
+                </tbody>
+            </table>
+            <button type="submit" name="submit" value="sorting" class="layui-btn layui-btn-sm">保存排序</button>
+            </form> 
+            <div class="page">{$pagebar}</div>
+	  	</div>
+	  	
+	  	<div class="layui-tab-item">
+	  		<form action="{url./admin/Slide/add}" method="post" class="layui-form">
+	  			<input type="hidden" name="formcheck" value="{$formcheck}" > 
+	  			<div class="layui-form-item">
+                     <label class="layui-form-label">分组</label>
+                     <div class="layui-input-block">
+                     	<select name="gid" >	
+                     		{foreach $gids(key,value)}
+	                			<option value="[value]" >分组[value]</option>
+	                		{/foreach}
+	                		<option value="" >自动新增分组</option>
+	                	</select>
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">图片</label>
+                     <div class="layui-input-inline">
+                     	<input type="text" name="pic" id="pic" required  lay-verify="required" placeholder="请上传图片"  class="layui-input">
+                     </div>
+                     <button type="button" class="layui-btn upload" data-des="pic">
+					 	 <i class="layui-icon">&#xe67c;</i>上传图片
+					 </button>
+					 <div id="pic_box" class="pic"></div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">链接</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="link" placeholder="请输入跳转链接"  class="layui-input">
+                     </div>
+                </div>
+                
+                 <div class="layui-form-item">
+                     <label class="layui-form-label">标题</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="title" placeholder="请输入标题"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">副标题</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="subtitle" placeholder="请输入副标题"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">排序</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="sorting" required lay-verify="required" value="255" placeholder="请输入排序"  class="layui-input">
+                     </div>
+                </div>
+                
+                 <div class="layui-form-item">
+					 <div class="layui-input-block">
+					    <button class="layui-btn" lay-submit>立即提交</button>
+					    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+					 </div>
+				</div>
+	  		</form>
+	  	</div>
+	  </div>
+	</div>
+	{/if} 
+	
+	{if([$mod])}
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this">幻灯片修改</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	<div class="layui-tab-item layui-show">
+	  		<form action="{url./admin/Slide/mod/id/'.[$get.id].'}{$backurl}" method="post" class="layui-form">
+	  			<input type="hidden" name="formcheck" value="{$formcheck}" > 
+	  			
+                <div class="layui-form-item">
+                     <label class="layui-form-label">分组</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="gid" required  lay-verify="required" value="{$slide->gid}" placeholder="请输入分组"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">图片</label>
+                     <div class="layui-input-inline">
+                     	<input type="text" name="pic" id="pic" required  lay-verify="required" value="{$slide->pic}" placeholder="请上传图片"  class="layui-input">
+                     </div>
+                     <button type="button" class="layui-btn upload" data-des="pic">
+					 	 <i class="layui-icon">&#xe67c;</i>上传图片
+					 </button>
+					 <div id="pic_box" class="pic">{if([$slide->pic])}<dl><dt><img src="{SITE_DIR}{$slide->pic}" data-url="{$slide->pic}"></dt><dd>删除</dd></dl>{/if}</div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">跳转链接</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="link" value="{$slide->link}"  placeholder="请输入跳转链接"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">标题</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="title" value="{$slide->title}" placeholder="请输入标题"  class="layui-input">
+                     </div>
+                </div>
+                
+                 <div class="layui-form-item">
+                     <label class="layui-form-label">副标题</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="subtitle" value="{$slide->subtitle}" placeholder="请输入副标题"  class="layui-input">
+                     </div>
+                </div>
+                
+                 <div class="layui-form-item">
+                     <label class="layui-form-label">排序</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="sorting" required lay-verify="required" value="{$slide->sorting}" placeholder="请输入排序"  class="layui-input">
+                     </div>
+                </div>
+                
+                 <div class="layui-form-item">
+					 <div class="layui-input-block">
+					    <button class="layui-btn" lay-submit>立即提交</button>
+					    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+					    {fun=get_btn_back()}
+					 </div>
+				</div>
+	  		</form>
+	  	</div>
+	  </div>
+	</div>
+	{/if} 
+
+</div>
+{include file='common/foot.html'}

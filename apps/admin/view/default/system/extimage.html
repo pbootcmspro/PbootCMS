@@ -1,0 +1,89 @@
+{include file='common/head.html'}
+
+<div class="layui-body">
+    <div class="layui-tab layui-tab-brief" lay-filter="tab">
+        <ul class="layui-tab-title">
+            <li class="layui-this" lay-id="t1">清理冗余图片</li>
+        </ul>
+        <div class="layui-tab-content">
+            <div class="layui-tab-item layui-show">
+                <blockquote class="layui-elem-quote layui-text">
+                    <ul>
+                        <li>
+                            检测的字段有：公司微信图标、栏目设置中的缩略图、分类大图、内容缩略图、多图片、专题内容缩略图、多图片、link表logo、会员头像、站点logo、slide表pic。
+                        </li>
+                        <li>
+                            清理前请务必备好本站数据，以免造成数据丢失，清理的图片会移到static/backup/ImageExt文件夹中，请及时检查站内是否有误删图片，确认无误后可删除static/backup/ImageExt文件夹。
+                        </li>
+                        <li>
+                            注意：目前只会清理other和image的冗余文件
+                        </li>
+                    </ul>
+                </blockquote>
+                <a href="javascript:;" onclick="checkDataFile()" class="layui-btn">开始检查</a>
+                <input type="hidden" id="check_data" data-url="{url./admin/ImageExt/checkDataFile}">
+                <input type="hidden" id="do_ext" data-url="{url./admin/ImageExt/do_ext}">
+                <table id="list" class="layui-hide">
+                <button style="float: right;margin-left: 5px;" type="button" class="layui-btn layui-btn-danger ayui-btn layui-btn-sm layui-hide buttons" onclick="do_ext(1)">清理所有冗余文件</button>
+                <button style="float: right" type="button" class="layui-btn layui-btn-normal ayui-btn layui-btn-sm layui-hide buttons" onclick="do_ext(0)">清理所选文件</button>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    function checkDataFile(){
+        layui.use('table', function(){
+            var table = layui.table;
+            //第一个实例
+            table.render({
+                elem: '#list',
+                height: 500,
+                unresize:false,
+                url: $("#check_data").data('url'),//数据接口,
+                page: {
+                    limit:30,
+                }, //开启分页,
+                cols: [[ //表头
+                    {width:80, type: 'checkbox'},
+                    {field: 'static_path', title: '文件预览',  templet: function (d){
+                            return '<img src="'+ d.static_path + '">';
+                        }},
+                    {field: 'real_path', title: '文件路径'},
+                    {field: 'update_time', title: '文件修改时间'}
+                ]],
+                done:function (res,curr,count){
+                    $('.layui-table-cell').css({'height':'auto'})
+                }
+            });
+
+        });
+        $(".layui-table").removeClass('layui-hide');
+        $(".buttons").removeClass('layui-hide');
+    }
+
+    function do_ext(type){
+        let jsonList = {};
+        switch (type){
+            case 0:
+                jsonList = layui.table.checkStatus('list').data;
+                break;
+            case 1:
+                break;
+        }
+        $.ajax({
+            type: 'POST',
+            url: $("#do_ext").data('url'),
+            data:{type:type,list:jsonList},
+            dataType: 'json',
+            success: function (response) {
+                if(response.code === 1){
+                    layer.msg('清理成功',{time: 1000},function (){
+                        location.reload();
+                    });
+                }
+            }
+        });
+    }
+</script>
+{include file='common/foot.html'}

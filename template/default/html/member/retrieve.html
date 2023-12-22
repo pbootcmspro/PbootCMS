@@ -1,0 +1,122 @@
+{include file=comm/head.html}
+
+{include file=comm/top.html}
+
+<div class="container pages">
+
+  {include file=comm/position.html}
+
+  <!-- 用户密码找回 -->
+  <div class="row">
+    <div class="col-lg-3"></div>
+    <div class="col-12 col-lg-6">
+      <form class="my-4" onsubmit="return retrieve(this);">
+        <div class="form-group">
+          <label for="username">账  号</label>
+          <input type="text" name="username" required id="username" class="form-control" placeholder="请输入已注册账号">
+        </div>
+
+        <div class="form-group">
+          <label for="email">邮 箱</label>
+          <input type="text" name="email" required id="email" class="form-control" placeholder="请输入已注册邮箱">
+          <div id="emailnote"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="checkcode">邮箱验证码</label>
+          <div class="row">
+            <div class="col-6">
+              <input type="text" name="checkcode" required id="checkcode" class="form-control" placeholder="请输入验证码">
+            </div>
+            <div class="col-6">
+              <span  class="btn btn-info mb-2" onclick="sendEmail();">发送</span>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="password">新密码</label>
+          <div class="row">
+            <div class="col-6">
+              <input type="password" name="password" required id="password" class="form-control" placeholder="请输入新的密码">
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <button type="submit" class="btn btn-info mb-2">确认</button>
+        </div>
+      </form>
+    </div>
+    <div class="col-lg-3"></div>
+  </div>
+</div>
+
+<script>
+
+  //找回密码
+  function retrieve(obj){
+    var url='{pboot:retrieve}';
+    var username = $(obj).find("#username").val();
+    var email=$(obj).find("#email").val();
+    var checkcode=$(obj).find("#checkcode").val();
+    var password=$(obj).find("#password").val();
+
+    $.ajax({
+      type: 'POST',
+      url: url,
+      dataType: 'json',
+      data: {
+        username:username,
+        email: email,
+        checkcode: checkcode,
+        password: password,
+      },
+      success: function (response, status) {
+        if(response.code){
+          alert("密码设置成功！");
+          location.href= response.tourl;
+        }else{
+          $('#codeimg').click();
+          alert(response.data);
+        }
+      },
+      error:function(xhr,status,error){
+        alert('返回数据异常！');
+      }
+    });
+    return false;
+  }
+
+  //发送邮件验证码
+  function sendEmail(){
+    var url='{pboot:sendemail}';
+    var email=$("#email").val();
+    if(!email){
+      $("#emailnote").removeClass("valid-feedback");
+      $("#emailnote").text("请输入注册邮箱!");
+      return false;
+    }
+    $.ajax({
+      type: 'POST',
+      url: url,
+      dataType: 'json',
+      data: {
+        retrieve:1,
+        to: email
+      },
+      success: function (response, status) {
+        if(response.code){
+          alert(response.data);
+        }else{
+          alert(response.data);
+        }
+      },
+      error:function(xhr,status,error){
+        alert('返回数据异常！');
+      }
+    });
+    return false;
+  }
+
+</script>
+
+{include file=comm/foot.html}

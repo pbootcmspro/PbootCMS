@@ -1,0 +1,88 @@
+{include file=comm/head.html}
+
+{include file=comm/top.html}
+
+<div class="container pages">
+
+	{include file=comm/position.html}
+
+    <!-- 用户登录 -->
+    <div class="row">
+    	<div class="col-lg-3"></div>
+    	<div class="col-12 col-lg-6">
+        	<form class="my-4" onsubmit="return login(this);">
+                <div class="form-group">
+                    <label for="username">账　号</label>
+                    <div>
+                        <input type="text" name="username" required id="username" class="form-control" placeholder="请输入登录用户名/邮箱/手机号码">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">密　码</label>
+                    <div>
+                        <input type="password" name="password" required id="password" class="form-control" placeholder="请输入登录密码">
+                    </div>
+                </div>
+                
+                {pboot:if({pboot:logincodestatus})}
+                <div class="form-group">
+                    <label for="checkcode">验证码</label>
+                    <div class="row">
+                        <div class="col-6">
+                            <input type="text" name="checkcode" required id="checkcode" class="form-control" placeholder="请输入验证码">
+                        </div>
+                        <div class="col-6">
+                            <img title="点击刷新" style="height:33px;" id="codeimg" src="{pboot:checkcode}" onclick="this.src='{pboot:checkcode}?'+Math.round(Math.random()*10);" />
+                        </div>
+                    </div>
+                </div>
+                {/pboot:if}
+                
+                <div class="form-group">
+                   <button type="submit" class="btn btn-info mb-2">立即登录</button>
+				   <span class="text-secondary ml-3"><a href="{pboot:register}">注册账号</a></span>
+				   <span class="text-secondary ml-3"><a href="{pboot:retrieve}">找回密码</a></span>
+                </div>
+            </form>
+        </div>
+        <div class="col-lg-3"></div>
+    </div> 
+</div>
+
+<script>
+
+//ajax登录
+function login(obj){
+  var url='{pboot:login}';
+  var username=$(obj).find("#username").val();
+  var password=$(obj).find("#password").val();
+  var checkcode=$(obj).find("#checkcode").val();
+  
+  $.ajax({
+    type: 'POST',
+    url: url,
+    dataType: 'json',
+    data: {
+    	username: username,
+    	password: password,
+    	checkcode: checkcode
+    },
+    success: function (response, status) {
+      if(response.code){
+    	 alert("登录成功！");
+		 location.href=response.tourl; 
+      }else{
+    	  $('#codeimg').click();
+    	 alert(response.data);
+      }
+    },
+    error:function(xhr,status,error){
+      alert('返回数据异常！');
+    }
+  });
+  return false;
+}
+</script>
+
+{include file=comm/foot.html}

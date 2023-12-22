@@ -1,0 +1,45 @@
+{include file='common/head.html'}
+
+<div class="layui-body">
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this" lay-id="t1">系统日志</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	   <div class="layui-tab-item layui-show">
+		  	   	<table class="layui-table">
+	            	<thead>
+	                    <tr>
+	                        <th>序号</th>
+	                        <th>事件内容</th>
+	                        <th>用户IP</th>
+	                        <th>操作系统</th>
+	                        <th>浏览器</th>
+	                        <th>用户名</th>
+	                        <th>时间</th>
+	                    </tr>
+	                </thead>
+	                <tbody>
+	                    {foreach $syslogs(key,value,num)}
+	                    <tr>
+	                        <td>[num]</td>
+	                        <td>[value->event]</td>
+	                        <td>{fun=long2ip($value->user_ip)}</td>
+	                        <td>[value->user_os]</td>
+	                        <td>[value->user_bs]</td>
+	                        <td>[value->create_user]</td>
+	                        <td>[value->create_time]</td>
+	                    </tr>
+	                    {/foreach}
+	                </tbody>
+	            </table>
+	            {if(session('ucode')==10001 && [$syslogs])}
+	            	<a href="{url./admin/Syslog/clear}" class="layui-btn layui-btn-sm"  onclick='return confirm("您确定要清空么？")'>清空日志</a>
+	            {/if}
+	            <div class="page">{$pagebar}</div>
+	  	   </div>
+	  </div>
+	</div>	
+</div>
+
+{include file='common/foot.html'}

@@ -1,0 +1,115 @@
+{include file='common/head.html'}
+
+<div class="layui-body">
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this" lay-id="t1">服务器基本信息</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	   <div class="layui-tab-item layui-show">
+				<table class="layui-table table-two">
+				   <thead>
+					    <tr>
+			               <th colspan=2>服务器基本信息</th>
+					    </tr> 
+				   </thead>
+				   <tbody>
+						<tr>
+							<th>应用版本</th>
+							<td>{CMSNAME} V{APP_VERSION}-{RELEASE_TIME}</td>
+						</tr>
+	
+						<tr>
+							<th>主机系统</th>
+							<td>{$server->php_os}</td>
+						</tr>
+						<tr>
+						      <th>访问地址</th>
+						      <td>{$server->http_host}</td>
+						  </tr>
+						  <tr>
+						      <th>主机名称</th>
+						      <td>{$server->server_name}</td>
+						  </tr>
+						
+						  <tr>
+						       <th>主机地址</th>
+						       <td>{$server->server_addr}</td>
+						  </tr>
+						  <tr>
+						      <th>主机端口</th>
+						      <td>{$server->server_port}</td>
+						  </tr>
+						
+						 <tr>
+						      <th>WEB软件</th>
+						      <td>{$server->server_software}</td>
+						  </tr>	  
+						  
+						  <tr>
+						     <th>PHP版</th>
+						     <td>{$server->php_version}</td>
+						 </tr>
+						
+						<tr>
+						     <th>数据库驱动</th>
+						     <td>{$server->db_driver}</td>
+						 </tr>
+						
+						
+						<tr>
+						     <th>文件上传限制</th>
+						     <td>{$server->upload_max_filesize}</td>
+						</tr>
+						   
+						<tr>
+						    <th>表单提交限制</th>
+						    <td>{$server->post_max_size}</td>
+						</tr>
+						
+						<tr>
+						     <th>最大提交数量</th>
+						     <td>{$server->max_file_uploads}</td>
+						</tr>
+						
+						<tr>
+						     <th>分配内存限制</th>
+						     <td>{$server->memory_limit}</td>
+						</tr>
+						
+						<tr>
+						     <th>GD库支持</th>
+						     <td>{$server->gd}</td>
+						</tr>
+						   
+						<tr>
+						    <th>Curl支持</th>
+						    <td>{$server->curl}</td>
+						</tr>
+						
+						<tr>
+						   <th>加速模块支持</th>
+						    <td>
+						          pthreads：{$server->pthreads}；
+						          XCache：{$server->xcache}；
+						          APC：{$server->apc}； 
+						          eAccelerator：{$server->eaccelerator}； 
+						          WinCache：{$server->wincache}； 
+						          ZendOPcache：{$server->zendopcache}；
+						          Memcache：{$server->memcache}； 
+						          Memcached：{$server->memcached}；
+						    </td>
+						</tr>
+						
+						<tr>
+						    <th>已加载模块</th>
+						    <td>{$server->extensions}</td>
+						</tr>               
+					</tbody>
+				</table>
+		    </div>
+	  </div>
+	</div>
+</div>
+
+{include file='common/foot.html'}

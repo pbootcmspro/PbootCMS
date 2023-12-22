@@ -1,0 +1,18 @@
+<!-- 分类导航 -->
+<div class="sonsort mt-4 mb-2">
+    {pboot:nav num=10 parent={sort:tcode}}
+    	{pboot:if([nav:i]==1)}
+            {pboot:2if('{sort:scode}'=='{sort:tcode}')}
+                <a href="{sort:toplink}" class="btn btn-info mb-2">全部 <span class="badge badge-light">{sort:toprows}</a>
+            {2else}
+                <a href="{sort:toplink}" class="btn btn-light mb-2">全部 <span class="badge btn-info">{sort:toprows}</a>
+            {/pboot:2if}
+        {/pboot:if}
+        
+        {pboot:if('[nav:scode]'=='{sort:scode}')}
+            <a href="[nav:link]" class="btn btn-info mb-2">[nav:name] <span class="badge badge-light">[nav:rows]</span></a>
+        {else}
+            <a href="[nav:link]" class="btn btn-light mb-2">[nav:name] <span class="badge btn-info">[nav:rows]</span></a>
+        {/pboot:if}
+    {/pboot:nav}
+</div>

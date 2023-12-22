@@ -1,0 +1,170 @@
+{include file='common/head.html'}
+
+<div class="layui-body">
+	{if([$list])}
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this" lay-id="t1">友情链接列表</li>
+	    <li lay-id="t2">友情链接新增</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	<div class="layui-tab-item layui-show">
+	  		<form action="{url./admin/Link/mod}" method="post" class="layui-form" onkeydown="if(event.keyCode==13) return false;">
+		   	 <input type="hidden" name="formcheck" value="{$formcheck}" > 
+	  		<table class="layui-table">
+	  			<thead>
+                    <tr>
+                    	<th>分组(gid)</th>
+                        <th>名称</th>
+                        <th>链接</th>
+                        <th>Logo</th>
+                        <th>排序</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {foreach $links(key,value)}
+                    <tr>
+                    	<td>[value->gid]</td>
+                        <td>[value->name]</td>
+                        <td>[value->link]</td>
+                        <td><img src="{SITE_DIR}[value->logo]" style="height:20px;"></td>
+                        <td class="table-input">
+                        	<input type="hidden" name="listall[]" value="[value->id]">
+                        	<input type="text" lay-ignore class="layui-input" name="sorting[]" value="[value->sorting]">
+                        </td>
+                        <td>
+                            {fun=get_btn_del($value->id)}
+                            {fun=get_btn_mod($value->id)}
+                        </td>
+                    </tr>
+                    {/foreach}
+                </tbody>
+	  		</table>
+	  		 <button type="submit" name="submit" value="sorting" class="layui-btn layui-btn-sm">保存排序</button>
+            </form>
+	  		<div class="page">{$pagebar}</div>
+	  	</div>
+	  	<div class="layui-tab-item">
+	  		 <form action="{url./admin/Link/add}" method="post" class="layui-form">
+	  		 	<input type="hidden" name="formcheck" value="{$formcheck}" > 
+	  		 	<div class="layui-form-item">
+                     <label class="layui-form-label">分组</label>
+                     <div class="layui-input-block">
+                     	<select name="gid">	
+                     		{foreach $gids(key,value)}
+	                			<option value="[value]" >分组[value]</option>
+	                		{/foreach}
+	                		<option value="" >自动新增分组</option>
+	                	</select>
+                     </div>
+                </div>
+                
+                 <div class="layui-form-item">
+                     <label class="layui-form-label">名称</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="name" required  lay-verify="required" placeholder="请输入名称"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">链接</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="link" required  lay-verify="required" placeholder="请输入链接"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">图片</label>
+                     <div class="layui-input-inline">
+                     	<input type="text" name="logo" id="logo" placeholder="请上传图片"  class="layui-input">
+                     </div>
+                     <button type="button" class="layui-btn upload" data-des="logo">
+					 	 <i class="layui-icon">&#xe67c;</i>上传图片
+					 </button>
+					 <div id="logo_box" class="pic"></div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">排序</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="sorting" required lay-verify="required" value="255" placeholder="请输入排序"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+					 <div class="layui-input-block">
+					    <button class="layui-btn" lay-submit>立即提交</button>
+					    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+					 </div>
+				</div>
+	  		 </form>
+	  	</div>
+	  </div>
+	</div>
+	{/if} 
+	
+	{if([$mod])}
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this">友情链接修改</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	<div class="layui-tab-item layui-show">
+	  		 <form action="{url./admin/Link/mod/id/'.[$get.id].'}{$backurl}" method="post" class="layui-form">
+	  		 	<input type="hidden" name="formcheck" value="{$formcheck}" > 
+
+                <div class="layui-form-item">
+                     <label class="layui-form-label">分组</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="gid" required  lay-verify="required" value="{$link->gid}" placeholder="请输入分组"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">名称</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="name" required  lay-verify="required" value="{$link->name}" placeholder="请输入名称"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">链接</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="link" required  lay-verify="required" value="{$link->link}" placeholder="请输入链接"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">图片</label>
+                     <div class="layui-input-inline">
+                     	<input type="text" name="logo" id="logo" placeholder="请上传图片"  value="{$link->logo}" class="layui-input">
+                     </div>
+                     <button type="button" class="layui-btn upload" data-des="logo">
+					 	 <i class="layui-icon">&#xe67c;</i>上传图片
+					 </button>
+					 <div id="logo_box" class="pic">{if([$link->logo])}<dl><dt><img src="{SITE_DIR}{$link->logo}" data-url="{$link->logo}"></dt><dd>删除</dd></dl>{/if}</div>
+                </div>
+                
+                 <div class="layui-form-item">
+                     <label class="layui-form-label">排序</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="sorting" required lay-verify="required" value="{$link->sorting}" placeholder="请输入排序"  class="layui-input">
+                     </div>
+                </div>
+                
+                 <div class="layui-form-item">
+					 <div class="layui-input-block">
+					    <button class="layui-btn" lay-submit>立即提交</button>
+					    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+					    {fun=get_btn_back()}
+					 </div>
+				</div>
+				
+	  		 </form>
+	  	</div>
+	  </div>
+	 </div>
+	{/if} 
+</div>
+{include file='common/foot.html'}

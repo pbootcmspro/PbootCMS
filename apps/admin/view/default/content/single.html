@@ -1,0 +1,426 @@
+{include file='common/head.html'}
+
+<div class="layui-body">
+	{if([$list])}
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this" lay-id="t1">{$model_name}内容</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	   <div class="layui-tab-item layui-show">
+	  	   		<form action="{url./admin/Single/index/mcode/'.get('mcode').'}" method="get" class="layui-form">
+		  	   		<div class="layui-form-item nospace">
+		  	   			<div class="layui-input-inline">
+		  	   				{$pathinfo}
+					       <select name="field" class="form-control input-sm" style="width:auto;">
+					       		<option value="b.name" {if(get('field')=='b.name')}selected="selected" {/if}>栏目名称</option>
+                                <option value="a.title" {if(get('field')=='a.title')}selected="selected" {/if} >文章标题</option>
+                                <option value="a.content" {if(get('field')=='a.content')}selected="selected" {/if}>文章内容</option>
+                        	</select>
+					    </div>
+	                     <div class="layui-input-inline">
+	                     	<input type="text" name="keyword"  value="{$get.keyword}"  placeholder="请输入搜索关键字" class="layui-input">
+	                     </div>
+	                     <div class="layui-input-inline">
+	                     	<button class="layui-btn" lay-submit>搜索</button>
+	                     	<a class="layui-btn layui-btn-primary"  href="{url./admin/Single/index/mcode/'.get('mcode').'}">清除搜索</a>
+	                     </div>
+	                </div>
+                </form>
+
+	            <table class="layui-table">
+	            	<thead>
+	                    <tr>
+	                    	<th>ID</th>
+	                        <th>栏目</th>
+	                        <th>标题</th>
+	                        <th>时间</th>
+	                        <th>状态</th>
+	                        <th>访问量</th>
+	                        <th>操作</th>
+	                    </tr>
+	                </thead>
+	                <tbody>
+	                    {foreach $contents(key,value)}
+	                    <tr>
+	                    	<td>[value->id]</td>
+	                        <td title="[value->scode]">[value->sortname]</td>
+	                         <td title="[value->title]">
+		                        {fun=substr_both($value->title,0,15)}
+		                        {if($value->ico)}
+		                        	<span class="layui-badge layui-bg-orange">缩</span>
+		                        {/if}
+		                        {if($value->pics)}
+		                        	<span class="layui-badge">图</span>
+		                        {/if}
+		                        {if($value->outlink)}
+	                            	<span class="layui-badge layui-bg-black">链</span>
+	                            {/if}
+	                        </td>
+	                        <td>[value->date]</td>
+	                        <td>
+	                        {if($value->status)}
+		                        <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/status/value/0}" class="switch"><i class='fa fa-toggle-on' title="点击关闭"></i></a>
+		                        {else}
+		                        <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/status/value/1}" class="switch"><i class='fa fa-toggle-off' title="点击开启"></i></a>
+		                    {/if}
+		                    </td>
+		                    <td>[value->visits]</td>
+	                        <td>
+	                        	{if(!$value->outlink)}
+	                        		{php}
+			                        		$Parser=new app\home\controller\ParserController();
+			                        		$link=$Parser->parserLink(1,$value->urlname,'about',$value->scode,$value->filename,'','');
+			                       {/php}
+		                        	<a href="{php}echo $link{/php}" class="layui-btn layui-btn-xs layui-btn-primary"  target="_blank">查看</a>
+	                        	{/if}
+	                        	
+	                            {if(check_level('mod'))}
+	                            	<a href="{url./admin/Single/mod/mcode/'.$value->mcode.'/id/'.$value->id.'}{$btnqs}" class="layui-btn layui-btn-xs" >修改</a>
+	                            	{if([$baidu_zz_token] && !$value->outlink)}
+	                            		<a href="{url./admin/'.C.'/mod/baiduzz/'.$value->id.'}" class="layui-btn layui-btn-xs layui-btn-primary" >百度普通推送</a>
+	                            	{/if}
+	                            	{if([$baidu_ks_token] && !$value->outlink)}
+	                            		<a href="{url./admin/'.C.'/mod/baiduks/'.$value->id.'}" class="layui-btn layui-btn-xs layui-btn-primary" >百度快速推送</a>
+	                            	{/if}
+	                            {/if}
+	                        </td>
+	                    </tr>
+	                    {/foreach}
+	                </tbody>
+	            </table>
+	  	   </div>
+	  </div>
+	 </div>
+	{/if} 
+	
+	{if([$mod])}
+	
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this">单页修改</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	<div class="layui-tab-item layui-show">
+	  		<form action="{url./admin/Single/mod/id/'.[$get.id].'}{$backurl}" method="post" class="layui-form" id="edit">
+	  			<input type="hidden" name="formcheck" value="{$formcheck}" > 
+	  			<div class="layui-tab">
+					  <ul class="layui-tab-title">
+					    <li class="layui-this">基本内容</li>
+					    <li>高级内容</li>
+					  </ul>
+					  <div class="layui-tab-content">
+					    <div class="layui-tab-item layui-show">
+
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">内容标题   <span class="layui-text-red">*</span></label>
+			                     <div class="layui-input-block">
+			                     	<input type="text" name="title" required lay-verify="required" value="{$content->title}" placeholder="请输入内容标题" class="layui-input">
+			                     </div>
+			                </div>
+			                
+			                 {foreach $extfield(key,value)}
+			                	{if($value->type==1)} <!-- 单行文本 -->
+			                	<div class="layui-form-item">
+			                		<label class="layui-form-label">[value->description]</label>
+			                		<div class="layui-input-block">
+				                    	<input type="text" name="[value->name]" value="{$content->{$value->name}}"  placeholder="请输入[value->description]"  class="layui-input">
+				                	</div>
+				                </div>
+			                	{/if}
+			                	
+			                	{if($value->type==2)}<!-- 多行文本 -->
+			                	<div class="layui-form-item">
+			                		<label class="layui-form-label">[value->description]</label>
+			                		<div class="layui-input-block">
+				                		<textarea name="[value->name]" class="layui-textarea" placeholder="请输入[value->description]">{php}$name=$value->name;echo str_replace('<br>', "\r\n",$this->vars['content']->$name);{/php}</textarea>
+				                	</div>
+				                </div>
+			                	{/if}
+			                	
+			                    {if($value->type==3)}<!-- 单选 -->
+			                	<div class="layui-form-item">
+			                		<label class="layui-form-label">[value->description]</label>
+			                		<div class="layui-input-block">
+				                		<div>
+	            						     {php}
+				                				$radios=explode(',',$value->value);
+				                				$name=$value->name;
+				                				foreach ($radios as $value2) {
+				                					if($this->vars['content']->$name==$value2){
+	                									echo '<input type="radio" name="'.$value->name.'" value="'.$value2.'" title="'.$value2.'" checked>';
+	                								}else{
+	                									echo '<input type="radio" name="'.$value->name.'" value="'.$value2.'" title="'.$value2.'">';
+	                								}
+	            								}
+	            						     {/php}
+					                    </div>
+				                	</div>
+				                </div>
+			                	{/if}
+			                	
+			                    {if($value->type==4)}<!-- 多选 -->
+			                	<div class="layui-form-item">
+			                		<label class="layui-form-label">[value->description]</label>
+			                		<div class="layui-input-block">
+				                		<div>
+	            						     {php}
+				                				$checkboxs=explode(',',$value->value);
+				                				$name=$value->name;
+				                				echo '<input name="'.$value->name.'" type="hidden">';//占位清空
+				                				$values=explode(',',$this->vars['content']->$name);
+				                				foreach ($checkboxs as $value2) {
+				                					if(in_array($value2,$values)){
+	            										echo '<input type="checkbox" name="'.$value->name.'[]" value="'.$value2.'" title="'.$value2.'" checked>';
+	            									}else{
+	            										echo '<input type="checkbox" name="'.$value->name.'[]" value="'.$value2.'" title="'.$value2.'">';
+	            									}
+	            								}
+	            						     {/php}
+					                    </div>
+				                	</div>
+				                </div>
+			                	{/if}
+			                	
+			                	{if($value->type==5)}<!-- 图片 -->
+			                	<div class="layui-form-item">
+			                		<label class="layui-form-label">[value->description]</label>
+			                		<div class="layui-input-inline">
+				                     	<input type="text" name="[value->name]" id="[value->name]" value="{$content->{$value->name}}" placeholder="请上传[value->description]"  class="layui-input">
+				                     </div>
+				                     <button type="button" class="layui-btn upload watermark" data-des="[value->name]">
+									 	 <i class="layui-icon">&#xe67c;</i>上传图片
+									 </button>
+									 {php}$name=$value->name; {/php}
+									 <div id="[value->name]_box" class="pic"><dl><dt>{if([$content]->$name)}<img src='{SITE_DIR}{$content->{$value->name}}' data-url="{$content->{$value->name}}"></dt><dd>删除</dd></dl>{/if}</div>
+				                </div>
+			                	{/if}
+			                	
+			                	{if($value->type==6)}<!-- 文件 -->
+			                	<div class="layui-form-item">
+			                		<label class="layui-form-label">[value->description]</label>
+			                		<div class="layui-input-inline">
+				                     	<input type="text" name="[value->name]" id="[value->name]" value="{$content->{$value->name}}" placeholder="请上传[value->description]"  class="layui-input">
+				                     </div>
+				                     <button type="button" class="layui-btn file" data-des="[value->name]">
+									 	 <i class="layui-icon">&#xe67c;</i>上传文件
+									 </button>
+				                </div>
+			                	{/if}
+			                	
+			                	{if($value->type==7)}<!-- 日期 -->
+				                <div class="layui-form-item">
+				                     <label class="layui-form-label">[value->description]</label>
+				                     <div class="layui-input-block">
+				                     	<input type="text" name="[value->name]" value="{$content->{$value->name}}" readonly placeholder="请选择[value->description]"  class="layui-input datetime">
+				                     </div>
+				                </div>
+			                	{/if}
+			                	
+			                	{if($value->type==8)}<!-- 编辑器 -->
+			                	<div class="layui-form-item">
+			                		<label class="layui-form-label">[value->description]</label>
+			                		<div class="layui-input-block">
+			                			{php}
+			                				$name=@$value->name;
+			                			{/php}
+				                		<script type="text/plain" id="editor_[value->name]" name="[value->name]" style="width:100%;height:240px;">{fun=decode_string([$content->$name])}</script>
+				                		<script>
+											//初始化编辑器
+											$(document).ready(function (e) {
+												var ue = UE.getEditor('editor_[value->name]',{
+													maximumWords:10000 
+												});
+											})
+										</script>
+				                	</div>
+				                </div>
+			                	{/if}
+			                	
+			                	{if($value->type==9)}<!-- 下拉 -->
+			                	<div class="layui-form-item">
+			                		<label class="layui-form-label">[value->description]</label>
+			                		<div class="layui-input-block">
+			                			<select name="[value->name]">
+			                				{php}
+				                				$selects=explode(',',$value->value);
+				                				$name=$value->name;
+				                				foreach ($selects as $value2) {
+				                					if($this->vars['content']->$name==$value2){
+				                						echo '<option value="'.$value2.'" selected>'.$value2.'</option>';
+	                								}else{
+	                									echo '<option value="'.$value2.'">'.$value2.'</option>';
+	                								}
+	            								}
+	            						    {/php}
+			                			</select>
+				                	</div>
+				                 </div>
+			                	 {/if}
+			                	 
+			                {/foreach}
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">内容</label>
+			                     <div class="layui-input-block">
+			                     	<script type="text/plain" id="editor" name="content" style="width:100%;height:240px;">{fun=decode_string([$content->content])}</script>
+			                     </div>
+			                </div>
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">tags</label>
+			                     <div class="layui-input-block">
+			                     	<input type="text" name="tags" placeholder="请输入文章tag，英文逗号隔开" value="{$content->tags}" class="layui-input">
+			                     </div>
+			                </div>
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">作者</label>
+			                     <div class="layui-input-block">
+			                     	<input type="text" name="author" placeholder="请输入作者" value="{$content->author}" class="layui-input">
+			                     </div>
+			                </div>
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">来源</label>
+			                     <div class="layui-input-block">
+			                     	<input type="text" name="source" placeholder="请输入来源" value="{$content->source}" class="layui-input">
+			                     </div>
+			                </div>
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">缩略图</label>
+			                     <div class="layui-input-inline">
+			                     	<input type="text" name="ico" id="ico" value="{$content->ico}" placeholder="请上传缩略图"  class="layui-input">
+			                     </div>
+			                     <button type="button" class="layui-btn upload watermark" data-des="ico">
+								 	 <i class="layui-icon">&#xe67c;</i>上传图片
+								 </button>
+								 <div id="ico_box" class="pic addedit">{if([$content->ico])}<dl><dt><img src="{SITE_DIR}{$content->ico}" data-url="{$content->ico}"></dt><dd>删除</dd></dl>{/if}</div>
+			                </div>
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">轮播多图</label>
+			                     <div class="layui-input-inline">
+			                     	<input type="text" name="pics" id="pics" value="{$content->pics}" placeholder="请上传轮播多图"  class="layui-input">
+			                     </div>
+			                     <button type="button" class="layui-btn uploads watermark" data-des="pics">
+								 	 <i class="layui-icon">&#xe67c;</i>上传多图
+								 </button>
+								 <div id="pics_box" class="pic addedit">
+								 	<dl></dl> <!-- 规避空内容拖动bug -->
+								 	 {php}
+									    if([$content->pics]){
+		                					$pics=explode(',',[$content->pics]);
+		                				}else{
+		                					$pics = array();
+		                				}
+		                				if([$content->picstitle]){
+		                					$picstitle=explode(',',[$content->picstitle]);
+		                				}else{
+		                					$picstitle = array();
+		                				}
+		                				foreach ($pics as $key=>$value) {
+		                					//需要留一个空，不然被解析为标签了
+		                					echo "<dl><dt><img src='".SITE_DIR.$value."' data-url='".$value."'></dt><dd>删除</dd><dt><input type='text' value='".$picstitle[$key ]."' name='picstitle[]' style='width:95%' /></dt></dl>";
+	          							}
+	         						 {/php}
+								 </div>
+			                </div>
+					    </div>
+					    
+					    <div class="layui-tab-item ">
+					    
+					   		 <div class="layui-form-item">
+			                     <label class="layui-form-label">标题颜色</label>
+			                     <div class="layui-input-inline">
+			                     	<input type="text" name="titlecolor" value="{$content->titlecolor}" placeholder="请选择标题颜色"  class="layui-input jscolor {hash:true}">
+			                     </div>
+			                 </div>
+			                 
+			                 <div class="layui-form-item">
+			                     <label class="layui-form-label">副标题</label>
+			                     <div class="layui-input-block">
+			                     	<input type="text" name="subtitle" value="{$content->subtitle}" placeholder="请输入副标题" class="layui-input">
+			                     </div>
+			                 </div>
+
+			                 <div class="layui-form-item">
+			                     <label class="layui-form-label">时间</label>
+			                     <div class="layui-input-inline">
+			                     	<input type="text" name="date" value="{$content->date}" readonly placeholder="请选择发布时间"  class="layui-input datetime">
+			                     </div>
+			                     <div class="layui-form-mid layui-word-aux">温馨提示：单页不支持定时发布！</div>
+			                </div>
+			                
+			                <div class="layui-form-item">
+		                		<label class="layui-form-label">附件</label>
+		                		<div class="layui-input-inline">
+			                     	<input type="text" name="enclosure" id="enclosure" value="{$content->enclosure}" placeholder="请上传附件"  class="layui-input">
+			                     </div>
+			                     <button type="button" class="layui-btn file" data-des="enclosure">
+								 	 <i class="layui-icon">&#xe67c;</i>上传附件
+								 </button>
+			                </div>
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">SEO关键字</label>
+			                     <div class="layui-input-block">
+			                     	<input type="text" name="keywords" value="{$content->keywords}"  placeholder="请输入详情页SEO关键字" class="layui-input">
+			                     </div>
+			                </div>
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">SEO描述</label>
+			                     <div class="layui-input-block">
+			                     	<textarea name="description" placeholder="请输入详情页SEO描述" class="layui-textarea">{$content->description}</textarea>
+			                     </div>
+			                </div>
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">状态</label>
+			                     <div class="layui-input-block">
+			                     	<input type="radio" name="status" value="1" title="显示" {if([$content->status]==1)} checked="checked"{/if}>
+									<input type="radio" name="status" value="0" title="隐藏" {if([$content->status]==0)} checked="checked"{/if}>
+			                     </div>
+			                </div>
+					    </div>
+					  </div>
+					</div>
+					<div class="layui-form-item">
+						 <div class="layui-input-block">
+						    <button class="layui-btn" lay-submit>立即提交</button>
+						    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+						    {fun=get_btn_back()}
+						 </div>
+					</div>
+	  		</form>
+	  	</div>
+	  </div>
+	</div>
+	{/if} 
+
+</div>
+
+<style>.placeHolder {border:dashed 2px gray; }</style>
+<script type="text/javascript" src="{APP_THEME_DIR}/js/jquery.dragsort-0.5.2.min.js"></script>
+<script type="text/javascript">
+$("#pics_box").dragsort({
+	dragSelector: "dl",
+	dragSelectorExclude: "input,textarea,dd",
+	dragBetween: false,
+	dragEnd: saveOrder,
+	placeHolderTemplate: "<dl class='placeHolder'><dt></dt></dl>"
+});
+
+function saveOrder() {
+	var data = $("#pics_box dl dt img").map(function() {
+		return $(this).data("url");
+	}).get();
+	$("input[name=pics]").val(data.join(","))
+};
+</script>
+<script type="text/javascript" src="{APP_THEME_DIR}/js/jscolor.js"></script>
+
+{include file='common/ueditor.html'}
+{include file='common/foot.html'}

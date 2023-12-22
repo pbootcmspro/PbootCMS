@@ -1,0 +1,148 @@
+{include file='common/head.html'}
+
+<div class="layui-body">
+	{if([$list])}
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this" lay-id="t1">留言列表</li>
+	  </ul>
+	  <div class="layui-tab-content">
+		  <form method="get" name="contentForm" >
+	  	   <div class="layui-tab-item layui-show">
+	  	   		{foreach $messages(key,value,num)}
+	  	   		<table class="layui-table table-two">
+	  	   			<thead>
+				  		<tr>
+					  		<th colspan="2">
+								<input type="checkbox" name="checkbox" title="选择" lay-skin="primary" class="check" value="[value->id]">
+								<input type="hidden" name="listall[]" value="[value->id]">
+								在线留言-[num]
+					  			<span style="float:right">
+						  			{if($value->status)}
+		                            <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/status/value/0}"><i class='fa fa-toggle-on' title="点击前端隐藏" style="vertical-align:middle"></i></a>
+		                            {else}
+		                            <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/status/value/1}"><i class='fa fa-toggle-off' title="点击前端显示" style="vertical-align:middle"></i></a>
+		                            {/if}
+						  			{fun=get_btn_mod($value->id,'id','回复')}
+						  			{fun=get_btn_del($value->id)}
+					  			</span>
+					  		</th>
+					  	</tr>
+				    </thead>
+	  	   			<tbody>
+		  	   			{foreach $fields(key2,value2,num2)}
+			  	   			<tr>
+						      	<th>[value2->description]</th>
+						      	{php} $field=$value2->name {/php}
+						      	<td>[value->$field]</td>
+						    </tr>
+		  	   			{/foreach}
+		  	   			<tr>
+					      	<th>时间</th>
+					      	<td>[value->create_time]</td>
+					    </tr>
+					    <tr>
+					      	<th>访客信息</th>
+					      	<td>
+					      		IP:<a href="http://ip.taobao.com/ipSearch.html?ipAddr={fun=long2ip($value->user_ip)}" target="_blank" title="点击查看归属地">{fun=long2ip($value->user_ip)}</a>；
+								浏览器:[value->user_bs]；
+								操作系统:[value->user_os]
+							</td>
+					    </tr>
+					    {if($value->username)}
+					    <tr>
+					      	<th>会员账号</th>
+					      	<td>[value->username]([value->nickname])</td>
+					    </tr>
+					    {/if}
+					    <tr>
+					      	<th>回复内容</th>
+					      	<td>[value->recontent]</td>
+					    </tr>
+	  	   			</tbody>
+	            </table>
+	            {/foreach}
+	            
+	            {if(session('ucode')==10001 && [$messages])}
+			     	<a href="{url./admin/Message/clear}"  onclick='return confirm("您确定要全部清空么？")' class="layui-btn layui-btn-sm">清空全部记录</a>
+			   		<a href="javascript:" onclick="selectall('checkbox')" class="layui-btn layui-btn-sm">全选</a>
+			   		<a href="javascript:" onclick="delselect(this);return false" class="layui-btn layui-btn-sm">清空选中记录</a>
+			    {/if}
+			    
+			    {if([$messages])}
+			    <a href="{url./admin/Message/index/export/1}" class="layui-btn layui-btn-sm">导出记录</a>
+			    {/if}
+			    
+	            <div class="page">{$pagebar}</div>
+	  	   </div>
+		  </form>
+	  	 </div>
+	</div>
+	{/if}
+	
+	{if([$mod])}
+	
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this">留言回复</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	<div class="layui-tab-item layui-show">
+	  		 <form action="{url./admin/Message/mod/id/'.[$get.id].'}{$backurl}" method="post" class="layui-form">
+	  		 	<input type="hidden" name="formcheck" value="{$formcheck}" > 
+	  		 	<div class="layui-form-item">
+                     <label class="layui-form-label">回复内容</label>
+                     <div class="layui-input-block">
+                     	<textarea name="recontent" placeholder="请输入回复内容" class="layui-textarea">{$message->recontent}</textarea>
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                    <label class="layui-form-label">状态</label>
+                    <div class="layui-input-block">
+                    	<input type="radio" name="status" value="1" title="显示" {if([$message->status]==1)}checked="checked"{/if}>
+						<input type="radio" name="status" value="0" title="隐藏" {if([$message->status]==0)}checked="checked"{/if}>
+                    </div>
+                </div>
+                
+	  		 	<div class="layui-form-item">
+				 <div class="layui-input-block">
+				    <button class="layui-btn" lay-submit lay-filter="formDemo">立即提交</button>
+				    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+				    {fun=get_btn_back()}
+				 </div>
+			   </div>
+			   
+	  		 </form>
+	  	</div>
+	  </div>
+	 </div>
+
+	{/if} 
+	
+</div>
+<script>
+
+	function selectall(objName){
+		var objNameList=document.getElementsByName(objName);
+		if(null!=objNameList){
+			for(var i=0;i<objNameList.length;i++){
+				objNameList[i].checked="checked";
+			}
+		}
+	}
+
+	function delselect(obj){
+		if(confirm("您确定要删除选中的内容么？")){
+			var check_list = [];
+			$('input[name="checkbox"]:checked').each(function (){
+				check_list.push($(this).val());
+			});
+			var url = $(obj).attr("href");
+			var str = check_list.join("and");
+			// $(obj).attr("href", url + "" + str);
+			location.href = "{url./admin/Message/clear}/ids/" + str;
+		}
+	}
+</script>
+{include file='common/foot.html'}

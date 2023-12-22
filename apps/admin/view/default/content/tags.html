@@ -1,0 +1,105 @@
+{include file='common/head.html'}
+
+<div class="layui-body">
+	{if([$list])}
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this" lay-id="t1">文章内链列表</li>
+	    <li lay-id="t2">文章内链新增</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	<div class="layui-tab-item layui-show">
+	  		<table class="layui-table">
+	  			<thead>
+                    <tr>
+                    	<th>序号</th>
+                        <th>名称</th>
+                        <th>链接</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {foreach $tags(key,value)}
+                    <tr>
+                    	<td>[num]</td>
+                        <td>[value->name]</td>
+                        <td>[value->link]</td>
+                        <td>
+                            {fun=get_btn_del($value->id)}
+                            {fun=get_btn_mod($value->id)}
+                        </td>
+                    </tr>
+                    {/foreach}
+                </tbody>
+	  		</table>
+	  		<div class="page">{$pagebar}</div>
+	  	</div>
+	  	<div class="layui-tab-item">
+	  		 <form action="{url./admin/Tags/add}" method="post" class="layui-form">
+	  		 	<input type="hidden" name="formcheck" value="{$formcheck}" > 
+
+                 <div class="layui-form-item">
+                     <label class="layui-form-label">名称</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="name" required  lay-verify="required" placeholder="请输入名称"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">链接</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="link" required  lay-verify="required" placeholder="请输入链接"  class="layui-input">
+                     </div>
+                </div>
+
+                <div class="layui-form-item">
+					 <div class="layui-input-block">
+					    <button class="layui-btn" lay-submit>立即提交</button>
+					    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+					 </div>
+				</div>
+	  		 </form>
+	  	</div>
+	  </div>
+	</div>
+	{/if} 
+	
+	{if([$mod])}
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this">文章内链修改</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	<div class="layui-tab-item layui-show">
+	  		 <form action="{url./admin/Tags/mod/id/'.[$get.id].'}{$backurl}" method="post" class="layui-form">
+	  		 	<input type="hidden" name="formcheck" value="{$formcheck}" > 
+
+                <div class="layui-form-item">
+                     <label class="layui-form-label">名称</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="name" required  lay-verify="required" value="{$tags->name}" placeholder="请输入名称"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">链接</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="link" required  lay-verify="required" value="{$tags->link}" placeholder="请输入链接"  class="layui-input">
+                     </div>
+                </div>
+                
+                 <div class="layui-form-item">
+					 <div class="layui-input-block">
+					    <button class="layui-btn" lay-submit>立即提交</button>
+					    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+					    {fun=get_btn_back()}
+					 </div>
+				</div>
+				
+	  		 </form>
+	  	</div>
+	  </div>
+	 </div>
+	{/if} 
+</div>
+{include file='common/foot.html'}

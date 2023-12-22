@@ -1,0 +1,142 @@
+{include file='common/head.html'}
+
+<div class="layui-body">
+	{if([$list])}
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this" lay-id="t1">角色列表</li>
+	    <li lay-id="t2">角色新增</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	   <div class="layui-tab-item layui-show">
+	  	   		<table class="layui-table">
+	            	<thead>
+	                    <tr>
+	                        <th>序号</th>
+	                        <th>角色名称</th>
+	                        <th>角色编码</th>
+	                        <th>角色描述</th>
+	                        <th>添加时间</th>
+	                        <th>修改时间</th>
+	                        <th>操作</th>
+	                    </tr>
+	        		</thead>
+	                <tbody>
+	                {foreach $roles(key,value,num)}
+	                    <tr>
+	                        <td>[num]</td>
+	                        <td>[value->name]</td>
+	                        <td>[value->rcode]</td>
+	                        <td>[value->description]</td>
+	                        <td>[value->create_time]</td>
+	                        <td>[value->update_time]</td>
+	                        <td>
+	                        	{if($value->id!=1)}
+	                           		{fun=get_btn_del($value->rcode,'rcode')}
+	                            {/if}
+	                            {fun=get_btn_mod($value->rcode,'rcode')}
+	                        </td>
+	                    </tr>
+	                {/foreach}
+	                </tbody>
+	            </table>
+	            <div class="page">{$pagebar}</div>
+	  	   </div>
+	  	   
+	  	   <div class="layui-tab-item">
+	  	   		<form action="{url./admin/Role/add}" method="post" class="layui-form">
+	  	   			<input type="hidden" name="formcheck" value="{$formcheck}" > 
+	  	   			<div class="layui-form-item">
+	                     <label class="layui-form-label">角色名称</label>
+	                     <div class="layui-input-block">
+	                     	<input type="text" name="name" required  lay-verify="required" placeholder="请输入角色名称" class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">角色描述</label>
+	                     <div class="layui-input-block">
+	                     	<input type="text" name="description" placeholder="请输入角色描述" class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+					    <label class="layui-form-label">管辖区域</label>
+					    <div class="layui-input-block">
+					      {$area_checkbox}
+					    </div>
+					 </div>
+					 
+					 <div class="layui-form-item">
+					    <label class="layui-form-label">角色权限</label>
+					    <div class="layui-input-block" id="selectitem">
+					      {$menu_list}
+					    </div>
+					 </div>
+					 
+		  	   		 <div class="layui-form-item">
+						 <div class="layui-input-block">
+						    <button class="layui-btn" lay-submit>立即提交</button>
+						    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+						 </div>
+				    </div>
+	  	   		</form>
+	  	   </div>
+	  </div>
+	</div>
+	{/if} 
+
+	{if([$mod])}
+	
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this">角色修改</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	   <div class="layui-tab-item layui-show">
+	  	  		<form action="{url./admin/Role/mod/rcode/'.[$get.rcode].'}{$backurl}" method="post" class="layui-form">
+	  	  			<input type="hidden" name="formcheck" value="{$formcheck}" > 
+	  	  			<div class="layui-form-item">
+	                     <label class="layui-form-label">角色名称</label>
+	                     <div class="layui-input-block">
+	                     	<input type="text" name="name" required  lay-verify="required" value="{$role->name}" placeholder="请输入角色名称" class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">角色描述</label>
+	                     <div class="layui-input-block">
+	                     	<input type="text" name="description" value="{$role->description}" placeholder="请输入角色描述" class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+					    <label class="layui-form-label">管辖区域</label>
+					    <div class="layui-input-block">
+					      {$area_checkbox}
+					    </div>
+					 </div>
+					 
+					 <div class="layui-form-item">
+					    <label class="layui-form-label">角色权限</label>
+					    <div class="layui-input-block" id="selectitem">
+					      {$menu_list}
+					    </div>
+					 </div>
+					 
+		  	   		 <div class="layui-form-item">
+						 <div class="layui-input-block">
+						    <button class="layui-btn" lay-submit>立即提交</button>
+						    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+						    {fun=get_btn_back()}
+						 </div>
+				    </div>
+	  	  		</form>
+	  	   </div>
+	  </div>
+	 </div>
+	{/if} 
+
+</div>
+
+{include file='common/foot.html'}

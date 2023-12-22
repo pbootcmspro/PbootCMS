@@ -1,0 +1,615 @@
+{include file='common/head.html'}
+
+<div class="layui-body">
+	{if([$list])}
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this" lay-id="t1">栏目列表</li>
+	    <li lay-id="t2">栏目新增</li>
+	    <li lay-id="t3">批量新增</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	   <div class="layui-tab-item layui-show">
+	  	   		 <form action="{url./admin/ContentSort/mod}" method="post" id="sortForm" name="sortForm">
+	  	   		 <input type="hidden" name="formcheck" value="{$formcheck}" > 
+	  	   		 <table class="layui-table" id="sortTable">
+	  	   		 	  <thead>
+		                    <tr>
+		                        <th><input type="checkbox" lay-ignore id="checkall" title="全选"></th>
+		                        <th>栏目名称</th>
+		                        <th>编码</th>
+		                        <th>URL名称</th>
+		                        <th>模型</th>
+		                        <th>列表页模板</th>
+		                        <th>详情页模板</th>
+		                        <th>排序</th>
+		                        <th>状态</th>
+		                        <th>操作</th>
+		                    </tr>
+		                </thead>
+		                <tbody>
+		                {foreach $sorts(key,value)}
+		                	
+		                    <tr data-tt-id='[value->scode]' data-tt-parent-id="[value->pcode]">
+		                    	<td>
+		                    		<input type="checkbox" class="checkitem" lay-ignore name="list[]" value="[value->scode]">
+		                    		<input type="hidden" name="listall[]" value="[value->id]">
+		                    	</td>
+		                        <td>
+		                            {if($value->son)}
+		                               <i class="fa fa-folder-o" aria-hidden="true"></i>
+		                            {else}
+		                               <i class="fa fa-folder-open-o" aria-hidden="true"></i>
+		                            {/if}
+		                            [value->name]
+		                           
+		                            
+		                            {if($value->outlink)}
+		                            	<a href="[value->outlink]" target="_blank"><i class="fa fa-external-link" aria-hidden="true"></i></a>
+		                            {else}
+		                            	{if($value->type==1)}
+		                            	 <a href="{url./admin/Single/index/mcode}/[value->mcode]&scode=[value->scode]"><i class="fa fa-file-text-o" aria-hidden="true"></i> </a>
+		                            	{else}
+		                            	 <a href="{url./admin/Content/index/mcode}/[value->mcode]&scode=[value->scode]"><i class="fa fa-file-text-o" aria-hidden="true"></i> </a>
+		                            	 {/if}
+		                            {/if}
+		                        </td>
+		                        <td>[value->scode]</td>
+		                        <td>[value->filename]</td>
+		                        <td>
+		                        {foreach $allmodels(key2,value2)}	
+		                        	{if($value2->mcode==$value->mcode)}
+										[value2->name]
+									{/if}                        	
+				                {/foreach}
+								</td>
+		                        <td>[value->listtpl]</td>
+		                        <td>[value->contenttpl]</td>
+		                        <td class="table-input"><input type="text" name="sorting[]" value="[value->sorting]" class="layui-input"></td>
+		                       	<td>
+		                            {if($value->status)}
+		                            <a href="{url./admin/'.C.'/mod/scode/'.$value->scode.'/field/status/value/0}" class="switch"><i class='fa fa-toggle-on' title="点击禁用"></i></a>
+		                            {else}
+		                            <a href="{url./admin/'.C.'/mod/scode/'.$value->scode.'/field/status/value/1}" class="switch"><i class='fa fa-toggle-off' title="点击启用"></i></a>
+		                            {/if}
+		                        </td>
+		                        <td>
+		                        	{if(!$value->outlink)}
+		                        		{php}
+			                        		$Parser=new app\home\controller\ParserController();
+			                        		$link=$Parser->parserLink($value->type,$value->urlname,'list',$value->scode,$value->filename,'','');
+			                        	{/php}
+			                        	<a href="{php}echo $link{/php}" class="layui-btn layui-btn-xs layui-btn-primary"  target="_blank">查看</a>
+		                        	{/if}
+		                
+		                            {fun=get_btn_del($value->scode,'scode')}
+		                            {fun=get_btn_mod($value->scode,'scode')}
+		                        </td>
+		                    </tr>
+		                {/foreach}
+		                </tbody>
+	  	   		 </table>
+	  	   		 <button type="submit" name="submit" value="sorting" class="layui-btn">保存排序</button>
+	  	   		 <button type="submit" name="submit" onclick="return setDelAction();" class="layui-btn">批量删除</button>
+	  	   		 <script>
+		     		function setDelAction(){
+		     			document.sortForm.action = "{url./admin/ContentSort/del}"; 
+		     			return confirm("您确定要删除选中的栏目么？");
+		     		}
+		     		
+		     		$("#sortTable").treetable({ expandable: true,column: 1,indent:20,stringCollapse:'收缩',stringExpand:'展开' });
+		     	</script>
+	  	   		</form>
+	  	    </div>
+	  	    
+	  	     <div class="layui-tab-item">
+	  	     	<form action="{url./admin/ContentSort/add}" method="post" class="layui-form" lay-filter="sort">
+		  	     	<input type="hidden" name="formcheck" value="{$formcheck}" > 
+		  	     	<div class="layui-tab">
+					  <ul class="layui-tab-title">
+					    <li class="layui-this">基本选项</li>
+					    <li>高级选项</li>
+					  </ul>
+					  <div class="layui-tab-content">
+					    <div class="layui-tab-item layui-show">
+					    	<div class="layui-form-item">
+			                     <label class="layui-form-label">父栏目</label>
+			                     <div class="layui-input-block">
+			                     	<select name="pcode">
+				                        <option value="0" >顶级栏目</option>
+				                        {$sort_select}
+				                    </select>
+			                     </div>
+			                </div>
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">栏目名称 <span class="layui-text-red">*</span></label>
+			                     <div class="layui-input-block">
+			                     	<input type="text" name="name" required lay-verify="required" placeholder="请输入栏目名称" class="layui-input">
+			                     </div>
+			                </div>
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">URL名称 </label>
+			                     <div class="layui-input-block">
+			                     	<input type="text" name="filename"  placeholder="请输入URL名称，如:test，test/a/b/c" class="layui-input">
+			                     </div>
+			                </div>
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">内容模型 <span class="layui-text-red">*</span></label>
+			                     <div class="layui-input-block">
+			                     	<select name="mcode" lay-filter="model" lay-verify="required" >
+				                     	<option value="">请选择内容模型</option>
+				                        {foreach $models(key,value)}	                        	
+				                        	<option value="[value->mcode]" data-type="[value->type]"  data-listtpl="[value->listtpl]" data-contenttpl="[value->contenttpl]" >[value->name]</option>
+				                        {/foreach}
+				                    </select>
+			                     </div>
+			                </div>
+			                
+			                 <input type="hidden" value="1" name="type" id="type">
+			                 
+			                 <div class="layui-form-item">
+			                     <label class="layui-form-label">列表页模板</label>
+			                     <div class="layui-input-block">
+				                     <select name="listtpl" id="listtpl">
+				                     	<option value="">无</option>
+				                     	{foreach $tpls(key,value)}
+				                        	<option value="[value]">[value]</option>
+				                        {/foreach}
+				                     </select>
+			                     </div>
+			                </div>
+			                
+			                 <div class="layui-form-item">
+			                     <label class="layui-form-label">详情页模板</label>
+			                     <div class="layui-input-block">
+				                     <select name="contenttpl" id="contenttpl" >
+				                     	<option value="">无</option>
+				                     	{foreach $tpls(key,value)}
+				                        	<option value="[value]">[value]</option>
+				                        {/foreach}
+				                     </select>
+			                     </div>
+			                </div>
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">状态</label>
+			                     <div class="layui-input-block">
+			                     	<input type="radio" name="status" value="1" title="显示" checked>
+									<input type="radio" name="status" value="0" title="隐藏">
+			                     </div>
+			                </div>  
+			                
+			               <div class="layui-form-item">
+			                     <label class="layui-form-label">浏览权限</label>
+			                     <div class="layui-input-block">
+									<select name="gid">
+										<option value="">不限制</option>
+				                        {foreach $groups(key,value)}
+				                            <option value="[value->id]">[value->gname]</option>
+				                        {/foreach}
+				                    </select>
+			                     </div>
+			                </div>  
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">权限类型</label>
+			                     <div class="layui-input-block">
+			                     	<select name="gtype" id="gtype" >
+			                     		<option value="1">小于</option>
+			                     		<option value="2">小于等于</option>
+			                     		<option value="3">等于</option>
+			                     		<option value="4" selected>大于等于</option>
+			                     		<option value="5">大于</option>
+									</select>
+			                     </div>
+			                </div>   
+			                    
+					    </div>
+					    <div class="layui-tab-item">
+					    	<div class="layui-form-item">
+			                     <label class="layui-form-label">栏目副名称</label>
+			                     <div class="layui-input-block">
+			                     	<input type="text" name="subname" placeholder="请输入栏目副名称" class="layui-input">
+			                     </div>
+			                </div>
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">栏目描述1</label>
+			                     <div class="layui-input-block">
+			                     	<input type="text" name="def1"  placeholder="请输入栏目描述1内容"  class="layui-input">
+			                     </div>
+			                </div>
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">栏目描述2</label>
+			                     <div class="layui-input-block">
+			                     	<input type="text" name="def2" placeholder="请输入栏目描述2内容"  class="layui-input">
+			                     </div>
+			                </div>
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">栏目描述3</label>
+			                     <div class="layui-input-block">
+			                     	<input type="text" name="def3" placeholder="请输入栏目描述3内容"  class="layui-input">
+			                     </div>
+			                </div>
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">跳转链接</label>
+			                     <div class="layui-input-block">
+			                     	<input type="text" name="outlink" placeholder="请输入跳转链接" class="layui-input">
+			                     </div>
+			                </div>
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">权限不足提示</label>
+			                     <div class="layui-input-block">
+			                     	<input type="text" name="gnote"  placeholder="请输入权限不足时提示文本"  class="layui-input">
+			                     </div>
+			                </div>
+			                
+			                 <div class="layui-form-item">
+			                     <label class="layui-form-label">栏目缩略图</label>
+			                     <div class="layui-input-inline">
+			                     	<input type="text" name="ico" id="ico" placeholder="请上传栏目缩略图"  class="layui-input">
+			                     </div>
+			                     <button type="button" class="layui-btn upload" data-des="ico">
+								 	 <i class="layui-icon">&#xe67c;</i>上传图片
+								 </button>
+								 <div id="ico_box" class="pic"></div>
+			                </div>
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">栏目大图</label>
+			                     <div class="layui-input-inline">
+			                     	<input type="text" name="pic" id="pic" placeholder="请上传栏目大图"  class="layui-input">
+			                     </div>
+			                     <button type="button" class="layui-btn upload" data-des="pic">
+								 	 <i class="layui-icon">&#xe67c;</i>上传图片
+								 </button>
+								 <div id="pic_box" class="pic"></div>
+			                </div>
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">SEO标题</label>
+			                     <div class="layui-input-block">
+			                     	<input type="text" name="title" placeholder="请输入栏目SEO标题，需前端调用" class="layui-input">
+			                     </div>
+			                </div>
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">SEO关键字</label>
+			                     <div class="layui-input-block">
+			                     	<input type="text" name="keywords" placeholder="请输入栏目SEO关键字，需前端调用" class="layui-input">
+			                     </div>
+			                </div>
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">SEO描述</label>
+			                     <div class="layui-input-block">
+			                     	<textarea name="description" placeholder="请输入栏目SEO描述，需前端调用" class="layui-textarea"></textarea>
+			                     </div>
+			                </div>
+					    </div>
+					  </div>
+					</div>
+					<div class="layui-form-item">
+						 <div class="layui-input-block">
+						    <button class="layui-btn" lay-submit>立即提交</button>
+						    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+						 </div>
+					</div>
+				</form>
+	  	     </div>
+	  	     
+	  	     <!-- 批量新增 -->
+	  	     <div class="layui-tab-item">
+	  	     	<form action="{url./admin/ContentSort/add}" method="post" class="layui-form" lay-filter="sort">
+		  	     		<input type="hidden" name="formcheck" value="{$formcheck}" > 
+		  	     		<div class="layui-form-item">
+		                     <label class="layui-form-label">父栏目</label>
+		                     <div class="layui-input-block">
+		                     	<select name="pcode">
+			                        <option value="0" >顶级栏目</option>
+			                        {$sort_select}
+			                    </select>
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">栏目名称</label>
+		                     <div class="layui-input-block">
+		                     	<input type="text" name="multiplename" required lay-verify="required" placeholder="请输入栏目名称，多个栏目用逗号隔开" class="layui-input">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">内容模型</label>
+		                     <div class="layui-input-block">
+		                     	<select name="mcode" lay-filter="model" lay-verify="required" >
+			                     	<option value="">请选择内容模型</option>
+			                        {foreach $models(key,value)}	                        	
+			                        	<option value="[value->mcode]" data-type="[value->type]"  data-listtpl="[value->listtpl]" data-contenttpl="[value->contenttpl]" >[value->name]</option>
+			                        {/foreach}
+			                    </select>
+		                     </div>
+		                </div>
+		                
+		                 <input type="hidden" value="1" name="type" id="type">
+		                 
+		                 <div class="layui-form-item">
+		                     <label class="layui-form-label">列表页模板</label>
+		                     <div class="layui-input-block">
+			                     <select name="listtpl" id="listtpl">
+			                     	<option value="">无</option>
+			                     	{foreach $tpls(key,value)}
+			                        	<option value="[value]">[value]</option>
+			                        {/foreach}
+			                     </select>
+		                     </div>
+		                </div>
+		                
+		                 <div class="layui-form-item">
+		                     <label class="layui-form-label">详情页模板</label>
+		                     <div class="layui-input-block">
+			                     <select name="contenttpl" id="contenttpl" >
+			                     	<option value="">无</option>
+			                     	{foreach $tpls(key,value)}
+			                        	<option value="[value]">[value]</option>
+			                        {/foreach}
+			                     </select>
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">状态</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="status" value="1" title="显示" checked>
+								<input type="radio" name="status" value="0" title="隐藏">
+		                     </div>
+		                </div>    
+					<div class="layui-form-item">
+						 <div class="layui-input-block">
+						    <button class="layui-btn" lay-submit>立即提交</button>
+						    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+						 </div>
+					</div>
+				</form>
+	  	     </div>
+	   </div>
+	</div>
+	{/if} 
+	
+	{if([$mod])}
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this">栏目修改</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	<div class="layui-tab-item layui-show">
+	  		<form action="{url./admin/ContentSort/mod/scode/'.[$get.scode].'}{$backurl}" method="post" class="layui-form" lay-filter="sort">
+	  	     	<input type="hidden" name="formcheck" value="{$formcheck}" > 
+	  	     	<div class="layui-tab">
+				  <ul class="layui-tab-title">
+				    <li class="layui-this">基本选项</li>
+				    <li>高级选项</li>
+				  </ul>
+				  <div class="layui-tab-content">
+				    <div class="layui-tab-item layui-show">
+				    	<div class="layui-form-item">
+		                     <label class="layui-form-label">父栏目</label>
+		                     <div class="layui-input-block">
+		                     	<select name="pcode" id="pcode">
+			                        <option value="0" >顶级栏目</option>
+			                        {$sort_select}
+			                    </select>
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">栏目名称  <span class="layui-text-red">*</span></label>
+		                     <div class="layui-input-block">
+		                     	<input type="text" name="name" required lay-verify="required" value="{$sort->name}" placeholder="请输入栏目名称" class="layui-input">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">URL名称 </label>
+		                     <div class="layui-input-block">
+		                     	<input type="text" name="filename" value="{$sort->filename}"  placeholder="请输入URL名称，如:test，test/a/b/c" class="layui-input">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">内容模型  <span class="layui-text-red">*</span></label>
+		                     <div class="layui-input-block">
+		                     	<select name="mcode" lay-filter="model" lay-verify="required" >
+			                     	<option value="">请选择内容模型</option>
+			                        {foreach $models(key,value)}	                        	
+			                        	<option value="[value->mcode]"  {if($value->mcode==[$sort->mcode])}selected{/if}  data-type="[value->type]"  data-listtpl="[value->listtpl]" data-contenttpl="[value->contenttpl]" >[value->name]</option>
+			                        {/foreach}
+			                    </select>
+		                     </div>
+		                </div>
+		                
+		                 <input type="hidden" name="type" id="type" value="{$sort->type}">
+		                 
+		                 <div class="layui-form-item">
+		                     <label class="layui-form-label">列表页模板</label>
+		                     <div class="layui-input-block">
+			                     <select name="listtpl" id="listtpl">
+			                     	<option value="{$sort->listtpl}">{$sort->listtpl}</option>
+			                     	<option value="">无</option>
+			                     	{foreach $tpls(key,value)}
+			                     		{if($value!=[$sort->listtpl])}
+			                        		<option value="[value]">[value]</option>
+			                        	{/if}
+			                        {/foreach}
+			                     </select>
+		                     </div>
+		                </div>
+		                
+		                 <div class="layui-form-item">
+		                     <label class="layui-form-label">详情页模板</label>
+		                     <div class="layui-input-block">
+			                     <select name="contenttpl" id="contenttpl" >
+			                     	<option value="{$sort->contenttpl}">{$sort->contenttpl}</option>
+			                     	<option value="">无</option>
+			                     	{foreach $tpls(key,value)}
+			                     		{if($value!=[$sort->contenttpl])}
+			                        		<option value="[value]">[value]</option>
+			                        	{/if}
+			                        {/foreach}
+			                     </select>
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">同步子栏目模板</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="modsub" value="1" title="是">
+								<input type="radio" name="modsub" value="0" title="否" checked>
+		                     </div>
+		                </div> 
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">状态</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="status" value="1" title="显示" {if([$sort->status]==1)}checked="checked"{/if}>
+								<input type="radio" name="status" value="0" title="隐藏" {if([$sort->status]==0)}checked="checked"{/if}>
+		                     </div>
+		                </div>
+		                
+		                 <div class="layui-form-item">
+			                     <label class="layui-form-label">浏览权限</label>
+			                     <div class="layui-input-block">
+									<select name="gid">
+										<option value="">不限制</option>
+				                        {foreach $groups(key,value)}
+				                            <option value="[value->id]" {if([$sort->gid]==$value->id)}selected="selected"{/if}>[value->gname]</option>
+				                        {/foreach}
+				                    </select>
+			                     </div>
+			                </div>  
+			                
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">权限类型</label>
+			                     <div class="layui-input-block">
+			                     	<select name="gtype" id="gtype" >
+			                     		<option value="1" {if([$sort->gtype]==1)}selected="selected"{/if}>小于</option>
+			                     		<option value="2" {if([$sort->gtype]==2)}selected="selected"{/if}>小于等于</option>
+			                     		<option value="3" {if([$sort->gtype]==3)}selected="selected"{/if}>等于</option>
+			                     		<option value="4" {if([$sort->gtype]==4||(![$sort->gtype]))}selected="selected"{/if}>大于等于</option>
+			                     		<option value="5" {if([$sort->gtype]==5)}selected="selected"{/if}>大于</option>
+									</select>
+			                     </div>
+			                </div> 
+
+		                
+				    </div>
+				    <div class="layui-tab-item">
+				    	<div class="layui-form-item">
+		                     <label class="layui-form-label">栏目副名称</label>
+		                     <div class="layui-input-block">
+		                     	<input type="text" name="subname" value="{$sort->subname}" placeholder="请输入栏目副名称" class="layui-input">
+		                     </div>
+		                </div>
+		                
+		                 <div class="layui-form-item">
+		                     <label class="layui-form-label">栏目描述1</label>
+		                     <div class="layui-input-block">
+		                     	<input type="text" name="def1"  value="{$sort->def1}"  placeholder="请输入栏目描述1内容"  class="layui-input">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">栏目描述2</label>
+		                     <div class="layui-input-block">
+		                     	<input type="text" name="def2" value="{$sort->def2}" placeholder="请输入栏目描述2内容"  class="layui-input">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">栏目描述3</label>
+		                     <div class="layui-input-block">
+		                     	<input type="text" name="def3" value="{$sort->def3}" placeholder="请输入栏目描述3内容"  class="layui-input">
+		                     </div>
+		                </div>
+			                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">跳转链接</label>
+		                     <div class="layui-input-block">
+		                     	<input type="text" name="outlink" value="{$sort->outlink}" placeholder="请输入跳转链接" class="layui-input">
+		                     </div>
+		                </div>
+		                
+	                    <div class="layui-form-item">
+		                     <label class="layui-form-label">权限不足提示</label>
+		                     <div class="layui-input-block">
+		                     	<input type="text" name="gnote" value="{$sort->gnote}"  placeholder="请输入权限不足时提示文本"  class="layui-input">
+		                     </div>
+		                </div>
+		                
+		                 <div class="layui-form-item">
+		                     <label class="layui-form-label">栏目缩略图</label>
+		                     <div class="layui-input-inline">
+		                     	<input type="text" name="ico" id="ico" value="{$sort->ico}" placeholder="请上传栏目缩略图"  class="layui-input">
+		                     </div>
+		                     <button type="button" class="layui-btn upload" data-des="ico">
+							 	 <i class="layui-icon">&#xe67c;</i>上传图片
+							 </button>
+							 <div id="ico_box" class="pic"><dl><dt>{if([$sort->ico])}<img src='{SITE_DIR}{$sort->ico}' data-url="{$sort->ico}"></dt><dd>删除</dd></dl>{/if}</div>
+		                </div>
+		                
+		                 <div class="layui-form-item">
+		                     <label class="layui-form-label">栏目大图</label>
+		                     <div class="layui-input-inline">
+		                     	<input type="text" name="pic" id="pic" value="{$sort->pic}" placeholder="请上传栏目大图"  class="layui-input">
+		                     </div>
+		                     <button type="button" class="layui-btn upload" data-des="pic">
+							 	 <i class="layui-icon">&#xe67c;</i>上传图片
+							 </button>
+							 <div id="pic_box" class="pic"><dl><dt>{if([$sort->pic])}<img src='{SITE_DIR}{$sort->pic}' data-url="{$sort->pic}"></dt><dd>删除</dd></dl>{/if}</div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">SEO标题</label>
+		                     <div class="layui-input-block">
+		                     	<input type="text" name="title" value="{$sort->title}" placeholder="请输入栏目SEO标题，需前端调用" class="layui-input">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">SEO关键字</label>
+		                     <div class="layui-input-block">
+		                     	<input type="text" name="keywords" value="{$sort->keywords}" placeholder="请输入栏目SEO关键字，需前端调用" class="layui-input">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">SEO描述</label>
+		                     <div class="layui-input-block">
+		                     	<textarea name="description" placeholder="请输入栏目SEO描述，需前端调用" class="layui-textarea">{$sort->description}</textarea>
+		                     </div>
+		                </div>
+				    </div>
+				  </div>
+				</div>
+				<div class="layui-form-item">
+					 <div class="layui-input-block">
+					    <button class="layui-btn" lay-submit>立即提交</button>
+					    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+					    {fun=get_btn_back()}
+					 </div>
+				</div>
+			</form>
+	  	</div>
+	  </div>
+	</div>
+	{/if} 
+</div>
+
+{include file='common/foot.html'}

@@ -1,0 +1,188 @@
+{include file='common/head.html'}
+  
+<div class="layui-body">
+	
+	{if(![$dbsecurity]||![$session.pwsecurity])}
+	<blockquote class="layui-elem-quote layui-text-red" id="note">
+        {if(![$dbsecurity])}
+		<p>
+			<i class="fa fa-info-circle" aria-hidden="true"></i>
+			您的数据库文件存在安全隐患，可能被下载，请尽快修改数据库路径！<a class="layui-btn  layui-btn-sm" href="{url./admin/Index/home}&action=moddb">自动修改</a>
+		</p>
+		{/if}
+		
+		{if(![$session.pwsecurity])}
+		<p>
+			<i class="fa fa-info-circle" aria-hidden="true"></i>
+			 您的账号密码为初始密码，存在安全隐患，请尽快修改密码！<a class="layui-btn  layui-btn-sm" href="{url./admin/Index/ucenter}">立即修改</a>
+		</p>
+		{/if}
+    </blockquote>
+    {/if}
+    
+    <blockquote class="layui-elem-quote">
+    	当前登录用户：{$user_info->username} {$user_info->realname}，登录时间：{$user_info->update_time}，登录IP：{fun=long2ip([$user_info->last_login_ip])}，累计登录次数：{$user_info->login_count}
+    </blockquote>
+	
+	<fieldset class="layui-elem-field">
+		<legend>快捷操作</legend>
+		<div class="layui-field-box">	
+			<div class="layui-row">
+				{foreach $model_msg(key,value)}
+				<div class="layui-col-xs6 layui-col-sm4 layui-col-md3 layui-col-lg2">
+		    		{if($value->type==1)}
+		    		<a href="{url./admin/Single/index/mcode/'.$value->mcode.'}">
+		    		{else}
+		    		<a href="{url./admin/Content/index/mcode/'.$value->mcode.'}">
+		    		{/if}
+			      		<dl class="deskbox center-block">
+			      			 <dt>[value->name]</dt>
+		                     <dd>[value->count]</dd>
+		                 </dl>
+		             </a>
+		   	    </div>
+	   	    	{/foreach}
+	   	    	
+				<div class="layui-col-xs6 layui-col-sm4 layui-col-md3 layui-col-lg2">
+		    		<a href="{url./admin/Message/index}">
+			      		<dl class="deskbox center-block">
+			      			 <dt>留言</dt>
+		                     <dd>{$sum_msg}</dd>
+		                 </dl>
+		             </a>
+		   	    </div>
+	   	    </div>
+		 </div>
+	 </fieldset>
+	 
+	 {if(CMSNAME=='PbootCMS')}
+	 <div class="layui-row layui-col-space10">
+	 	<div class="layui-col-xs12 layui-col-md6">
+			<table class="layui-table table-two">
+				  <thead>
+				  	<tr>
+				  		<th colspan="2">系统信息</th>
+				  	</tr>
+				  </thead>
+				  <tbody>
+				     <tr>
+				      	<th width="100">应用版本</th>
+				      	<td>PbootCMS V{APP_VERSION}-{RELEASE_TIME} 
+				      	 {if(session('ucode')==10001)}
+				      		<a href="javascript:void(0)" onclick="Notice()" class="layui-btn layui-btn-xs" id="check">在线更新</a>
+				         {/if}
+				      	</td>
+				     </tr>
+				     <tr>
+				      	<th>主机系统</th>
+				      	<td>{$server->php_os}</td>
+				     </tr>
+				     <tr>
+				      	<th>主机地址</th>
+				      	<td>{$server->server_name}（{$server->server_addr}:{$server->server_port}）</td>
+				     </tr>
+				     <tr>
+				      	<th>WEB软件</th>
+				      	<td>{$server->server_software}</td>
+				     </tr>
+				     <tr>
+				      	<th>PHP版</th>
+				      	<td>{$server->php_version}</td>
+				     </tr>
+				     <tr>
+				      	<th>数据库驱动</th>
+				      	<td>{$server->db_driver}</td>
+				     </tr>
+				     <tr>
+				      	<th>文件上传限制</th>
+				      	<td>{$server->upload_max_filesize}</td>
+				     </tr>
+				     <tr>
+				      	<th>表单提交限制</th>
+				      	<td>{$server->post_max_size}</td>
+				     </tr>
+				  </tbody> 
+			</table> 
+	 	</div>
+	 	
+	 	<div class="layui-col-xs12 layui-col-md6">
+			<table class="layui-table table-two">
+				  <thead>
+				  	<tr>
+				  		<th colspan="2">开发信息</th>
+				  	</tr>
+				  </thead>
+				 
+				  <tbody>
+				  	<tr>
+	                    <th>系统名称</th>
+	                    <td>{CMSNAME}企业网站开发建设管理系统</td>
+	                </tr>
+	
+	                <tr>
+	                    <th>官方网站</th>
+	                    <td><a href="http://www.pbootcms.com" target="_blank" style="color:#666">www.pbootcms.com</a></td>
+	                </tr>
+	                
+				  	<tr>
+	                    <th>源码下载</th>
+	                    <td>
+	                    	<a href="https://gitee.com/hnaoyun/PbootCMS/" style="color:#666" target="_blank">Gitee</a>
+	                    </td>
+	                </tr>
+	                
+	                <tr>
+	                    <th>系统开发</th>
+	                    <td>星梦</td>
+	                </tr>
+	                
+	                <tr>
+	                    <th>版权协议</th>
+	                    <td><a href="http://www.pbootcms.com/system-usage/277.html" style="color:#666" target="_blank">点击查看</a></td>
+	                </tr>
+	               
+	                <tr>
+	                    <th>技术交流群</th>
+	                    <td>822430453、794519782</td>
+	                </tr>
+	                
+	                <tr>
+	                    <th>友情贡献者</th>
+	                    <td>
+	                    	感谢交流群各网友对PbootCMS发展的大力支持；
+	                    	感谢LayUI提供的前端框架；
+	                    	感谢百度提供的富文本编辑器；
+	                    	感谢星梦开发团队的日夜奋斗。
+	                    </td>
+	                </tr>
+				  </tbody>
+			</table>
+	 	</div>
+	 </div>
+	 {/if}
+</div>
+<script>
+$.ajax({
+    type: 'GET',
+	url: 'https://www.pbootcms.com/index.php?p=/upgrade/check&version={APP_VERSION}.{RELEASE_TIME}.{$revise}&branch={$branch}&snuser={$snuser}&site={$site}',
+	dataType: 'json',
+	success: function (response, status) {
+		 if(response.code==1){
+			 $("#check").html($("#check").html()+'<span class="layui-badge-dot"></span>');
+			 $("#check").attr('onclick',"Notice('update')");
+		 }
+    }
+});
+function Notice(param){
+	if(param === 'update'){
+		layer.alert('已检测到新版本发布，详情请查看<a href="https://www.pbootcms.com/dev-log/" style="color: blue" target="_blank">开发日志</a>',{title:'更新须知'}, function(index){
+			layer.close(index);
+			location.href="{url./admin/Upgrade/index}";
+		});
+	}else{
+		location.href="{url./admin/Upgrade/index}";
+	}
+
+}
+</script>
+{include file='common/foot.html'}

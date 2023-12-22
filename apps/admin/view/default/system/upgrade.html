@@ -1,0 +1,294 @@
+{include file='common/head.html'}
+
+<div class="layui-body">
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this" lay-id="t1">在线更新</li>
+	    <li lay-id="t2">更新设置</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	   <div class="layui-tab-item layui-show">
+		  	   	<table class="layui-table">
+	            	<thead>
+	                    <tr>
+	                        <th width="30">选择</th>
+	                        <th>更新文件</th>
+	                        <th>更新方式</th>
+	                        <th>本地时间</th>
+	                        <th>更新时间</th>
+	                    </tr>
+	                </thead>
+	                <tbody id="upfile">
+	                    {foreach $upfile(key,value)}
+	                    <tr>
+	                        <td><input type="checkbox" checked class="checkbox checkitem" lay-ignore name="list" value="[value->path]"></td>
+	                        <td>[value->path]</td>
+	                        <td>[value->type]</td>
+	                        <td>[value->ltime]</td>
+	                        <td>[value->ctime]</td>
+	                    </tr>
+	                    {/foreach}
+	                    {if([$upfile] && get('action')=='local')}
+	                     <tr>
+	                    	 <td><input type="checkbox" class="checkbox" checked lay-ignore id="checkall" title="全选"></td>
+	                    	 <td colspan="4">已下载更新：[num]个文件</td>
+	                    </tr>
+	                    {/if}
+	                </tbody> 
+	            </table>
+
+	             {if(get('action')=='local')}
+	             	<button class="layui-btn" id="check" data-url='{url./admin/Upgrade/check}'>重新检查</button>
+	             {else}
+	             	<button class="layui-btn" id="check" data-url='{url./admin/Upgrade/check}' id="check">检查更新</button>
+	             {/if}
+	             <button class="layui-btn" {if(![$upfile])}style="display:none"{/if} id="update" data-url='{url./admin/Upgrade/update}'>执行更新</button>
+	             <button class="layui-btn" style="display:none" id="down" data-url='{url./admin/Upgrade/down}'>下载更新</button>
+	  	   </div>
+	  	   
+	  	   <div class="layui-tab-item">
+	  	   	   <form action="{url./admin/Config/index}" method="post" class="layui-form">
+	  	   	   	   <input type="hidden" name="formcheck" value="{$formcheck}" > 
+	  	   	   	   
+	  	   	   	   <div class="layui-form-item">
+	                     <label class="layui-form-label">更新分支</label>
+	                     <div class="layui-input-inline">
+	                     	 <select name="upgrade_branch">
+				             	<option value="3.X" {if([$branch]=='3.X')}selected{/if}>3.X 稳定版</option>
+				             	<option value="3.X.dev" {if([$branch]=='3.X.dev')}selected{/if} >3.X 测试版</option>
+				             </select>
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">强制文件同步</label>
+	                     <div class="layui-input-block">
+	                        <input type="hidden" name="upgrade_force" value="0"><!-- 默认0 -->
+	                     	<input type="checkbox" name="upgrade_force" value="1" {if([$force])}checked{/if} lay-skin="switch" lay-text="开启|关闭">
+	                     </div>
+	                    <div class="layui-form-mid layui-word-aux">适用有部分文件更新失败或检查文件与官方一致性。</div>
+	                </div>
+	                
+		            <div class="layui-form-item">
+						 <div class="layui-input-block">
+						    <button class="layui-btn" lay-submit name="submit" value="upgrade">保存</button>
+						    <button type="reset" class="layui-btn layui-btn-primary">重选</button>
+						 </div>
+					</div>
+	           </form>
+	  	   </div>
+	  </div>
+	</div>	
+</div>
+
+ <script>
+ 
+//页面加载时检查更新
+$.ajax({
+    type: 'GET',
+	url: 'https://www.pbootcms.com/index.php?p=upgrade/check&version={APP_VERSION}.{RELEASE_TIME}.{$revise}&branch={$branch}&snuser={$snuser}&site={$site}',
+	dataType: 'json',
+	success: function (response, status) {
+		 if(response.code==1){
+			 $("#check").html($("#check").html()+'<span class="layui-badge-dot"></span>');
+		 }
+    }
+ });
+ 
+//检查更新	  	         
+$("#check").on("click",check);
+
+//下载更新
+$("#update").on("click",update);
+  	
+//下载更新
+$("#down").on("click",down);
+
+
+//检查更新
+function check(){
+  	var lyindex;
+  	layui.use('layer', function(){
+		var layer = layui.layer;
+		lyindex = layer.open({
+			type: 1,
+			title:'检查更新',
+			closeBtn:0,
+			content: '<div style="padding:20px 10px;"><img src="{APP_THEME_DIR}/layui/css/modules/layer/default/loading-0.gif">正在检查更新文件，请稍等...<div>' 
+		});
+	});
+  		
+	var url= $('#check').data('url');
+	$.ajax({
+   	  type: 'GET',
+   	  url: url,
+   	  dataType: 'json',
+   	  success: function (response, status) {
+   		  if(response.code==1){
+   			  var data=response.data;
+   			  if(!(data instanceof Array)){
+   				  layer.close(lyindex);
+      		  	  layer.msg(data, {icon: 1});
+   			  }else{
+	     		   var html='';
+	      		   for(var i = 0; i < data.length; i++){
+	       	        	html += '<tr><td><input type="checkbox" checked class="checkbox checkitem" lay-ignore name="list" value="'+data[i].path+'"></td><td>'+data[i].path+'</td><td>'+data[i].type+'</td><td>'+data[i].ltime+'</td><td>'+data[i].ctime+'</td></tr>';
+	       	   	   }
+	      		   html += '<tr><td><input type="checkbox" class="checkbox" checked lay-ignore id="checkall" title="全选"></td><td colspan="4">总共检测到 '+i+' 个文件</td></tr>';
+	      		   $("#upfile").html('');
+	      		   $("#upfile").append(html);
+	      		   layer.close(lyindex);
+	      		   layer.msg('共检测到 '+i+' 个文件需要更新！', {icon: 1});
+	      		   $('#update').hide();
+	      		   $('#down').show();
+   			  }
+     		  $('#check').text('重新检查');
+   		  }else{
+   			 layer.close(lyindex);
+   			 layer.msg(response.data, {icon: 5});
+   		  }
+   		   
+        },
+        error:function(xhr,status,error){
+     	  layer.close(lyindex);
+       	  layer.msg("检查更新发生错误!", {icon: 5});
+        }
+   	});
+}
+
+//下载更新
+function down(){
+	var lyindex;
+  	    var layer;
+  	    layui.use('layer', function(){
+		  	layer = layui.layer;
+		  	lyindex = layer.open({
+			type: 1,
+			title:'下载更新',
+			closeBtn:0,
+			content: '<div style="padding:20px 10px;"><img src="{APP_THEME_DIR}/layui/css/modules/layer/default/loading-0.gif"><span id="layer-content">正在下载更新文件，请稍等...</span><div>'
+		});
+	});
+
+	var url= $('#down').data('url');
+	var checked = $(".checkitem:checked");
+	var len = $(checked).length;
+	var exe=0;
+	$(checked).each(function(index,element){
+		 setTimeout(function () { //延迟执行、避免文件太多卡死问题
+			 $.ajax({
+		    	  type: 'GET',
+		    	  url: url,
+		    	  dataType: 'json',
+		    	  async:true,
+		    	  data: {
+		    		  list:$(element).val()
+		    	  },
+		    	  success: function (response, status) {
+		    		 if(response.code==1){
+		    			 exe++;
+		    			 $('#layer-content').text(response.data);
+		    		 }else{
+		    			 layer.close(lyindex);
+		     			 layer.msg(response.data, {icon: 5}); 
+		    		 }
+		    		 
+		    		 if(exe==len){
+			  			layer.close(lyindex);
+			  	   	 	layer.open({
+			  			  type: 0,
+			  			  title:'下载更新',
+			  			  closeBtn:0,
+			  			  btn: ['立即更新', '稍后更新'],
+			  			  content: '所选文件全部下载完成!',
+			  			  yes: function(index, layero){
+			  				  layer.close(index); 
+			  				  $('#update').click();
+			  				  
+			  			   },
+			  			  btn2: function(index, layero){
+			  				 layer.close(index); 
+			  				 window.location.href = '{url./admin/Upgrade/index/action/local}';
+			  			   }
+			  			});
+			  	   	 	$('#update').show();
+			  			$('#down').hide();
+			  		 } 
+		         },
+		         error:function(xhr,status,error){
+		       	      layer.close(lyindex);
+		        	  layer.msg("下载更新文件发生错误!", {icon: 5});
+		         }
+		   	});
+		}, index*1000);
+    });
+}
+   	
+//执行更新
+function update(){
+	var lyindex;
+  	    var layer;
+  	    layui.use('layer', function(){
+	  	layer = layui.layer;
+	  	lyindex = layer.open({
+		  type: 1,
+		  title:'执行更新',
+		  closeBtn:0,
+		  content: '<div style="padding:20px 10px;"><img src="{APP_THEME_DIR}/layui/css/modules/layer/default/loading-0.gif"><span id="layer-content">正在执行更新文件，请稍等...</span><div>'
+		});
+	});
+
+    //由于涉及到数据库升级文件先后顺序，所以必须一次性提交	
+	var url= $('#update').data('url');
+	var list='';
+	$(".checkitem:checked").each(function(index,element){
+		if(index==0){
+			list += $(element).val();
+		}else{
+			list += ','+$(element).val();
+		}
+	});
+	
+ 	$.ajax({
+  	  type: 'POST',
+  	  url: url,
+  	  dataType: 'json',
+  	  data: {
+  		  list:list
+  	  },
+  	  success: function (response, status) {
+  		 if(response.code==1){
+  			layer.close(lyindex);
+  			layer.open({
+ 				  type: 0,
+ 				  title:'执行更新',
+ 				  closeBtn:0,
+ 				  content: '所选文件全部更新完成!',
+ 				  yes: function(index, layero){
+ 					  window.location.href = '{url./admin/Upgrade/index}';
+ 					  layer.close(index); 
+ 				   }
+ 				});
+  		 }else{
+  			 layer.close(lyindex);
+   			 layer.msg(response.data, {icon: 5}); 
+  		 }
+       },
+       error:function(xhr,status,error){
+      	  layer.msg("执行更新文件发生错误!", {icon: 5});
+       }
+ 	});
+}
+   	
+//选择全部
+$("#upfile").on("click","#checkall", function () {
+	if($(this).prop("checked")){
+		$(".checkitem:enabled").prop("checked", true);
+	}else{
+		$(".checkitem").prop("checked", false);
+	} 
+});  
+   	 	  
+</script>
+
+{include file='common/foot.html'}

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="renderer"  content="webkit">
+  <title>{CMSNAME}管理中心-V{APP_VERSION}-{RELEASE_TIME}</title>
+  <link rel="shortcut icon" href="{SITE_DIR}/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="{APP_THEME_DIR}/layui/css/layui.css?v=v2.5.4">
+  <link rel="stylesheet" href="{APP_THEME_DIR}/font-awesome/css/font-awesome.min.css?v=v4.7.0" type="text/css">
+  <link rel="stylesheet" href="{APP_THEME_DIR}/css/comm.css?v=v3.0.6">
+  <link href="{APP_THEME_DIR}/css/jquery.treetable.css" rel="stylesheet" type="text/css" />
+  <script type="text/javascript" src="{APP_THEME_DIR}/js/jquery-1.12.4.min.js"></script>
+  <script type="text/javascript" src="{APP_THEME_DIR}/js/jquery.treetable.js"></script>
+</head>
+
+<body class="layui-layout-body">
+
+<!--定义部分地址方便JS调用-->
+<div style="display: none">
+	<span id="controller" data-controller="{C}"></span>
+	<span id="url" data-url="{URL}"></span>
+	<span id="preurl" data-preurl="{fun=url('/admin',false)}"></span>
+	<span id="sitedir" data-sitedir="{SITE_DIR}"></span>
+	<span id="mcode" data-mcode="{$get.mcode}"></span>
+</div>
+
+<div class="layui-layout layui-layout-admin">
+  <div class="layui-header">
+    <div class="layui-logo">
+    <a href="{url./admin/Index/home}">
+    <img src="{APP_THEME_DIR}/images/logo.png" height="30">
+	    {CMSNAME} 
+	   	{if(LICENSE==3)}
+	   		<span class="layui-badge">SVIP</span>
+	   	{else}
+	   		<span class="layui-badge layui-bg-gray">V{APP_VERSION}</span>	
+	   	{/if}
+    </a>
+    </div>
+    
+    <ul class="menu">
+    	<li class="menu-ico" title="显示或隐藏侧边栏"><i class="fa fa-bars" aria-hidden="true"></i></li>
+	</ul>
+	{if(![$one_area])}
+	<form method="post" action="{url./admin/Index/area}" class="area-select">
+		<input type="hidden" name="formcheck" value="{$formcheck}" > 
+		<div class="layui-col-xs8">
+		   <select name="acode">
+		       {$area_html}
+		   </select>
+		</div>
+		<div class="layui-col-xs4">
+		 	<button type="submit" class="layui-btn layui-btn-sm">切换</button>
+		</div>
+   	</form>
+ 	{/if}
+
+    <ul class="layui-nav layui-layout-right">
+    
+       <li class="layui-nav-item layui-hide-xs">
+      	 <a href="{SITE_DIR}/" target="_blank"><i class="fa fa-home" aria-hidden="true"></i> 网站主页</a>
+       </li>
+
+       <li class="layui-nav-item layui-hide-xs">
+       		<a href="{url./admin/DeleCache/index}"><i class="fa fa-trash-o" aria-hidden="true"></i> 清理缓存</a>
+       </li>
+
+       <li class="layui-nav-item layui-hide-xs">
+	        <a href="javascript:;">
+	          <i class="fa fa-user-circle-o" aria-hidden="true"></i> {$session.realname}
+	        </a>
+	        <dl class="layui-nav-child">
+	          <dd><a href="{url./admin/Index/ucenter}"><i class="fa fa-address-card-o" aria-hidden="true"></i> 密码修改</a></dd>
+	          <dd><a href="{url./admin/Index/loginOut}"><i class="fa fa-sign-out" aria-hidden="true"></i> 退出登录</a></dd>
+	          {if(session('ucode')==10001)}
+	          	<dd><a href="{url./admin/Upgrade/index}"><i class="fa fa-cloud-upload" aria-hidden="true"></i> 在线更新</a></dd>
+	          	<dd><a href="{url./admin/Index/clearSession}" class="ajaxlink"><i class="fa fa-trash-o" aria-hidden="true"></i> 清理会话</a></dd>
+	          {/if}
+	        </dl>
+      </li>
+    </ul>
+  </div>
+  
+  <div class="layui-side layui-bg-black">
+    <div class="layui-side-scroll">
+      <!-- 左侧导航区域（可配合layui已有的垂直导航） -->
+      <ul class="layui-nav layui-nav-tree" id="nav" lay-shrink="all">
+	   {foreach $menu_tree(key,value)}
+        <li class="layui-nav-item nav-item {if([$primary_menu_url]==$value->url)}layui-nav-itemed{/if}">
+          <a class="" href="javascript:;"><i class="fa [value->ico]" aria-hidden="true"></i>[value->name]</a>
+          <dl class="layui-nav-child">
+			{if($value->mcode=='M130')}
+				 {foreach $menu_models(key3,value3,num3)}
+				 	{if($value3->type==1)}
+						<dd><a href="{url./admin/Single/index/mcode/'.$value3->mcode.'}"><i class="fa fa-file-text-o" aria-hidden="true"></i>[value3->name]内容</a></dd>
+					{/if}
+					{if($value3->type==2)}
+						<dd><a href="{url./admin/Content/index/mcode/'.$value3->mcode.'}"><i class="fa fa-file-text-o" aria-hidden="true"></i>[value3->name]内容</a></dd>
+					{/if}
+				 {/foreach}
+			{else}
+				{foreach $value->son(key2,value2,num2)}
+					{if(!isset($value2->status)|| $value2->status==1)}
+	            		<dd><a href="{url.'.$value2->url.'}"><i class="fa [value2->ico]" aria-hidden="true"></i>[value2->name]</a></dd>
+	            	{/if}
+				{/foreach}
+				
+				{if($value->mcode=='M101' && session('ucode')==10001)}
+					<dd><a href="{url./admin/Upgrade/index}"><i class="fa fa-cloud-upload" aria-hidden="true"></i>在线更新</a></dd>
+				{/if}
+		    {/if}
+          </dl>
+        </li>
+		{/foreach}
+		
+		<li style="height:1px;background:#666" class="layui-hide-sm"></li>
+		
+		<li class="layui-nav-item layui-hide-sm">
+		 <a href="{SITE_DIR}/" target="_blank"><i class="fa fa-home" aria-hidden="true"></i> 网站主页</a>
+		</li>
+		
+		<li class="layui-nav-item layui-hide-sm">
+          <a href="{url./admin/Index/ucenter}"><i class="fa fa-address-card-o" aria-hidden="true"></i> 资料修改</a>
+        </li>
+        
+        <li class="layui-nav-item layui-hide-sm">
+         <a href="{url./admin/DeleCache/index}"><i class="fa fa-trash-o" aria-hidden="true"></i> 清理缓存</a>
+        </li>
+        
+        <li class="layui-nav-item layui-hide-sm">
+         <a href="{url./admin/Index/loginOut}"><i class="fa fa-sign-out" aria-hidden="true"></i> 退出登录</a>
+        </li>
+
+      </ul>
+    </div>
+  </div>

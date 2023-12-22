@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh">
+<head>
+	<meta charset="utf-8">
+	<title>{pboot:pagetitle}</title>
+	<meta name="keywords" content="{pboot:pagekeywords}">
+	<meta name="description" content="{pboot:pagedescription}">
+	<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,shrink-to-fit=no">
+	<link rel="stylesheet" href="{pboot:sitetplpath}/bootstrap/css/bootstrap.min.css" >
+	<link rel="stylesheet" href="{pboot:sitetplpath}/font-awesome-4.7.0/css/font-awesome.min.css">
+	<link rel="stylesheet" href="{pboot:sitetplpath}/css/aoyun.css?v=v1.3.5" >
+	<link rel="stylesheet" href="{pboot:sitetplpath}/swiper-4.3.5/css/swiper.min.css">
+	<link rel="stylesheet" href="{pboot:sitetplpath}/css/animate.css">
+	<link rel="shortcut icon" href="{pboot:sitepath}/favicon.ico" type="image/x-icon">
+	<script src="{pboot:sitetplpath}/js/jquery-1.12.4.min.js" ></script>
+</head>
+<body>
+
+<!-- 头部导航 -->
+<nav class="navbar navbar-light bg-light fixed-top navbar-expand-lg shadow-sm">
+  <div class="container">
+	  	<a class="navbar-brand my-1" href="{pboot:sitepath}/">
+	      <img src="{pboot:sitelogo}" class="logo-sm-height"  height="50">
+	    </a>
+	    
+	    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+	    	<span class="navbar-toggler-icon"></span>
+	    </button>
+	    
+	    <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+	        <ul class="navbar-nav">
+	       	  <li class="nav-item {pboot:if(0=='{sort:scode}')}active{/pboot:if}">
+				 <a class="nav-link" href="{pboot:sitepath}/" >首页</a>
+	          </li>
+	          {pboot:nav num=10 parent=0}
+	              <li class="nav-item {pboot:if('[nav:scode]'=='{sort:tcode}')}active{/pboot:if}">
+	                <a class="nav-link" href="[nav:link]">[nav:name]</a>
+	              </li>
+	          {/pboot:nav}
+	      </ul>
+	      
+	      <span class="navbar-text">
+	     	 {pboot:if({pboot:islogin}==1)}
+				<a class="text-secondary" href="{pboot:ucenter}" >个人中心</a>
+		     {else}
+		     
+		     	{pboot:2if({pboot:registerstatus})}
+					<a class="text-secondary" href="{pboot:register}" >注册</a>
+				{/pboot:2if}
+				
+				{pboot:2if({pboot:registerstatus} && {pboot:loginstatus})}
+					/
+				{/pboot:2if}
+				
+				{pboot:2if({pboot:loginstatus})}
+					<a class="text-secondary" href="{pboot:login}" >登录</a>
+				{/pboot:2if}
+				
+		     {/pboot:if}
+	      </span>
+	      
+	    </div>
+    </div>
+</nav>
+
+<!--占位导航栏-->
+<div style="height:71px;" class="head-sm-height"></div>
+

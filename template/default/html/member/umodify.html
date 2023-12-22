@@ -1,0 +1,119 @@
+{include file=comm/head.html}
+
+{include file=comm/top.html}
+
+<!-- Bootstrap Datetimepicker-->
+<link type="text/css" href="{pboot:sitetplpath}/datetimepicker/css/bootstrap-datetimepicker.min.css" rel="stylesheet">
+<script type="text/javascript" src="{pboot:sitetplpath}/datetimepicker/js/bootstrap-datetimepicker.min.js"></script>
+<script type="text/javascript" src="{pboot:sitetplpath}/datetimepicker/js/locales/bootstrap-datetimepicker.zh-CN.js"></script>
+<script type="text/javascript" src="{pboot:sitetplpath}/datetimepicker/js/format.js"></script>
+<!-- Bootstrap Datetimepicker End-->
+
+<div class="container pages">
+
+	{include file=comm/position.html}
+
+	<div class="row mb-5">
+	
+		{include file=member/left.html}
+
+        <div class="col-12 col-md-10 mt-3">		
+        		<form action="{pboot:umodify}" method="post">
+
+	        		<div class="form-group">
+	                    <label for="username">用户名：</label>
+	                    <div>
+	                        {user:username}
+	                    </div>
+	                </div>
+
+	                <div class="form-group">
+	                    <label for="hidden">头像：</label>
+		               	<input type="hidden" name="headpic" class="headpic"  value="{user:headpic}" >  
+		               	<div style="height:100px; width:100px; border:1px solid #ccc; margin-bottom:5px; border-radius:2px">
+		               		<img src="{user:headpic}"  class="headpic" style="max-width:100%;max-height:100%">
+		               	</div>
+					    <buttom class="btn btn-success upload" data-target=".headpic" >上传</buttom>
+	                </div>
+	                
+	                <div class="form-group">
+	                    <label for="useremail">邮箱：</label>
+	                    <div>
+	                        <input type="text" name="useremail" value="{user:useremail}" autocomplete="off" class="form-control" placeholder="请输入邮箱账号">
+	                    </div>
+	                </div>
+	                
+	                <div class="form-group">
+	                    <label for="usermobile">手机：</label>
+	                    <div>
+	                        <input type="text" name="usermobile" value="{user:usermobile}" autocomplete="off" class="form-control" placeholder="请输入手机号码">
+	                    </div>
+	                </div>
+	                
+	                <div class="form-group">
+	                    <label for="nickname">昵称：</label>
+	                    <div>
+	                        <input type="text" name="nickname" value="{user:nickname}" autocomplete="off" class="form-control" placeholder="请输入账号昵称">
+	                    </div>
+	                </div>
+	                
+	                <div class="form-group">
+	                    <label for="password">新密码：</label>
+	                    <div>
+	                        <input type="password" name="password" class="form-control"  autocomplete="off" placeholder="请输入新登录密码">
+	                    </div>
+	                </div>
+	                
+	                <div class="form-group">
+	                    <label for="rpassword">确认密码：</label>
+	                    <div>
+	                        <input type="password" name="rpassword" class="form-control" autocomplete="off" placeholder="请再次输入新登录密码">
+	                    </div>
+	                </div>
+	                
+	                <div class="form-group">
+	                    <label for="sex">性别：</label>
+	                    <div>
+	                         <select class="form-control" name="sex" id="sex">
+							  <option value="男" {pboot:if('{user:sex}'=='男')}selected{/pboot:if}>男</option>
+							  <option value="女" {pboot:if('{user:sex}'=='女')}selected{/pboot:if}>女</option>
+							</select>
+	                    </div>
+	                </div>
+	                
+	                <div class="form-group">
+	                    <label for="birthday">生日：</label>
+                        <div class="input-group date form_date" style="max-width:200px;" >
+		                    <input class="form-control" name="birthday" id="birthday" value="{user:birthday}" readonly type="text">
+		                    <div class="input-group-prepend input-group-addon">
+						      <div class="input-group-text"><span class="fa fa-calendar"></span></div>
+						    </div>
+		                </div>
+	                </div>
+	                
+	                <div class="form-group">
+	                    <label for="nickname">QQ：</label>
+	                    <div>
+	                        <input type="text" name="qq" value="{user:qq}" autocomplete="off" class="form-control" placeholder="请输入QQ号码">
+	                    </div>
+	                </div>
+	                
+	                <div class="form-group">
+	                    <label for="opassword">当前密码：<span class="red">*</span></label>
+	                    <div>
+	                        <input type="password" name="opassword" autocomplete="off" class="form-control" placeholder="请输入当前密码">
+	                    </div>
+	                </div>
+	                
+	                <div class="form-group">
+	                   <button type="submit" class="btn btn-info">保存</button>
+	                   <a href="{pboot:ucenter}" class="btn btn-light">返回</a>
+	               </div>
+               </form>
+        </div>
+   </div>
+ 
+</div>
+
+{include file=comm/upload.html}
+{include file=comm/foot.html}

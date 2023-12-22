@@ -1,0 +1,175 @@
+{include file='common/head.html'}
+
+<div class="layui-body">
+	{if([$list])}
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this" lay-id="t1">会员等级列表</li>
+	    <li lay-id="t2">会员等级新增</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	   <div class="layui-tab-item layui-show">
+	  	   		<table class="layui-table">
+	            	<thead>
+	                    <tr>
+	                    	<th>等级编号</th>
+	                    	<th>等级名称</th>
+	                    	<th>等级描述</th>
+	                    	<th>是否启用</th>
+	                    	<th>积分下限</th>
+	                    	<th>积分上限</th>
+	                        <th>操作</th>
+	                    </tr>
+	                </thead>
+	                <tbody>
+	                    {foreach $groups(key,value)}
+	                    <tr>
+	                    	<td>[value->gcode]</td>
+	                    	<td>[value->gname]</td>
+	                    	<td>[value->description]</td>
+	                    	<td>
+		                        {if($value->status)}
+		                        <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/status/value/0}"><i class='fa fa-toggle-on' title="点击禁用"></i></a>
+		                        {else}
+		                        <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/status/value/1}"><i class='fa fa-toggle-off' title="点击启用"></i></a>
+		                        {/if}
+	                    	</td>
+	                    	<td>[value->lscore]</td>
+	                    	<td>[value->uscore]</td>
+	                        <td>
+	                            {fun=get_btn_del($value->id)}
+	                            {fun=get_btn_mod($value->id)}
+	                        </td>
+	                    </tr>
+	                    {/foreach}
+	                </tbody>
+	            </table>
+	            <div class="page">{$pagebar}</div>
+	  	   </div>
+	  	   
+	  	    <div class="layui-tab-item">
+	   			<form action="{url./admin/MemberGroup/add}" method="post" class="layui-form">
+					<input type="hidden" name="formcheck" value="{$formcheck}" > 
+	               
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">等级编号</label>
+	                     <div class="layui-input-block">
+	                     	<input type="text" name="gcode" required lay-verify="required"  placeholder="请输入等级编号" class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                 <div class="layui-form-item">
+	                     <label class="layui-form-label">等级名称</label>
+	                     <div class="layui-input-block">
+	                     	<input type="text" name="gname" required lay-verify="required"  placeholder="请输入等级名称" class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">等级描述</label>
+	                     <div class="layui-input-block">
+	                     	<input type="text" name="description"  placeholder="请输入等级描述" class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">是否启用</label>
+	                     <div class="layui-input-block">
+	                     	<input type="radio" name="status" value="1" title="启用" checked>
+							<input type="radio" name="status" value="0" title="禁用">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">积分下限</label>
+	                     <div class="layui-input-block">
+	                     	<input type="text" name="lscore" value="0"  maxlength="10"  required lay-verify="required" class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">积分上限</label>
+	                     <div class="layui-input-block">
+	                     	<input type="text" name="uscore" value="9999999999"  maxlength="10"  required lay-verify="required" class="layui-input">
+	                     </div>
+	                </div>
+	   			
+	   				<div class="layui-form-item">
+						 <div class="layui-input-block">
+						    <button class="layui-btn" lay-submit>立即提交</button>
+						    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+						 </div>
+					</div>
+	   			</form>
+	   	 	</div>
+	   </div>
+	 </div>
+	{/if} 
+	
+	{if([$mod])}
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this">会员等级修改</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	<div class="layui-tab-item layui-show">
+	  		<form action="{url./admin/MemberGroup/mod/id/'.[$get.id].'}{$backurl}" method="post" class="layui-form">
+	  			<input type="hidden" name="formcheck" value="{$formcheck}" > 
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">等级编号</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="gcode" value="{$group->gcode}" required lay-verify="required"  placeholder="请输入等级编号" class="layui-input">
+                     </div>
+                </div>
+	                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">等级名称</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="gname" value="{$group->gname}" required lay-verify="required"  placeholder="请输入等级名称" class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">等级描述</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="description" value="{$group->description}" placeholder="请输入等级描述" class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">是否启用</label>
+                     <div class="layui-input-block">
+                     	<input type="radio" name="status" value="1" {if([$group->status]==1)}checked{/if} title="启用" checked>
+						<input type="radio" name="status" value="0" {if([$group->status]==0)}checked{/if} title="禁用">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">积分下限</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="lscore" value="{$group->lscore}" maxlength="10"  required lay-verify="required" class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">积分上限</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="uscore" value="{$group->uscore}" maxlength="10"  required lay-verify="required" class="layui-input">
+                     </div>
+                </div>
+
+   				<div class="layui-form-item">
+					 <div class="layui-input-block">
+					    <button class="layui-btn" lay-submit>立即提交</button>
+					    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+					    {fun=get_btn_back()}
+					 </div>
+				</div>
+	  		</form>
+	  	</div>
+	  </div>
+	 </div>
+	{/if} 
+</div>
+{include file='common/foot.html'}

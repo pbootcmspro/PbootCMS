@@ -1,0 +1,68 @@
+<html xmlns:x="urn:schemas-microsoft-com:office:excel">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>{$form->form_name}记录导出</title>
+  <style>
+	table,table tr th, table tr td{
+		border:1px solid #333;
+	}
+	table tr th, table tr td{
+		padding:2px 5px;
+	}
+	.text{
+		mso-number-format:\@;
+	}
+	table{
+		margin:10px 0;
+		border-collapse:collapse;
+	}
+	</style>
+	
+	<!--[if gte mso 9]><xml>
+            <x:ExcelWorkbook>
+                <x:ExcelWorksheets>
+                    <x:ExcelWorksheet>
+                        <x:Name>Sheet1</x:Name>
+                        <x:WorksheetOptions>
+                            <x:Print>
+                                <x:ValidPrinterInfo />
+                            </x:Print>
+                        </x:WorksheetOptions>
+                    </x:ExcelWorksheet>
+                </x:ExcelWorksheets>
+            </x:ExcelWorkbook>
+        </xml>
+        <![endif]-->
+	
+</head>
+<body>
+
+
+ <table class="layui-table">
+	<thead>
+		<tr>
+			<th>序号</th>
+			{foreach $fields(key1,value1,num1)}
+			  <th>[value1->description]</th>
+   			{/foreach}
+   			<th>时间</th>
+		</tr>
+	</thead>
+	<tbody>
+		{foreach $formdata(key,value,num)}
+		<tr>
+			<td>[num]</td>
+			{foreach $fields(key2,value2,num2)}
+		      	{php} $field=$value2->name {/php}
+		      	<td class="text">[value->$field]</td>
+ 	   		{/foreach}
+ 	   		<td>[value->create_time]</td>
+		</tr>
+		{/foreach}
+	</tbody>
+</table>
+
+</body>
+</html>
+	

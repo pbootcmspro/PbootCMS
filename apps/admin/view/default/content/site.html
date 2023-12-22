@@ -1,0 +1,107 @@
+{include file='common/head.html'}
+
+<div class="layui-body">
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this">站点信息</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	<div class="layui-tab-item layui-show">
+	  		<form action="{url./admin/Site/mod}" method="post" class="layui-form">
+	  			<input type="hidden" name="formcheck" value="{$formcheck}" > 
+	  			<div class="layui-form-item">
+                     <label class="layui-form-label">站点标题</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="title" value="{$sites->title}" placeholder="请输入站点标题"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">站点副标题</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="subtitle" value="{$sites->subtitle}" placeholder="请输入站点副标题"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">站点域名</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="domain" value="{$sites->domain}" placeholder="请输入站点域名"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">站点LOGO</label>
+                     <div class="layui-input-inline">
+                     	<input type="text" name="logo" id="logo" value="{$sites->logo}" placeholder="请上传站点LOGO图"  class="layui-input">
+                     </div>
+                     <button type="button" class="layui-btn upload" data-des="logo">
+					 	 <i class="layui-icon">&#xe67c;</i>上传图片
+					 </button>
+					 <div id="logo_box" class="pic"><dl><dt>{if(@[$sites->logo])}<img src="{SITE_DIR}{$sites->logo}" data-url="{$sites->logo}"></dt><dd>删除</dd></dl>{/if}</div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">站点关键字</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="keywords" value="{$sites->keywords}" placeholder="请输入站点关键字"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">站点描述</label>
+                     <div class="layui-input-block">
+                     	<textarea name="description" placeholder="请输入站点描述" class="layui-textarea">{$sites->description}</textarea>
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">站点备案</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="icp" value="{$sites->icp}" placeholder="请输入站点备案"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+				    <label class="layui-form-label">站点模板</label>
+				    <div class="layui-input-block">
+				      <select name="theme">
+                       	{foreach $themes(key,value)} 
+                            {if($value == [$sites->theme])}
+                                <option value="[value]" selected='selected'>[value]</option> 
+                            {else}
+                                <option value="[value]">[value]</option> 
+                            {/if}
+                        {/foreach}
+				      </select>
+				    </div>
+				 </div>
+				 
+				 <div class="layui-form-item">
+                     <label class="layui-form-label">统计代码</label>
+                     <div class="layui-input-block">
+                     	<textarea name="statistical" placeholder="请输入统计代码" class="layui-textarea">{$sites->statistical}</textarea>
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">尾部信息</label>
+                     <div class="layui-input-block">
+                     	<textarea name="copyright" placeholder="请输入尾部信息" class="layui-textarea">{$sites->copyright}</textarea>
+                     </div>
+                </div>
+				
+				<div class="layui-form-item">
+					 <div class="layui-input-block">
+					    <button class="layui-btn" lay-submit>立即提交</button>
+					    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+					 </div>
+				</div>
+				 
+	  		</form>
+	  	</div>
+	  </div>
+	</div>
+</div>
+
+{include file='common/foot.html'}

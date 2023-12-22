@@ -1,0 +1,90 @@
+{include file='common/head.html'}
+
+<div class="layui-body">
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+		  <ul class="layui-tab-title">
+		    <li class="layui-this" lay-id="t1">数据库管理</li>
+		  </ul>
+		  <div class="layui-tab-content">
+		  	   <div class="layui-tab-item layui-show">
+		  	   		<form action="{url./admin/Database/mod}" method="post">
+		  	   			<input type="hidden" name="formcheck" value="{$formcheck}" > 
+		  	   		{if([$db]=='mysql')}
+				  	   	<table class="layui-table">
+				  	   		<thead>
+		                        <tr>
+		                            <th>选择</th>
+		                            <th>表名称</th>
+		                            <th>表引擎</th>
+		                            <th>编码</th>
+		                            <th>版本</th>
+		                            <th>行数</th>
+		                            <th>表创建时间</th>
+		                            <th>最后更新时间</th>
+		                            <th>大小</th>
+		                            <th>多余</th>
+		                            
+		                        </tr>
+		                    </thead>
+		                    {php}$sum1 = 0; $sum2 = 0;{/php}
+		                    <tbody>
+		                    {foreach $tables(key,value,num)}
+		                        <tr>
+		                            <td><input type="checkbox" class="checkbox checkitem" name="list[]" value="[value->Name]"></td>
+		                            <td>[value->Name]</td>
+		                            <td>[value->Engine]</td>
+		                            <td>[value->Collation]</td>
+		                            <td>[value->Version]</td>
+		                            <td>[value->Rows]</td>
+		                            <td>[value->Create_time]</td>
+		                            <td>[value->Update_time]</td>
+		                            {php}
+		                                $size = round(($value->Data_length + $value->Index_length)/1024,2);
+		                                $sum1 += $size; 
+		                            {/php}
+		                            <td>{php}echo $size{/php} KB</td>
+		                            <td>
+		                            {if($value->Data_free)}
+		                                {php}
+		                                    $free = round($value->Data_free/1024,2);
+		                                    echo $free.' KB';
+		                                    $sum2 += $free; 
+		                                {/php}
+		                            {else}
+		                                -
+		                            {/if}
+		                            </td>
+		                        </tr>
+		                    {/foreach}
+		                        <tr>
+		                            <td><input type="checkbox" class="checkbox" id="checkall" title="全选"></td>
+		                            <td>[num] 张表</td>
+		                            <td></td>
+		                            <td></td>
+		                            <td></td>
+		                            <td></td>
+		                            <td></td>
+		                            <td>总计：</td>
+		                            <td>{php}echo $sum1{/php} KB</td>
+		                            <td>{php}echo $sum2?:0{/php} KB</td>
+		                        </tr>
+		                    </tbody>
+				  	   	</table>
+				  	   	 {if([fun=check_level('mod')])}
+			                <button class="layui-btn" lay-submit type="submit" name="submit" value="yh">优化</button>
+			                <button class="layui-btn" lay-submit type="submit" name="submit" value="xf">修复</button>
+			                <button class="layui-btn" lay-submit type="submit" name="submit" value="bf">备份表</button>
+			                <button class="layui-btn" lay-submit type="submit" name="submit" value="bfdb">备份数据库</button>
+			            {/if}
+			  	   	{/if}
+			  	   	{if([$db]=='sqlite')}
+		            	<button class="layui-btn" lay-submit type="submit" name="submit" value="bfsqlite" >备份</button>
+		            	<p class="layui-text">注意：Sqlite数据库只支持直接备份。</p>
+		            {/if}
+			  	   	</form>
+			  	</div>
+		  </div>
+	  </div>
+</div>
+
+{include file='common/foot.html'}

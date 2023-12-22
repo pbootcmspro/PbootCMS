@@ -1,0 +1,14 @@
+<!-- 分页 -->
+{pboot:if({page:rows}>0)}
+   <nav aria-label="page navigation" class="my-4">
+     <div class="pagination justify-content-center">
+     	<a class="page-item page-link" href="{page:index}">首页</a>
+     	<a class="page-item page-link" href="{page:pre}">上一页</a>
+      	{page:numbar}<!-- 数字条，小屏幕时自动隐藏-->
+      	<a class="page-item page-link" href="{page:next}">下一页</a>
+      	<a class="page-item page-link" href="{page:last}">尾页</a>
+     </div>
+   </nav>	
+{else}
+   	<div class="text-center my-5 text-secondary">未查询到任何数据！</div>
+{/pboot:if}

@@ -1,0 +1,36 @@
+<!-- 引入编辑器文件 -->
+<script type="text/javascript" charset="utf-8" src="{CORE_DIR}/extend/ueditor/ueditor.config.js"></script>
+<script type="text/javascript" charset="utf-8" src="{CORE_DIR}/extend/ueditor/ueditor.all.js"> </script>
+<script type="text/javascript" charset="utf-8" src="{CORE_DIR}/extend/ueditor/lang/zh-cn/zh-cn.js"></script>
+<script>
+//初始化编辑器
+$(document).ready(function (e) {
+	var ue = UE.getEditor('editor',{
+		maximumWords:30000 
+	});
+})
+</script>
+
+
+<script type="text/javascript">
+   <!-- 解决源码模式无法保存 -->
+  function editor_init() {
+      $('#edit').submit(function () {
+          editor=UE.getEditor('editor');
+          if(editor.queryCommandState('source')==1) editor.execCommand('source');
+      })
+  }
+ 
+  <!-- 点击后添加到编辑器 -->
+  $(".addedit").on("click",'img',function(){
+	    editor=UE.getEditor('editor');
+		$img = $(this).attr("src");
+		editor.execCommand('inserthtml',"<img src='"+$img+"'>");
+   });
+
+</script>
+
+<script type="text/javascript">editor_init();</script>
+
+
+

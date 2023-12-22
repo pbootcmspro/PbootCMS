@@ -1,0 +1,379 @@
+{include file='common/head.html'}
+
+<div class="layui-body">
+	{if([$list])}
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this" lay-id="t1">会员列表</li>
+	    <li lay-id="t2">会员新增</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	<div class="layui-tab-item layui-show">
+	  		<form action="{url./admin/Member/index}" method="get" class="layui-form">
+	  	   		<div class="layui-form-item nospace">
+	  	   			<div class="layui-input-inline">
+	  	   			  {$pathinfo}
+				       <select name="field" lay-verify="required">
+				       		<option value="username" {if(get('field')=='username')}selected="selected" {/if}>会员用户名</option>
+				       		<option value="useremail" {if(get('field')=='useremail')}selected="selected" {/if}>会员邮箱</option>
+                            <option value="usermobile" {if(get('field')=='usermobile')}selected="selected" {/if} >会员昵称</option>
+                       </select>
+				    </div>
+                     <div class="layui-input-inline">
+                     	<input type="text" name="keyword"  value="{$get.keyword}"  placeholder="请输入搜索关键字" class="layui-input">
+                     </div>
+                     <div class="layui-input-inline">
+                     	<button class="layui-btn" lay-submit>搜索</button>
+                     	<a class="layui-btn layui-btn-primary"  href="{url./admin/Member/index}">清除搜索</a>
+                     </div>
+                </div>
+            </form>
+            
+            <form action="{url./admin/Member/mod}" method="post" id="contentForm" name="contentForm" class="layui-form" onkeydown="if(event.keyCode==13) return false;">
+		    	<input type="hidden" name="formcheck" value="{$formcheck}" > 
+		  		<table class="layui-table">
+		  			<thead>
+	                    <tr>
+	                    	<th><input type="checkbox" class="checkbox" lay-ignore id="checkall" title="全选"></th>
+	                    	<th>编号</th>
+	                        <th>用户名</th>
+	                        <th>昵称</th>
+	                        <th>状态</th>
+	                        <th>等级</th>
+	                        <th>积分</th>
+	                        <th>注册时间</th>
+	                        <th>最后登录时间</th>
+	                        <th>操作</th>
+	                    </tr>
+	                </thead>
+	                <tbody>
+	                    {foreach $members(key,value)}
+	                    <tr>
+	                    	<td>
+	                    		<input type="checkbox" class="checkbox checkitem" lay-ignore name="list[]" value="[value->id]">
+	                    		<input type="hidden" name="listall[]" value="[value->id]">
+	                    	</td>
+	                    	<td>[value->ucode]</td>
+	                        <td>[value->username]</td>
+	                        <td>[value->nickname]</td>
+	                        <td>
+	                       		{if($value->status)}
+		                        <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/status/value/0}"><i class='fa fa-toggle-on' title="点击禁用"></i></a>
+		                        {else}
+		                        <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/status/value/1}"><i class='fa fa-toggle-off' title="点击启用"></i></a>
+		                        {/if}
+	                        </td>
+	                        <td>[value->gname]</td>
+	                        <td>[value->score]</td>
+	                        <td>[value->register_time]</td>
+	                        <td>[value->last_login_time]</td>
+	                        <td>
+	                       		{fun=get_btn_more($value->id)}
+	                            {fun=get_btn_del($value->id)}
+	                            {fun=get_btn_mod($value->id)}
+	                        </td>
+	                    </tr>
+	                    {/foreach}
+	                </tbody>
+		  		</table>
+		  		
+		  		{if([$members])}
+		  		<div class="layui-btn-group">
+                   
+                    {if(check_level('del'))}
+			     		<button type="submit" name="submit" onclick="return setDelAction();" class="layui-btn layui-btn-sm">删除</button>
+			     	{/if}
+			     	
+			     	{if(check_level('mod'))}
+			     		<button type="submit" name="submit" value="verify1" class="layui-btn layui-btn-sm">启用</button>
+			     		<button type="submit" name="submit" value="verify0" class="layui-btn layui-btn-sm">禁用</button>
+			     	 {/if}
+		     	 </div>
+		     	<script>
+		     		function setDelAction(){
+		     			document.contentForm.action = "{url./admin/Member/del}"; 
+		     			return confirm("您确定要删除选中的会员么？");
+		     		}
+		     	</script>
+		     	{/if}
+		  	</form> 
+	  		<div class="page">{$pagebar}</div>
+	  	</div>
+	  	<div class="layui-tab-item">
+	  		 <form action="{url./admin/Member/add}" method="post" class="layui-form">
+	  		 	<input type="hidden" name="formcheck" value="{$formcheck}" > 
+				
+				<div class="layui-form-item">
+                     <label class="layui-form-label">用户名 <span class="layui-text-red">*</span></label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="username" required  lay-verify="required"  autocomplete="off"  placeholder="请输入会员用户名" class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">邮箱</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="useremail"  placeholder="请输入会员邮箱,可登录用" class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">手机</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="usermobile"  placeholder="请输入会员手机,可登录用" class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">昵称</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="nickname"  placeholder="请输入会员昵称" autocomplete="off"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">登录密码  <span class="layui-text-red">*</span></label>
+                     <div class="layui-input-block">
+                     	<input type="password" name="password"  required lay-verify="required" placeholder="请输入登录密码" autocomplete="off" class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">头像</label>
+                     <div class="layui-input-inline">
+                     	<input type="text" name="headpic" id="headpic" placeholder="请上传头像"  class="layui-input">
+                     </div>
+                     <button type="button" class="layui-btn upload" data-des="headpic">
+					 	 <i class="layui-icon">&#xe67c;</i>上传图片
+					 </button>
+					 <div id="headpic_box" class="pic addedit"></div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">状态</label>
+                     <div class="layui-input-block">
+                     	<input type="radio" name="status" value="1" title="启用" checked>
+						<input type="radio" name="status" value="0" title="禁用">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">等级</label>
+                     <div class="layui-input-block">
+                     	<select name="gid">
+	                        {foreach $groups(key,value)}
+	                            <option value="[value->id]">[value->gname]</option>
+	                        {/foreach}
+	                    </select>
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">积分</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="score" value="0" maxlength="10" class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+					 <div class="layui-input-block">
+					    <button class="layui-btn" lay-submit>立即提交</button>
+					    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+					 </div>
+				</div>
+	  		 </form>
+	  	</div>
+	  </div>
+	</div>
+	{/if} 
+	
+	{if([$more])}
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this">会员详情</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	<div class="layui-tab-item layui-show">
+	  		<table class="layui-table table-two">
+
+				 <tr>
+					<th width="100">编号</th>
+					<td>{$member->ucode}</td>
+				 </tr>
+
+				 <tr>
+					<th>用户名</th>
+					<td>{$member->username}</td>
+				 </tr>
+				 
+				 <tr>
+					<th>邮箱</th>
+					<td>{$member->useremail}</td>
+				 </tr>
+				 
+				 <tr>
+					<th>手机</th>
+					<td>{$member->usermobile}</td>
+				 </tr>
+				 
+				 <tr>
+					<th>昵称</th>
+					<td>{$member->nickname}</td>
+				 </tr>
+				 
+				  <tr>
+					<th>头像</th>
+					<td><img src="{$member->headpic}" style="height:30px;"></td>
+				 </tr>
+				 
+				  <tr>
+					<th>等级</th>
+					<td>{$member->gname}</td>
+				 </tr>
+				 
+				  <tr>
+					<th>积分</th>
+					<td>{$member->score}</td>
+				 </tr>
+				 
+				 <tr>
+					<th>状态</th>
+					<td>
+						{if([$member->status]==1)}启用{/if}
+						{if([$member->status]==0)}禁用{/if}
+					</td>
+				</tr>
+				 
+				{foreach $fields(key2,value2,num2)}
+	  	   			<tr>
+				      	<th>[value2->description]</th>
+				      	{php}$field=$value2->name{/php}
+				      	<td>{$member->$field}</td>
+				    </tr>
+  	   			 {/foreach}
+  	   			 
+				 <tr>
+					<th>注册时间</th>
+					<td>{$member->register_time}</td>
+				 </tr>
+				 
+				 <tr>
+					<th>登录次数</th>
+					<td>{$member->login_count}</td>
+				 </tr>
+				 
+				 <tr>
+					<th>最后登录IP</th>
+					<td>{fun=long2ip([$member->last_login_ip])}</td>
+				 </tr>
+				 
+				 <tr>
+					<th>最后登录时间</th>
+					<td>{$member->last_login_time}</td>
+				 </tr>
+  	   	    </table>
+	  		{fun=get_btn_back()}
+	  	</div>
+	  </div>
+	 </div>
+	{/if} 
+	
+	{if([$mod])}
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this">会员修改</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	<div class="layui-tab-item layui-show">
+	  		 <form action="{url./admin/Member/mod/id/'.[$get.id].'}{$backurl}" method="post" class="layui-form">
+	  		 	<input type="hidden" name="formcheck" value="{$formcheck}" > 
+
+               <div class="layui-form-item">
+                     <label class="layui-form-label">用户名 <span class="layui-text-red">*</span></label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="username" required value="{$member->username}" lay-verify="required"  autocomplete="off"  placeholder="请输入会员用户名" class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">邮箱</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="useremail" value="{$member->useremail}" placeholder="请输入会员邮箱,可登录用" class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">手机</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="usermobile" value="{$member->usermobile}" placeholder="请输入会员手机,可登录用" class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">昵称</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="nickname" value="{$member->nickname}"  placeholder="请输入会员昵称" autocomplete="off"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">密码 </label>
+                     <div class="layui-input-block">
+                     	<input type="password" name="password" placeholder="请输入登录密码" autocomplete="off" class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">头像</label>
+                     <div class="layui-input-inline">
+                     	<input type="text" name="headpic" value="{$member->headpic}" id="headpic" placeholder="请上传头像"  class="layui-input">
+                     </div>
+                     <button type="button" class="layui-btn upload" data-des="headpic">
+					 	 <i class="layui-icon">&#xe67c;</i>上传图片
+					 </button>
+					 <div id="headpic_box" class="pic addedit">
+					 	{if([$member->headpic])}<dl><dt><img src="{SITE_DIR}{$member->headpic}" data-url="{$member->headpic}"></dt><dd>删除</dd></dl>{/if}
+					 </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">状态</label>
+                     <div class="layui-input-block">
+                     	<input type="radio" name="status" value="1" title="启用" {if([$member->status]==1)}checked{/if}>
+						<input type="radio" name="status" value="0" title="禁用" {if([$member->status]==0)}checked{/if}>
+                     </div>
+                </div>
+                
+                 <div class="layui-form-item">
+                     <label class="layui-form-label">等级</label>
+                     <div class="layui-input-block">
+                     	<select name="gid">
+	                        {foreach $groups(key,value)}
+	                            <option value="[value->id]" {if($value->id==[$member->gid])}selected{/if}>[value->gname]</option>
+	                        {/foreach}
+	                    </select>
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">积分</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="score"  value="{$member->score}" maxlength="10" class="layui-input">
+                     </div>
+                </div>
+                
+                 <div class="layui-form-item">
+					 <div class="layui-input-block">
+					    <button class="layui-btn" lay-submit>立即提交</button>
+					    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+					    {fun=get_btn_back()}
+					 </div>
+				</div>
+				
+	  		 </form>
+	  	</div>
+	  </div>
+	 </div>
+	{/if} 
+</div>
+{include file='common/foot.html'}

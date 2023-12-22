@@ -1,0 +1,829 @@
+{include file='common/head.html'}
+
+<div class="layui-body">
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this" lay-id="t1">基本配置</li>
+	    <li  lay-id="t2">邮件通知</li>
+	    <li  lay-id="t3">百度接口</li>
+	    <li  lay-id="t4">WebAPI</li>
+	    <li  lay-id="t5">图片水印</li>
+	    <li  lay-id="t6">安全配置</li>
+	    <li  lay-id="t7">URL规则</li>
+	    <li  lay-id="t8">标题样式</li>
+	    <li  lay-id="t9">会员配置</li>
+	    <li  lay-id="t10">远程附件配置</li>
+	  </ul>
+		  <div class="layui-tab-content">
+		  	   <div class="layui-tab-item layui-show">
+		  	   	   <form action="{url./admin/Config/index}" method="post" class="layui-form">
+			  	   	   <input type="hidden" name="formcheck" value="{$formcheck}" > 
+			  	   	   
+			  	   	    <div class="layui-form-item">
+		                     <label class="layui-form-label">网站状态</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="close_site" value="1" {if([$configs.close_site.value]==1)} checked="checked" {/if} title="关闭">
+								<input type="radio" name="close_site" value="0" {if([$configs.close_site.value]==0)} checked="checked" {/if} title="开启">
+		                     </div>
+		                </div>
+		                
+			  	   	     <div class="layui-form-item">
+		                     <label class="layui-form-label">关站提示</label>
+		                     <div class="layui-input-inline">
+		                     	<textarea name="close_site_note" placeholder="" class="layui-textarea">{$configs.close_site_note.value}</textarea>
+		                     </div> 
+		                </div>
+		                
+		  	   		 	<div class="layui-form-item">
+		                     <label class="layui-form-label">独立手机版</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="open_wap" value="1" {if([$configs.open_wap.value]==1)} checked="checked" {/if} title="启用">
+								<input type="radio" name="open_wap" value="0" {if([$configs.open_wap.value]==0)} checked="checked" {/if} title="禁用">
+								<span class="layui-icon layui-icon-about tips" data-content="使用响应式模板的用户请不要开启！"></span>
+		                     </div>
+		                </div>
+		                
+		                 <div class="layui-form-item">
+		                     <label class="layui-form-label">手机版域名绑定</label>
+		                     <div class="layui-input-inline">
+		                     	<input type="text" name="wap_domain"  value="{$configs.wap_domain.value}" placeholder="如：m.xxx.com"  class="layui-input">
+		                     </div>
+		                </div>
+
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">动态缓存</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="tpl_html_cache" value="1" {if([$configs.tpl_html_cache.value]==1)} checked="checked" {/if} title="启用">
+								<input type="radio" name="tpl_html_cache" value="0" {if([$configs.tpl_html_cache.value]==0)} checked="checked" {/if} title="禁用">
+		                     	<span class="layui-icon layui-icon-about tips" data-content="本功能效果接近生成静态，开启后将提高前端访问速度及并发能力！"></span>
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">缓存有效期(秒)</label>
+		                     <div class="layui-input-inline">
+		                     	<input type="text" name="tpl_html_cache_time"  value="{$configs.tpl_html_cache_time.value}" placeholder="请输入缓存有效期（秒）"  class="layui-input">
+		                     </div>
+		                     <div class="layui-form-mid layui-word-aux">秒</div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">Gzip页面压缩</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="gzip" value="1" {if([$configs.gzip.value]==1)} checked="checked" {/if} title="启用">
+								<input type="radio" name="gzip" value="0" {if([$configs.gzip.value]==0)} checked="checked" {/if} title="禁用">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">会话文件路径</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="session_in_sitepath" value="1" {if([$configs.session_in_sitepath.value]==1)} checked="checked" {/if} title="站内">
+								<input type="radio" name="session_in_sitepath" value="0" {if([$configs.session_in_sitepath.value]==0)} checked="checked" {/if} title="系统">
+								<span class="layui-icon layui-icon-about tips" data-content="站内则使用站点下runtime路径，系统则使用操作系统的缓存路径！"></span>
+		                     </div>
+		                </div>
+		                
+		               <div class="layui-form-item">
+		                     <label class="layui-form-label">跨语言自动切换</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="lgautosw" value="1" {if([$configs.lgautosw.value]=='1'||[$configs.lgautosw.value]=='')} checked="checked" {/if} title="启用">
+								<input type="radio" name="lgautosw" value="0" {if([$configs.lgautosw.value]=='0')} checked="checked" {/if} title="禁用">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">记录蜘蛛访问</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="spiderlog" value="1" {if([$configs.spiderlog.value]=='1'||[$configs.spiderlog.value]=='')} checked="checked" {/if} title="启用">
+								<input type="radio" name="spiderlog" value="0" {if([$configs.spiderlog.value]=='0')} checked="checked" {/if} title="禁用">
+		                     	<span class="layui-icon layui-icon-about tips" data-content="开启后自动在系统日志进行记录！"></span>
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">自动转HTTPS</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="to_https" value="1" {if([$configs.to_https.value]==1)} checked="checked" {/if} title="启用">
+								<input type="radio" name="to_https" value="0" {if([$configs.to_https.value]==0)} checked="checked" {/if} title="禁用">
+		                     	<span class="layui-icon layui-icon-about tips" data-content="访问非HTPPS地址时自动跳转！"></span>
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">自动转主域名</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="to_main_domain" value="1" {if([$configs.to_main_domain.value]==1)} checked="checked" {/if} title="启用">
+								<input type="radio" name="to_main_domain" value="0" {if([$configs.to_main_domain.value]==0)} checked="checked" {/if} title="禁用">
+		                     	<span class="layui-icon layui-icon-about tips" data-content="访问非主域名地址时自动跳转！"></span>
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">网站主域名</label>
+		                     <div class="layui-input-inline">
+		                     	<input type="text" name="main_domain"  value="{$configs.main_domain.value}" placeholder="如：www.xxx.com"  class="layui-input">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">分页数字条数量</label>
+		                     <div class="layui-input-inline">
+		                     	<input type="text" name="pagenum"  value="{$configs.pagenum.value}" placeholder="请输入前端分页数字条显示数量"  class="layui-input">
+		                     </div>
+		                     <div class="layui-form-mid layui-word-aux">条</div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">内链替换次数</label>
+		                     <div class="layui-input-inline">
+		                     	<input type="text" name="content_tags_replace_num"  value="{$configs.content_tags_replace_num.value}" placeholder="请输入文章内链替换次数，默认3次"  class="layui-input">
+		                     </div>
+		                     <div class="layui-form-mid layui-word-aux">次</div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">敏感词过滤</label>
+		                     <div class="layui-input-inline">
+		                     	<textarea name="content_keyword_replace" placeholder="请输入需要过滤的关键词，多个之间逗号隔开" class="layui-textarea">{$configs.content_keyword_replace.value}</textarea>
+		                     	<div class="layui-form-mid layui-word-aux">注：多个敏感词之间用逗号隔开！</div>
+		                     </div>
+		                     
+		                </div>
+		                
+		                {if(LICENSE<2)}
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">系统授权码</label>
+		                     <div class="layui-input-inline">
+		                     	<input type="text" name="sn"  value="{$configs.sn.value}" placeholder="请输入授权码，多个授权码用逗号隔开"  class="layui-input">
+		                     </div>
+		                </div>
+		                
+		                 <div class="layui-form-item">
+		                     <label class="layui-form-label">授权码手机</label>
+		                     <div class="layui-input-inline">
+		                     	<input type="text" name="sn_user"  value="{$configs.sn_user.value}" placeholder="请购买了万能授权码的用户填写"  class="layui-input">
+		                     </div>
+		                </div>
+		                
+		                {/if}
+		                
+		                <div class="layui-form-item">
+							 <div class="layui-input-block">
+							    <button class="layui-btn" lay-submit name="submit" value="basic">立即提交</button>
+							    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+							 </div>
+						</div>
+	              </form>
+		  	   </div>
+		  	   
+		  	   <div class="layui-tab-item">
+		  	   	   <form action="{url./admin/Config/index}" method="post" class="layui-form">
+			  	   	    <input type="hidden" name="formcheck" value="{$formcheck}" > 
+		                
+		                <div class="layui-form-item">
+			                   <label class="layui-form-label">服务器状态 </label>
+			                   <div class="layui-input-block" style="line-height:36px;">
+									stream_socket_client函数<i class="layui-icon layui-icon-ok-circle" style="color: {php}echo function_exists('stream_socket_client')?'#5FB878':'#f2f2f2';{/php}"></i>&nbsp;&nbsp;&nbsp; 
+									fsockopen函数 <i class="layui-icon layui-icon-ok-circle" style="color: {php}echo function_exists('fsockopen')?'#5FB878':'#f2f2f2';{/php}"></i>
+									<span class="layui-icon layui-icon-about tips" data-content="至少需要支持其中一个函数才能正常使用！"></span>
+			                   </div>
+			             </div>
+			             
+			 	   		<div class="layui-form-item">
+			                    <label class="layui-form-label">SMTP服务器</label>
+			                   <div class="layui-input-inline">
+			                   	<input type="text" name="smtp_server" value="{$configs.smtp_server.value}" placeholder="请输入SMTP服务器" class="layui-input">
+			                   </div>
+			             </div>
+				  	   
+			
+			  	   		<div class="layui-form-item">
+			                    <label class="layui-form-label">SMTP端口</label>
+			                   <div class="layui-input-inline">
+			                   	<input type="text" name="smtp_port" value="{$configs.smtp_port.value}" placeholder="请输入SMTP端口,一般SSL为465，普通为25" class="layui-input">
+			                   </div>
+			             </div>
+				  	   
+				  	    <div class="layui-form-item">
+			                <label class="layui-form-label">是否为SSL</label>
+			                <div class="layui-input-block">
+			                   	<input type="radio" name="smtp_ssl" value="1" {if([$configs.smtp_ssl.value]==1)} checked="checked" {/if} title="是">
+								<input type="radio" name="smtp_ssl" value="0" {if([$configs.smtp_ssl.value]==0)} checked="checked" {/if} title="否">
+			           		</div>
+			           </div>
+			           
+			   			<div class="layui-form-item">
+			                  <label class="layui-form-label">邮箱账号</label>
+			                 <div class="layui-input-inline">
+			                 	<input type="text" name="smtp_username"  value="{$configs.smtp_username.value}" placeholder="请输入邮箱账号" class="layui-input">
+			                 </div>
+			            </div>
+			   
+			   			<div class="layui-form-item">
+			                  <label class="layui-form-label">邮箱密码</label>
+			                 <div class="layui-input-inline">
+			                 	<input type="password" name="smtp_password" value="{$configs.smtp_password.value}" placeholder="请输入邮箱密码或邮箱授权码" class="layui-input">
+			                 </div>
+			            </div>
+			            
+						<div class="layui-form-item">
+			                  <label class="layui-form-label">测试账号</label>
+			                 <div class="layui-input-inline">
+			                 	<input type="text" name="smtp_username_test" id="smtp_username_test" value="{$configs.smtp_username_test.value}" placeholder="请输入用于接受测试邮件的账号" class="layui-input">
+			                 </div>
+			            </div>
+		            
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">留言发送邮件</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="message_send_mail" value="1" {if([$configs.message_send_mail.value]==1)} checked="checked" {/if} title="启用">
+								<input type="radio" name="message_send_mail" value="0" {if([$configs.message_send_mail.value]==0)} checked="checked" {/if} title="禁用">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">表单发送邮件</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="form_send_mail" value="1" {if([$configs.form_send_mail.value]==1)} checked="checked" {/if} title="启用">
+								<input type="radio" name="form_send_mail" value="0" {if([$configs.form_send_mail.value]==0)} checked="checked" {/if} title="禁用">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">评论发送邮件</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="comment_send_mail" value="1" {if([$configs.comment_send_mail.value]==1)} checked="checked" {/if} title="启用">
+								<input type="radio" name="comment_send_mail" value="0" {if([$configs.comment_send_mail.value]==0)} checked="checked" {/if} title="禁用">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">信息接收邮箱</label>
+		                     <div class="layui-input-inline">
+		                     	<input type="text" name="message_send_to"  value="{$configs.message_send_to.value}" placeholder="请输入信息接收邮箱"  class="layui-input">
+		                     </div>
+		                </div>
+		                
+						 <div class="layui-form-item">
+							 <div class="layui-input-block">
+							    <button class="layui-btn" lay-submit name="submit" value="email">立即提交</button>
+							    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+							    <a href="{url./admin/Config/index/action/sendemail}" onclick="return sendtest(this,'#smtp_username_test')" class="layui-btn layui-btn-primary">发送测试邮件</a>
+							 </div>
+						</div>
+						<script>
+					    	function sendtest(obj,to){
+					    		$(obj).attr('href',$(obj).attr('href')+'&to='+$(to).val()); 
+					    		return true;
+					    	}
+					    </script>
+	              </form>
+		  	   </div>
+		  	   
+		  	   <div class="layui-tab-item">
+		  	   	   <form action="{url./admin/Config/index}" method="post" class="layui-form">
+			  	   	    <input type="hidden" name="formcheck" value="{$formcheck}" > 
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">普通收录token</label>
+		                     <div class="layui-input-inline">
+		                     	<input type="text" name="baidu_zz_token"  value="{$configs.baidu_zz_token.value}" placeholder="请输入普通收录token"  class="layui-input">
+		                     </div>
+		                     <span class="layui-icon layui-icon-about tips" data-content="请到百度站长中心获取！"></span>
+		                </div>
+
+		               <div class="layui-form-item">
+		                     <label class="layui-form-label">快速收录token</label>
+		                     <div class="layui-input-inline">
+		                     	<input type="text" name="baidu_ks_token"  value="{$configs.baidu_ks_token.value}" placeholder="请输入快速收录token"  class="layui-input">
+		                     </div>
+		                     <span class="layui-icon layui-icon-about tips" data-content="请到百度站长中心获取！"></span>
+		               </div>
+		               
+		           
+		                <div class="layui-form-item">
+							 <div class="layui-input-block">
+							    <button class="layui-btn" lay-submit name="submit" value="baidu">立即提交</button>
+							    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+							 </div>
+						</div>
+	              </form>
+		  	   </div>
+		  	   
+		  	   <div class="layui-tab-item">
+		  	   	  <form action="{url./admin/Config/index}" method="post" class="layui-form">
+		  	   	  	<input type="hidden" name="formcheck" value="{$formcheck}" > 
+		  	   		<div class="layui-form-item">
+	                     <label class="layui-form-label">API状态</label>
+	                     <div class="layui-input-block">
+	                     	<input type="radio" name="api_open" value="1" {if(@[$configs.api_open.value]==1)} checked="checked" {/if} title="启用">
+							<input type="radio" name="api_open" value="0" {if(@[$configs.api_open.value]==0)} checked="checked" {/if} title="禁用">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">API强制认证</label>
+	                     <div class="layui-input-block">
+	                     	<input type="radio" name="api_auth" value="1" {if(@[$configs.api_auth.value]==1)} checked="checked" {/if} title="启用">
+							<input type="radio" name="api_auth" value="0" {if(@[$configs.api_auth.value]==0)} checked="checked" {/if} title="禁用">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                      <label class="layui-form-label">API认证用户</label>
+	                     <div class="layui-input-inline">
+	                     	<input type="text" name="api_appid" value="{$configs.api_appid.value}" placeholder="请输入API认证用户名" class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                 <div class="layui-form-item">
+	                      <label class="layui-form-label">API认证密钥</label>
+	                     <div class="layui-input-inline">
+	                     	<input type="password" name="api_secret" value="{$configs.api_secret.value}" placeholder="请输入API认证密钥"  class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+						 <div class="layui-input-block">
+						    <button class="layui-btn" lay-submit name="submit" value="api">立即提交</button>
+						    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+						 </div>
+					</div>
+				 </form>
+		  	   </div> 
+		  	   
+		  	    <div class="layui-tab-item">
+		  	   	  <form action="{url./admin/Config/index}" method="post" class="layui-form">
+		  	   	  	<input type="hidden" name="formcheck" value="{$formcheck}" > 
+		  	   		<div class="layui-form-item">
+	                     <label class="layui-form-label">状态</label>
+	                     <div class="layui-input-block">
+	                     	<input type="radio" name="watermark_open" value="1" {if(@[$configs.watermark_open.value]==1)} checked="checked" {/if} title="启用">
+							<input type="radio" name="watermark_open" value="0" {if(@[$configs.watermark_open.value]==0)} checked="checked" {/if} title="禁用">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                      <label class="layui-form-label">水印文字</label>
+	                     <div class="layui-input-inline">
+	                     	<input type="text" name="watermark_text" value="{$configs.watermark_text.value}" placeholder="请输入水印文字，如：XXXCMS" class="layui-input">
+	                     </div>
+	                </div>
+					
+					<div class="layui-form-item">
+	                     <label class="layui-form-label">文字字体</label>
+	                     <div class="layui-input-inline">
+	                     	<input type="text" name="watermark_text_font" id="watermark_text_font" value="{$configs.watermark_text_font.value}" placeholder="请上传水印文字字体"  class="layui-input">
+	                     </div>
+	                     <button type="button" class="layui-btn file" data-des="watermark_text_font">
+						 	 <i class="layui-icon">&#xe67c;</i>上传字体
+						 </button>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                      <label class="layui-form-label">文字大小</label>
+	                     <div class="layui-input-inline">
+	                     	<input type="text" name="watermark_text_size" value="{$configs.watermark_text_size.value}" placeholder="请输入水印文字大小，如：20" class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                      <label class="layui-form-label">文字颜色</label>
+	                     <div class="layui-input-inline">
+	                     	<input type="text" name="watermark_text_color" value="{$configs.watermark_text_color.value}" placeholder="请输入水印文字颜色，如：100,100,100" class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">水印图片</label>
+	                     <div class="layui-input-inline">
+	                     	<input type="text" name="watermark_pic" id="watermark_pic" value="{$configs.watermark_pic.value}" placeholder="请上传水印图片，优先文字水印"  class="layui-input">
+	                     </div>
+	                     <button type="button" class="layui-btn upload" data-des="watermark_pic">
+						 	 <i class="layui-icon">&#xe67c;</i>上传图片
+						 </button>
+						 <div id="watermark_pic_box" class="pic"><dl><dt>{if(@[$configs.watermark_pic.value])}<img src="{SITE_DIR}{$configs.watermark_pic.value}" data-url="{$configs.watermark_pic.value}"></dt><dd>删除</dd></dl>{/if}</div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">水印位置</label>
+	                     <div class="layui-input-block">
+	                     	<input type="radio" name="watermark_position" value="1" {if(@[$configs.watermark_position.value]==1)} checked="checked" {/if} title="左上">
+	                     	<input type="radio" name="watermark_position" value="2" {if(@[$configs.watermark_position.value]==2)} checked="checked" {/if} title="右上">
+							<input type="radio" name="watermark_position" value="3" {if(@[$configs.watermark_position.value]==3)} checked="checked" {/if} title="左下">
+	                     	<input type="radio" name="watermark_position" value="4" {if(@[$configs.watermark_position.value]==4)} checked="checked" {/if} title="右下">
+	                     	<input type="radio" name="watermark_position" value="5" {if(@[$configs.watermark_position.value]==5)} checked="checked" {/if} title="中间">
+	                     </div>
+	                </div>
+
+	                <div class="layui-form-item">
+						 <div class="layui-input-block">
+						    <button class="layui-btn" lay-submit name="submit" value="watermark">立即提交</button>
+						    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+						 </div>
+					</div>
+				 </form>
+		  	   </div> 
+		  	   
+		  	    <div class="layui-tab-item">
+		  	   	   <form action="{url./admin/Config/index}" method="post" class="layui-form">
+			  	   	   <input type="hidden" name="formcheck" value="{$formcheck}" > 
+
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">留言功能</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="message_status" value="1" {if([$configs.message_status.value]=='1'||[$configs.message_status.value]=='')} checked="checked" {/if} title="启用">
+								<input type="radio" name="message_status" value="0" {if([$configs.message_status.value]=='0')} checked="checked" {/if} title="禁用">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">留言验证码</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="message_check_code" value="1" {if([$configs.message_check_code.value]=='1'||[$configs.message_check_code.value]=='')} checked="checked" {/if} title="启用">
+								<input type="radio" name="message_check_code" value="0" {if([$configs.message_check_code.value]=='0')} checked="checked" {/if} title="禁用">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">留言审核</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="message_verify" value="1" {if([$configs.message_verify.value]=='1'||[$configs.message_verify.value]=='')} checked="checked" {/if} title="启用">
+								<input type="radio" name="message_verify" value="0" {if([$configs.message_verify.value]=='0')} checked="checked" {/if} title="禁用">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">留言需登录</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="message_rqlogin" value="1" {if([$configs.message_rqlogin.value]==1)} checked="checked" {/if} title="启用">
+								<input type="radio" name="message_rqlogin" value="0" {if([$configs.message_rqlogin.value]==0)} checked="checked" {/if} title="禁用">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">表单功能</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="form_status" value="1" {if([$configs.form_status.value]=='1'||[$configs.form_status.value]=='')} checked="checked" {/if} title="启用">
+								<input type="radio" name="form_status" value="0" {if([$configs.form_status.value]=='0')} checked="checked" {/if} title="禁用">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">表单验证码</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="form_check_code" value="1" {if([$configs.form_check_code.value]=='1'||[$configs.form_check_code.value]=='')} checked="checked" {/if} title="启用">
+								<input type="radio" name="form_check_code" value="0" {if([$configs.form_check_code.value]=='0')} checked="checked" {/if} title="禁用">
+		                     </div>
+		                </div>
+
+			            <div class="layui-form-item">
+		                   <label class="layui-form-label">模板子目录</label>
+		                   <div class="layui-input-inline">
+		                  		<input type="text" name="tpl_html_dir" value="{$configs.tpl_html_dir.value}" placeholder="首次请手动移动模板文件到填写的目录！" class="layui-input">
+		                   </div>
+		                   <span class="layui-icon layui-icon-about tips" data-content="一定程度上防盗，如填 html，则默认模板情况下路径为 default/html 目录！"></span>
+			            </div>
+			            
+			           <div class="layui-form-item">
+		                     <label class="layui-form-label">IP黑名单</label>
+		                     <div class="layui-input-inline">
+		                     	<textarea name="ip_deny" placeholder="请输入需要禁止访问的IP，多个之间逗号隔开，IP地址支持使用/掩码位数模式，如：192.168.1.0/24, 192.168.2.100" class="layui-textarea">{$configs.ip_deny.value}</textarea>
+		                     </div> 
+		                     <span class="layui-icon layui-icon-about tips" data-content="请输入需要禁止访问的IP，多个之间逗号隔开，IP地址支持使用/掩码位数模式，如：192.168.1.0/24, 192.168.2.100"></span>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">IP白名单</label>
+		                     <div class="layui-input-inline">
+		                     	<textarea name="ip_allow" placeholder="请输入需要允许访问的IP，多个之间逗号隔开，IP地址支持使用/掩码位数模式，如：192.168.1.0/24, 192.168.2.100" class="layui-textarea">{$configs.ip_allow.value}</textarea>
+		                     </div> 
+		                      <span class="layui-icon layui-icon-about tips" data-content="请输入需要允许访问的IP，多个之间逗号隔开，IP地址支持使用/掩码位数模式，如：192.168.1.0/24,192.168.2.100"></span>
+		                </div>
+		                
+		                <hr>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">后台验证码</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="admin_check_code" value="1" {if([$configs.admin_check_code.value]=='1'||[$configs.admin_check_code.value]=='')} checked="checked" {/if} title="启用">
+								<input type="radio" name="admin_check_code" value="0" {if([$configs.admin_check_code.value]=='0')} checked="checked" {/if} title="禁用">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">后台登录阀值</label>
+		                     <div class="layui-input-inline">
+								<input type="text" name="lock_count" value="{$configs.lock_count.value}" placeholder="请输入后台登录失败几次后锁定IP，默认5次" class="layui-input">
+		                     </div>
+		                     <div class="layui-form-mid layui-word-aux">次</div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                   <label class="layui-form-label">失败锁定时间</label>
+		                   <div class="layui-input-inline">
+		                  		<input type="text" name="lock_time" value="{$configs.lock_time.value}" placeholder="请输入后台登录异常锁定时间，默认为900秒" class="layui-input">
+		                   </div>
+		                   <div class="layui-form-mid layui-word-aux">秒</div>
+			            </div>
+		                
+		                <div class="layui-form-item">
+							 <div class="layui-input-block">
+							    <button class="layui-btn" lay-submit name="submit" value="security">立即提交</button>
+							    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+							 </div>
+						</div>
+	              </form>
+		  	   </div>
+		  	   
+		  	   <div class="layui-tab-item">
+		  	   	   <form action="{url./admin/Config/index}" method="post" class="layui-form">
+			  	   	   <input type="hidden" name="formcheck" value="{$formcheck}" > 
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">地址模式</label>
+		                     <div class="layui-input-block">
+		                     	<P>
+		                     		<input type="radio" name="url_rule_type" value="2" {if([$configs.url_rule_type.value]==2)} checked="checked" {/if} title="伪静态模式，类似：/product/1.html">
+		                     		<span class="layui-icon layui-icon-about tips" data-content="伪静态时需要服务器环境的支持，并需要添加伪静态规则！"></span>
+								</P>
+		                     	<P>
+									<input type="radio" name="url_rule_type" value="3" {if([$configs.url_rule_type.value]==3||![$configs.url_rule_type.value])} checked="checked" {/if} title="兼容模式，首页/index.php也可正常访问，类似：/?product/1.html">
+								</P>
+		                     </div>
+		                </div>
+		                
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">文章路径</label>
+		                     <div class="layui-input-block">
+		                     	<P>
+		                     		<input type="radio" name="url_rule_content_path" value="0" {if(![$configs.url_rule_content_path.value])} checked="checked" {/if} title="带栏目路径，类似：/product/1.html">
+								</P>
+		                     	<P>
+									<input type="radio" name="url_rule_content_path" value="1" {if([$configs.url_rule_content_path.value]==1)} checked="checked" {/if} title="不带栏目路径，类似：/1.html">
+								</P>
+		                     </div>
+		                </div>
+
+					   <div class="layui-form-item">
+						   <label class="layui-form-label">跳转404</label>
+						   <div class="layui-input-block">
+							   <P>
+								   <input type="radio" name="url_index_404" value="1" {if([$configs.url_index_404.value]==1)} checked="checked" {/if}  title="开启404">
+								   <span class="layui-icon layui-icon-about tips" data-content="开启后访问不存在的页面直接返回404"></span>
+							   </P>
+							   <P>
+								   <input type="radio" name="url_index_404" value="0" {{if(![$configs.url_index_404.value])} checked="checked" {/if} title="关闭404(默认)">
+							   </P>
+						   </div>
+					   </div>
+
+		                <div class="layui-form-item">
+							 <div class="layui-input-block">
+							    <button class="layui-btn" lay-submit name="submit" value="urlrule">立即提交</button>
+							    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+							 </div>
+						</div>
+	              </form>
+		  	   </div>
+		  	   
+		  	   <div class="layui-tab-item">
+		  	   	   <form action="{url./admin/Config/index}" method="post" class="layui-form">
+			  	   	   <input type="hidden" name="formcheck" value="{$formcheck}" > 
+
+	                  <div class="layui-form-item">
+		                   <label class="layui-form-label">常用组合标签： </label>
+		                   <div class="layui-input-block" style="line-height:36px;">
+								<p>全局标签：{pboot:sitetitle}站点标题、{pboot:sitesubtitle}站点副标题</p>
+								<p>列表或内容页：{sort:name}栏目名称、{sort:title}栏目标题</p>
+								<p>内容页：{content:title}内容标题</p>
+								<p>搜索结果页：{pboot:keyword}搜索关键字</p>
+								<p>个人中心：{user:nickname}会员昵称</p>
+								<p>例如定义内容页样式：{content:title}-{sort:name}-{pboot:sitetitle}-{pboot:sitesubtitle}</p>
+								<p>以下配置参数不设置时将使用系统默认规则。</p>
+		                   </div>
+		              </div>
+		             
+		               <div class="layui-form-item">
+		                   <label class="layui-form-label">首页</label>
+		                   <div class="layui-input-block">
+		                  		<input type="text" name="index_title" value="{$configs.index_title.value}" class="layui-input">
+		                   </div>
+			           </div>
+			           
+			           <div class="layui-form-item">
+		                   <label class="layui-form-label">专题页</label>
+		                   <div class="layui-input-block">
+		                  		<input type="text" name="about_title" value="{$configs.about_title.value}" class="layui-input">
+		                   </div>
+			           </div>
+			           
+			           <div class="layui-form-item">
+		                   <label class="layui-form-label">列表页</label>
+		                   <div class="layui-input-block">
+		                  		<input type="text" name="list_title" value="{$configs.list_title.value}" class="layui-input">
+		                   </div>
+			           </div>
+			           
+			           <div class="layui-form-item">
+		                   <label class="layui-form-label">内容页</label>
+		                   <div class="layui-input-block">
+		                  		<input type="text" name="content_title" value="{$configs.content_title.value}" class="layui-input">
+		                   </div>
+			           </div>
+			           
+			           <div class="layui-form-item">
+		                   <label class="layui-form-label">搜索结果页</label>
+		                   <div class="layui-input-block">
+		                  		<input type="text" name="search_title" value="{$configs.search_title.value}" class="layui-input">
+		                   </div>
+			           </div>
+			           
+			           <div class="layui-form-item">
+		                   <label class="layui-form-label">会员注册页</label>
+		                   <div class="layui-input-block">
+		                  		<input type="text" name="register_title" value="{$configs.register_title.value}" class="layui-input">
+		                   </div>
+			           </div>
+			           
+			           <div class="layui-form-item">
+		                   <label class="layui-form-label">会员登录页</label>
+		                   <div class="layui-input-block">
+		                  		<input type="text" name="login_title" value="{$configs.login_title.value}" class="layui-input">
+		                   </div>
+			           </div>
+			           
+			           <div class="layui-form-item">
+		                   <label class="layui-form-label">个人中心页</label>
+		                   <div class="layui-input-block">
+		                  		<input type="text" name="ucenter_title" value="{$configs.ucenter_title.value}" class="layui-input">
+		                   </div>
+			           </div>
+			           
+			           <div class="layui-form-item">
+		                   <label class="layui-form-label">资料修改页</label>
+		                   <div class="layui-input-block">
+		                  		<input type="text" name="umodify_title" value="{$configs.umodify_title.value}" class="layui-input">
+		                   </div>
+			           </div>
+			           
+			           <div class="layui-form-item">
+		                   <label class="layui-form-label">其它页</label>
+		                   <div class="layui-input-block">
+		                  		<input type="text" name="other_title" value="{$configs.other_title.value}" class="layui-input">
+		                   </div>
+			           </div>
+		                
+		                <div class="layui-form-item">
+							 <div class="layui-input-block">
+							    <button class="layui-btn" lay-submit name="submit" value="pagetitle">立即提交</button>
+							    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+							 </div>
+						</div>
+	              </form>
+		  	   </div>
+		  	   
+		  	    <div class="layui-tab-item">
+		  	   	   <form action="{url./admin/Config/index}" method="post" class="layui-form">
+			  	   	   <input type="hidden" name="formcheck" value="{$formcheck}" > 
+						
+						<div class="layui-form-item">
+		                     <label class="layui-form-label">会员注册</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="register_status" value="1" {if([$configs.register_status.value]=='1'||[$configs.register_status.value]=='')} checked="checked" {/if} title="启用">
+								<input type="radio" name="register_status" value="0" {if([$configs.register_status.value]=='0')} checked="checked" {/if} title="禁用">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">会员注册类型</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="register_type" value="1" {if([$configs.register_type.value]=='1'||[$configs.register_type.value]=='')} checked="checked" {/if} title="用户名">
+								<input type="radio" name="register_type" value="2" {if([$configs.register_type.value]=='2')} checked="checked" {/if} title="邮箱账号">
+								<input type="radio" name="register_type" value="3" {if([$configs.register_type.value]=='3')} checked="checked" {/if} title="手机号码">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">会员注册验证码</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="register_check_code" value="0" {if([$configs.register_check_code.value]=='0')} checked="checked" {/if} title="禁用">
+		                     	<input type="radio" name="register_check_code" value="1" {if([$configs.register_check_code.value]=='1'||[$configs.register_check_code.value]=='')} checked="checked" {/if} title="普通验证码">
+								<input type="radio" name="register_check_code" value="2" {if([$configs.register_check_code.value]=='2')} checked="checked" {/if} title="邮箱验证码">
+								<!-- <input type="radio" name="register_check_code" value="3" {if([$configs.register_check_code.value]=='3')} checked="checked" {/if} title="短信验证码"> -->
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">会员注册审核</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="register_verify" value="1" {if([$configs.register_verify.value]==1)} checked="checked" {/if} title="启用">
+								<input type="radio" name="register_verify" value="0" {if([$configs.register_verify.value]==0)} checked="checked" {/if} title="禁用">
+		                     </div>
+		                </div>
+	                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">会员登录</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="login_status" value="1" {if([$configs.login_status.value]=='1'||[$configs.login_status.value]=='')} checked="checked" {/if} title="启用">
+								<input type="radio" name="login_status" value="0" {if([$configs.login_status.value]=='0')} checked="checked" {/if} title="禁用">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">会员登录验证码</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="login_check_code" value="1" {if([$configs.login_check_code.value]=='1'||[$configs.login_check_code.value]=='')} checked="checked" {/if} title="启用">
+								<input type="radio" name="login_check_code" value="0" {if([$configs.login_check_code.value]=='0')} checked="checked" {/if} title="禁用">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">不等待跳登录</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="login_no_wait" value="1" {if([$configs.login_no_wait.value]==1)} checked="checked" {/if} title="启用">
+								<input type="radio" name="login_no_wait" value="0" {if([$configs.login_no_wait.value]==0)} checked="checked" {/if} title="禁用">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">评论功能</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="comment_status" value="1" {if([$configs.comment_status.value]=='1'||[$configs.comment_status.value]=='')} checked="checked" {/if} title="启用">
+								<input type="radio" name="comment_status" value="0" {if([$configs.comment_status.value]=='0')} checked="checked" {/if} title="禁用">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">匿名评论</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="comment_anonymous" value="1" {if([$configs.comment_anonymous.value]==1)} checked="checked" {/if} title="启用">
+								<input type="radio" name="comment_anonymous" value="0" {if([$configs.comment_anonymous.value]==0)} checked="checked" {/if} title="禁用">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">评论验证码</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="comment_check_code" value="1" {if([$configs.comment_check_code.value]=='1'||[$configs.comment_check_code.value]=='')} checked="checked" {/if} title="启用">
+								<input type="radio" name="comment_check_code" value="0" {if([$configs.comment_check_code.value]=='0')} checked="checked" {/if} title="禁用">
+		                     </div>
+		                </div>
+
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">评论审核</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="comment_verify" value="1" {if([$configs.comment_verify.value]=='1'||[$configs.comment_verify.value]=='')} checked="checked" {/if} title="启用">
+								<input type="radio" name="comment_verify" value="0" {if([$configs.comment_verify.value]=='0')} checked="checked" {/if} title="禁用">
+		                     </div>
+		                </div>
+
+			            <div class="layui-form-item">
+		                     <label class="layui-form-label">会员注册积分</label>
+		                     <div class="layui-input-inline">
+		                     	<input type="text" name="register_score"  value="{$configs.register_score.value}" placeholder="请输入会员注册初始积分"  class="layui-input">
+		                     </div>
+		                </div>
+		                
+		                 <div class="layui-form-item">
+		                     <label class="layui-form-label">会员登录积分</label>
+		                     <div class="layui-input-inline">
+		                     	<input type="text" name="login_score"  value="{$configs.login_score.value}" placeholder="请输入会员每次登录积分"  class="layui-input">
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">会员默认等级</label>
+		                     <div class="layui-input-inline">
+		                     	<select name="register_gcode">
+		                     		<option value="">请选择</option>
+			                        {foreach $groups(key,value)}
+			                            <option value="[value->gcode]" {if([$configs.register_gcode.value]==$value->gcode)}selected{/if}>[value->gname]</option>
+			                        {/foreach}
+			                    </select>
+		                     </div>
+		                </div>
+		                
+		                <div class="layui-form-item">
+		                   <label class="layui-form-label">允许上传格式</label>
+		                   <div class="layui-input-inline">
+		                  		<input type="text" name="home_upload_ext" value="{$configs.home_upload_ext.value}" placeholder="以英文逗号隔开！" class="layui-input">
+		                   </div>
+		                   <span class="layui-icon layui-icon-about tips" data-content="以英文逗号隔开，默认：jpg, jpeg, png, gif, xls, xlsx, doc, docx, ppt, pptx, rar, zip, pdf, txt！"></span>
+			            </div>
+		                
+		                <div class="layui-form-item">
+							 <div class="layui-input-block">
+							    <button class="layui-btn" lay-submit name="submit" value="member">立即提交</button>
+							    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+							 </div>
+						</div>
+	              </form>
+		  	   </div>
+		  </div>
+	 </div>
+</div>
+{include file='common/foot.html'}

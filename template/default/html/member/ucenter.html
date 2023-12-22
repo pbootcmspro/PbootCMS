@@ -1,0 +1,104 @@
+{include file=comm/head.html}
+
+{include file=comm/top.html}
+
+<div class="container pages">
+
+	{include file=comm/position.html}
+
+	<div class="row mb-5">
+	
+        {include file=member/left.html}
+
+        <div class="col-12 col-md-10 mt-3">			
+			<table class="table">
+			  <tbody>
+			  
+			    <tr>
+			      <td width="150">用户名：</td>
+			      <td>{user:username}</td>
+			    </tr>
+			    
+			    <tr>
+			      <td>邮箱：</td>
+			      <td>{user:useremail}</td>
+			    </tr>
+			    
+			     <tr>
+			      <td>手机：</td>
+			      <td>{user:usermobile}</td>
+			    </tr>
+			    
+			    <tr>
+			      <td>头像：</td>
+			      <td><img src="{user:headpic}" height="30px" class="rounded"></td>
+			    </tr>
+			    
+			    <tr>
+			      <td>昵称：</td>
+			      <td>{user:nickname}</td>
+			    </tr>
+			    
+			    <tr>
+			      <td>等级：</td>
+			      <td>{user:gname}</td>
+			    </tr>
+			    
+			    <tr>
+			      <td>积分：</td>
+			      <td>{user:score}</td>
+			    </tr>
+			    
+			    <tr>
+			      <td>性别：</td>
+			      <td>{user:sex}</td>
+			    </tr>
+			    
+			    <tr>
+			      <td>生日：</td>
+			      <td>{user:birthday}</td>
+			    </tr>
+			    
+			    <tr>
+			      <td>电话：</td>
+			      <td>{user:telephone}</td>
+			    </tr>
+			    
+			    <tr>
+			      <td>邮箱：</td>
+			      <td>{user:email}</td>
+			    </tr>
+			    
+			    <tr>
+			      <td>QQ：</td>
+			      <td>{user:qq}</td>
+			    </tr>
+			    
+			     <tr>
+			      <td>注册时间：</td>
+			      <td>{user:registertime}</td>
+			    </tr>
+			    
+			    <tr>
+			      <td>登录次数：</td>
+			      <td>{user:logincount}</td>
+			    </tr>
+			    
+			    <tr>
+			      <td>最后登录IP：</td>
+			      <td>{user:lastloginip}</td>
+			    </tr>
+			    
+			    <tr>
+			      <td>最后登录时间：</td>
+			      <td>{user:lastlogintime}</td>
+			    </tr>
+			  </tbody>
+			</table>
+			<a class="btn btn-info" href="{pboot:umodify}" role="button">修改</a>
+        </div>
+   </div>
+ 
+</div>
+
+{include file=comm/foot.html}

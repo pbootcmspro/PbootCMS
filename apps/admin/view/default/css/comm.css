@@ -1,0 +1,265 @@
+/*分页样式*/
+.layui-header {
+	height: 50px;
+}
+.layui-body {
+	padding: 10px 15px;
+}
+.layui-layout-admin .layui-body {
+	top: 50px;
+	bottom:0;
+}
+.layui-layout-admin .layui-logo {
+	color: #fff;
+	font-size: 20px;
+	line-height: 50px;
+	height: 50px;
+	overflow:hidden;
+	text-align: left;
+	width: 180px;
+	padding-left: 10px;
+}
+.layui-layout-admin .layui-logo .layui-badge{
+	font-size:10px;
+	padding: 3px;
+	height: 12px;
+	line-height: 12px;
+	top:-3px;
+}
+.layui-layout-admin .layui-logo img {
+	vertical-align: middle;
+	margin-top: -3px;
+}
+.layui-layout-admin .layui-logo a {
+	color: #fff;
+}
+.layui-layout-admin .layui-header .layui-nav .layui-nav-item {
+	height: 50px;
+	line-height: 50px;
+}
+.layui-layout-admin .layui-side {
+	top: 50px;
+}
+.layui-layout-admin .layui-side .layui-nav i {
+	margin-right: 10px;
+}
+.layui-layout-admin .layui-side .layui-nav-child dd {
+	padding-left: 20px;
+}
+.layui-form-label {
+	width: 100px;
+}
+.layui-input-block {
+	margin-left: 130px;
+}
+.layui-layout-left {
+	left: 220px;
+}
+.layui-table .layui-btn {
+	margin: 0.5px 0;
+}
+.layui-table .layui-btn + .layui-btn {
+	margin-left: 0px;
+}
+.layui-form-select dl {
+	z-index: 9999;
+	max-height: 250px;
+}
+.layui-text-red{
+	color:red;
+}
+/*菜单显示按钮*/
+.menu {
+	position: absolute !important;
+	left : 200px;
+	top: 10px;
+	line-height: 30px;
+	color: #ccc;
+	text-align: center;
+	z-index: 999;
+}
+.menu li {
+	width: 30px;
+	background: #2F4056;
+}
+.menu a {
+	color: #ccc;
+}
+.menu .menu-ico {
+	font-size: 20px;
+	cursor: pointer;
+}
+.area-select {
+	position: absolute;
+	left : 250px;
+	top: 10px;
+}
+.area-select select {
+	height: 30px;
+	border: 1px solid #fafafa;
+	padding-left: 5px;
+	border-radius: 2px;
+}
+.area-select .layui-select-title {
+}
+/*桌面快捷图标*/
+.deskbox {
+	height: 90px;
+	border-radius: 5px;
+	color: #666;
+	text-align: center;
+	background: #f2f2f2;
+	margin: 5px;
+}
+.deskbox:hover {
+	background: #e0e0e0;
+}
+.deskbox dd {
+	font-size: 30px;
+	line-height: 50px;
+	color:#009688;
+}
+.deskbox dt {
+	padding-top:15px;
+	color:#999;
+	font-weight: normal;
+}
+.page {
+	clear: both;
+	margin: 10px 0;
+	text-align: center;
+}
+.page a:hover {
+	color:#009688;
+}
+.page-status{
+	border-radius: 2px 0 0 2px;
+}
+.page-last{
+	border-radius: 0 2px 2px 0;
+}
+.page-status,.page-index,.page-pre,.page-num,.page-next,.page-last{
+	display: inline-block;
+	*display: inline;
+	*zoom: 1;
+	vertical-align: middle;
+	padding: 0 15px;
+	height: 28px;
+	line-height: 28px;
+	margin: 0 -1px 5px 0;
+	background-color: #fff;
+	color: #333;
+	font-size: 12px;
+	border: 1px solid #e2e2e2;
+}
+.page-num-current{
+	background-color: #009688;
+	height:30px;
+	line-height: 30px;
+	border-top:none;
+	border-bottom:none;
+	color:#fff;
+}
+a.page-num-current:hover{
+	color:#fff;
+}
+.readonly {
+	background: #fafafa;
+}
+.table-input {
+	padding: 0px 15px!important;
+}
+.table-input input {
+	height: 30px;
+	max-width: 50px;
+	padding: 0px;
+	text-align: center;
+	color: #666;
+}
+.table-two tbody td {
+	text-align: left;
+}
+.table-two tbody th {
+	text-align: right;
+	width: 110px;
+}
+.fa-toggle-on {
+	font-size: 20px;
+	color: #5FB878;
+}
+.fa-toggle-off {
+	font-size: 20px;
+	color: #d2d2d2;
+}
+.pic {
+	margin-left: 130px;
+}
+.pic dl {
+	float: left;
+	position: relative;
+}
+.pic dl dd {
+	position: absolute;
+	right: 5px;
+	top: 5px;
+	cursor: pointer;
+	background: #666;
+	color: #fff;
+	padding: 2px;
+}
+.pic img {
+	max-height: 100px;
+	margin: 5px 0;
+	margin-right: 5px;
+}
+
+@media only screen and (min-width: 450px) {
+.layui-form-item .layui-input-inline {
+	width: 260px;
+}
+}
+
+@media only screen and (max-width: 750px) {
+.layui-body {
+	left: 0px !important;
+}
+.layui-layout-admin .layui-logo {
+	width: 180px;
+	text-align: left;
+	padding-left: 5px;
+}
+.menu {
+	left: 185px;
+}
+.area-select {
+	right: 5px;
+	left: auto;
+}
+.layui-layout-admin .layui-footer {
+	left: 0px !important;
+}
+.layui-layout-admin .layui-side {
+	display: none;
+}
+.layui-body {
+	overflow-x: auto;
+}
+.hidden-xs {
+	display: none;
+}
+.layui-form-label {
+	width: 80px;
+}
+.pic {
+	margin-left: 110px;
+}
+.layui-input-block {
+	margin-left: 110px;
+}
+}
+
+@media only screen and (max-width: 450px) {
+.layui-form-item.nospace .layui-input-inline {
+	margin: 0 0 10px 0px;
+}
+}

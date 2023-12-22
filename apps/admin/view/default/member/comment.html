@@ -1,0 +1,178 @@
+{include file='common/head.html'}
+
+<div class="layui-body">
+	{if([$list])}
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this" lay-id="t1">评论列表</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	<div class="layui-tab-item layui-show">
+	  		<form action="{url./admin/MemberComment/index}" method="get" class="layui-form">
+	  	   		<div class="layui-form-item nospace">
+	  	   			<div class="layui-input-inline">
+	  	   			  {$pathinfo}
+				       <select name="field" lay-verify="required">
+				       		<option value="b.title" {if(get('field')=='b.title')}selected="selected" {/if}>文章标题</option>
+				       		<option value="a.comment" {if(get('field')=='a.comment')}selected="selected" {/if}>评论内容</option>
+                            <option value="c.username" {if(get('field')=='c.username')}selected="selected" {/if} >会员账号</option>
+                            <option value="c.nickname" {if(get('field')=='c.nickname')}selected="selected" {/if} >会员昵称</option>
+                       </select>
+				    </div>
+                     <div class="layui-input-inline">
+                     	<input type="text" name="keyword"  value="{$get.keyword}"  placeholder="请输入搜索关键字" class="layui-input">
+                     </div>
+                     <div class="layui-input-inline">
+                     	<button class="layui-btn" lay-submit>搜索</button>
+                     	<a class="layui-btn layui-btn-primary"  href="{url./admin/MemberComment/index}">清除搜索</a>
+                     </div>
+                </div>
+            </form>
+            
+            <form action="{url./admin/MemberComment/mod}" method="post"  id="contentForm" name="contentForm" class="layui-form" onkeydown="if(event.keyCode==13) return false;">
+		  		<input type="hidden" name="formcheck" value="{$formcheck}" > 
+		  		<table class="layui-table">
+		  			<thead>
+	                    <tr>
+	                    	<th><input type="checkbox" class="checkbox" lay-ignore id="checkall" title="全选"></th>
+	                        <th>文章</th>
+	                        <th>评论</th>
+	                        <th>状态</th>
+	                        <th>评论人</th>
+	                        <th>时间</th>
+	                        <th>操作</th>
+	                    </tr>
+	                </thead>
+	                <tbody>
+	                    {foreach $comments(key,value)}
+	                    <tr>
+	                    	<td>
+	                    		<input type="checkbox" class="checkbox checkitem" lay-ignore name="list[]" value="[value->id]">
+	                    		<input type="hidden" name="listall[]" value="[value->id]">
+	                    	</td>
+	                        <td>[value->title]</td>
+	                        <td title="[value->comment]">{fun=substr_both($value->comment,0,20)}...</td>
+	                        <td>
+	                       		{if($value->status)}
+		                        <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/status/value/0}"><i class='fa fa-toggle-on' title="点击禁用"></i></a>
+		                        {else}
+		                        <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/status/value/1}"><i class='fa fa-toggle-off' title="点击启用"></i></a>
+		                        {/if}
+	                        </td>
+	                        <td title="[value->nickname]">[value->username]</td>
+	                        <td>[value->create_time]</td>
+	                        <td>
+	                       		{fun=get_btn_more($value->id)}
+	                            {fun=get_btn_del($value->id)}
+	                        </td>
+	                    </tr>
+	                    {/foreach}
+	                </tbody>
+		  		</table>
+		  		
+		  		{if([$comments])}
+		  		<div class="layui-btn-group">
+                   
+                    {if(check_level('del'))}
+			     		<button type="submit" name="submit" onclick="return setDelAction();" class="layui-btn layui-btn-sm">删除</button>
+			     	{/if}
+			     	
+			     	{if(check_level('mod'))}
+			     		<button type="submit" name="submit" value="verify1" class="layui-btn layui-btn-sm">审核</button>
+			     		<button type="submit" name="submit" value="verify0" class="layui-btn layui-btn-sm">禁用</button>
+			     	 {/if}
+		     	 </div>
+		     	<script>
+		     		function setDelAction(){
+		     			document.contentForm.action = "{url./admin/MemberComment/del}"; 
+		     			return confirm("您确定要删除选中的评论么？");
+		     		}
+		     	</script>
+		     	{/if}
+		  	</form> 
+	  		<div class="page">{$pagebar}</div>
+	  	</div>
+	  </div>
+	</div>
+	{/if} 
+	
+	{if([$more])}
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this">评论详情</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	<div class="layui-tab-item layui-show">
+	  		<table class="layui-table table-two">
+
+				 <tr>
+					<th width="100">文章</th>
+					<td>{$comment->title}</td>
+				 </tr>
+
+				 <tr>
+					<th>评论</th>
+					<td>{$comment->comment}</td>
+				 </tr>
+				 
+				 <tr>
+					<th>状态</th>
+					<td>
+						{if([$comment->status]==1)}启用{/if}
+						{if([$comment->status]==0)}禁用{/if}
+					</td>
+				</tr>
+				
+				 <tr>
+					<th>评论人</th>
+					<td>{$comment->username}（{$comment->nickname}）</td>
+				 </tr>
+				 
+				  
+				 {if([$comment->pusername])}
+				 <tr>
+					<th>被评论人</th>
+					<td>{$comment->pusername}（{$comment->pnickname}）</td>
+				 </tr>
+				 {/if}
+				 
+				 <tr>
+					<th>点赞数</th>
+					<td>{$comment->likes}</td>
+				 </tr>
+				 
+				  <tr>
+					<th>反对数</th>
+					<td>{$comment->oppose}</td>
+				 </tr>
+				
+
+				 <tr>
+					<th>用户IP</th>
+					<td>{fun=long2ip([$comment->user_ip])}</td>
+				 </tr>
+				 
+				  <tr>
+					<th>操作系统</th>
+					<td>{$comment->user_os}</td>
+				 </tr>
+				 
+				 <tr>
+					<th>浏览器</th>
+					<td>{$comment->user_bs}</td>
+				 </tr>
+				 
+				 <tr>
+					<th>时间</th>
+					<td>{$comment->create_time}</td>
+				 </tr>
+				 
+  	   	    </table>
+	  		{fun=get_btn_back()}
+	  	</div>
+	  </div>
+	 </div>
+	{/if} 
+
+</div>
+{include file='common/foot.html'}

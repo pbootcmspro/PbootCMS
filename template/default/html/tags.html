@@ -1,0 +1,38 @@
+{include file=comm/head.html}
+
+{include file=comm/top.html}
+
+<div class="container pages">    
+
+  	 {include file=comm/position.html}
+  	 
+  	 {include file=comm/sortnav.html}
+
+	 <!-- 标签相似内容列表，只对启用分页的列表筛选，*号表示全站内容 -->
+     <ul>
+        {pboot:list num=10 order=date scode=* page=1} 
+        	<li class="lh-3 border-bottom-dashed">
+                <i class="fa fa-gg"></i>
+                <a href="[list:link]">
+                	<span class="d-none d-md-inline">[list:title lencn=30]</span><!-- PC端 -->
+                	<span class="d-inline d-md-none">[list:title lencn=11]</span><!-- 移动端 -->
+                	{pboot:if([list:istop]==1)}
+                		<span class="badge badge-danger">置顶</span>
+                	{/pboot:if}
+                	{pboot:if([list:isrecommend]==1)}
+                		<span class="badge badge-warning">推荐</span>
+                	{/pboot:if}
+                	{pboot:if([list:isheadline]==1)}
+                		<span class="badge badge-info">头条</span>
+                	{/pboot:if}
+                	<span class="float-right">[list:date style=Y-m-d]</span>
+                </a>
+            </li>
+        {/pboot:list}
+    </ul>
+    
+	{include file=comm/page.html}
+ 	
+</div>
+
+{include file=comm/foot.html}

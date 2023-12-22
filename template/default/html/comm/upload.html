@@ -1,0 +1,132 @@
+ <!-- Bootstrap Fileinput-->
+<link href="{pboot:sitetplpath}/fileinput/css/fileinput.css" media="all" rel="stylesheet" type="text/css"/>
+<link href="{pboot:sitetplpath}/fileinput/themes/explorer-fa/theme.css" media="all" rel="stylesheet" type="text/css"/>
+<script src="{pboot:sitetplpath}/fileinput/js/plugins/sortable.js" type="text/javascript"></script>
+<script src="{pboot:sitetplpath}/fileinput/js/fileinput.js" type="text/javascript"></script>
+<script src="{pboot:sitetplpath}/fileinput/js/locales/fr.js" type="text/javascript"></script>
+<script src="{pboot:sitetplpath}/fileinput/js/locales/es.js" type="text/javascript"></script>
+<script src="{pboot:sitetplpath}/fileinput/themes/explorer-fa/theme.js" type="text/javascript"></script>
+<script src="{pboot:sitetplpath}/fileinput/themes/fa/theme.js" type="text/javascript"></script>
+<script src="{pboot:sitetplpath}/fileinput/js/locales/zh.js" type="text/javascript"></script>
+<!-- Bootstrap Fileinput End-->
+
+<!-- 单图片上传upload -->
+<div class="modal fade" id="uploadBox" tabindex="-1" role="dialog" aria-labelledby="uploadBoxLabel" aria-hidden="true">
+	<div class="modal-dialog modal-lg" role="document">
+		 <div class="modal-content">
+			 <div class="modal-header">
+			   	<h4 class="modal-title" id="uploadBoxLabel">文件上传</h4>
+			 </div>
+			 <div class="modal-body">
+			   	<div class="file-loading">
+			     	<input id="uploadInput" name="upload"  accept="image/gif,image/jpeg,image/png"  type="file" data-msg-placeholder="请选择要上传的图片">
+			    </div>
+			    <div id="kartik-file-errors"></div>
+			 </div>
+			 <div class="modal-footer">
+			   	<button type="button" class="btn btn-primary uploadSubmit">上传</button>
+			   	<button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+			 </div>
+		</div>
+	</div>
+</div>
+
+<!--多图片上传 uploads-->
+<div class="modal fade" id="uploadBoxs" tabindex="-1" role="dialog" aria-labelledby="uploadBoxLabel" aria-hidden="true">
+	<div class="modal-dialog modal-lg" role="document">
+		 <div class="modal-content">
+			 <div class="modal-header">
+			   	<h4 class="modal-title" id="uploadBoxLabel">文件上传</h4>
+			 </div>
+			 <div class="modal-body">
+			   	<div class="file-loading">
+			     	<input id="uploadInputs" name="upload[]" multiple accept="image/gif,image/jpeg,image/png"  type="file" data-msg-placeholder="请选择要上传的图片">
+			    </div>
+			    <div id="kartik-file-errors"></div>
+			 </div>
+			 <div class="modal-footer">
+			   	<button type="button" class="btn btn-primary uploadSubmit">上传</button>
+			   	<button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+			 </div>
+		</div>
+	</div>
+</div>
+
+<!-- 文件上传 file-->
+<div class="modal fade" id="fileBox" tabindex="-1" role="dialog" aria-labelledby="fileBoxLabel" aria-hidden="true">
+	<div class="modal-dialog modal-lg" role="document">
+		 <div class="modal-content">
+			 <div class="modal-header">
+			   	<h4 class="modal-title" id="fileBoxLabel">文件上传</h4>
+			 </div>
+			 <div class="modal-body">
+			   	<div class="file-loading">
+			     	<input id="fileInput" name="upload" type="file" data-msg-placeholder="请选择要上传的文件">
+			    </div>
+			    <div id="kartik-file-errors"></div>
+			 </div>
+			 <div class="modal-footer">
+			   	<button type="button" class="btn btn-primary uploadSubmit">上传</button>
+			   	<button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+			 </div>
+		</div>
+	</div>
+</div>
+ 
+ 
+<script>
+
+$(document).on('ready', function() {
+	
+	var target;
+
+	$(".upload").on("click",function(){
+    	target=$(this).data("target");
+    	upload('uploadInput',false,false,true,1);
+    	$("#uploadBox").modal("show");
+    });
+	
+	$(".uploads").on("click",function(){
+    	target=$(this).data("target");
+    	upload('uploadInputs',true,true,true,0);
+    	$("#uploadBoxs").modal("show");
+    });
+	
+	$(".file").on("click",function(){
+		target=$(this).data("target");
+    	upload('fileInput',false,false,true,1);
+    	$("#fileBox").modal("show");
+    });
+	
+	
+	function upload(inputName,showPreview,dropZoneEnabled,autoReplace,maxFileCount){
+		$("#"+inputName).fileinput({
+	      	language:'zh',
+	        showUpload: false,
+	        showPreview: showPreview,
+	        dropZoneEnabled: dropZoneEnabled,
+	        autoReplace: autoReplace,
+	        elErrorContainer: '#kartik-file-errors',
+	        uploadAsync: false,
+	        maxFileCount: maxFileCount,
+	        uploadUrl: '{pboot:upload}'//文件上传接口
+	     }).on("filebatchuploadsuccess", function (event, data, previewId, index) {
+	    	if(data.response.code){
+			    $(target).val(data.response.data);
+			    $("img"+target).attr("src","{pboot:sitepath}"+data.response.data);
+			    $("#"+inputName).fileinput('reset');
+			    $("#uploadBox").modal("hide");
+			    $("#fileBox").modal("hide");
+			    $("#uploadBoxs").modal("hide");
+	    	}else{
+	    		alert(data.response.data);
+	    	}
+	    });
+		
+		$(".uploadSubmit").on("click",function(){
+			$("#"+inputName).fileinput("upload");
+		});
+	}
+
+});
+</script>

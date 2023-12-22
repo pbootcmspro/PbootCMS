@@ -1,0 +1,190 @@
+{include file=comm/head.html}
+
+{include file=comm/top.html}
+
+<div class="container pages">
+
+	{include file=comm/position.html}
+
+    <!-- 用户注册 -->
+    <div class="row">
+    	<div class="col-lg-3"></div>
+    	<div class="col-12 col-lg-6">
+        	<form class="my-4" onsubmit="return register(this);">
+                <div class="form-group">
+                    <label for="username">账　号</label>
+                    <input type="text" name="username" required id="username" onblur="isRegister()" class="form-control" placeholder="请输入登录账号">
+                    <div id="usernote"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="nickname">昵　称</label>
+                    <input type="text" name="nickname" required id="nickname" class="form-control" placeholder="请输入账号昵称">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">密　码</label>
+                    <input type="password" name="password" required id="password" class="form-control" placeholder="请输入登录密码">
+                </div>
+                
+                <div class="form-group">
+                    <label for="rpassword">确认密码</label>
+                    <input type="password" name="rpassword" required id="rpassword" class="form-control" placeholder="请再次输入登录密码">
+                </div>
+                
+                {pboot:if({pboot:registercodestatus}==1)}
+                <div class="form-group">
+                    <label for="checkcode">验证码</label>
+                    <div class="row">
+                        <div class="col-6">
+                            <input type="text" name="checkcode" required id="checkcode" class="form-control" placeholder="请输入验证码">
+                        </div>
+                        <div class="col-6">
+                            <img title="点击刷新" style="height:33px;" id="codeimg" src="{pboot:checkcode}" onclick="this.src='{pboot:checkcode}?'+Math.round(Math.random()*10);" />
+                        </div>
+                    </div>
+                </div>
+                {/pboot:if}
+                
+                {pboot:if({pboot:registercodestatus}==2)}
+                <div class="form-group">
+                    <label for="checkcode">邮箱验证码</label>
+                    <div class="row">
+                        <div class="col-6">
+                            <input type="text" name="checkcode" required id="checkcode" class="form-control" placeholder="请输入验证码">
+                        </div>
+                        <div class="col-6">
+                            <span  class="btn btn-info mb-2" onclick="sendEmail();">发送</span>
+                        </div>
+                    </div>
+                </div>
+                {/pboot:if}
+                
+                <div class="form-group">
+                   <button type="submit" class="btn btn-info mb-2">立即注册</button>
+                   <span class="text-secondary ml-3">已有账号？<a href="{pboot:login}">马上登录</a></span>
+                </div>
+            </form>
+        </div>
+        <div class="col-lg-3"></div>
+    </div> 
+</div>
+
+<script>
+
+//ajax注册
+function register(obj){
+  var url='{pboot:register}';
+  var username=$(obj).find("#username").val();
+  var nickname=$(obj).find("#nickname").val();
+  var password=$(obj).find("#password").val();
+  var rpassword=$(obj).find("#rpassword").val();
+  var sex=$(':radio[name="sex"]:checked').val();
+  var checkcode=$(obj).find("#checkcode").val();
+
+  $.ajax({
+    type: 'POST',
+    url: url,
+    dataType: 'json',
+    data: {
+    	username: username,
+    	nickname: nickname,
+    	password: password,
+    	rpassword: rpassword,
+    	sex: sex,
+    	checkcode: checkcode
+    },
+    success: function (response, status) {
+      if(response.code){
+    	 alert("注册成功！");
+		 location.href= response.tourl; 
+      }else{
+    	 $('#codeimg').click();
+    	 alert(response.data);
+      }
+    },
+    error:function(xhr,status,error){
+      alert('返回数据异常！');
+    }
+  });
+  return false;
+}
+
+//发送邮件验证码
+function sendEmail(){
+  var url='{pboot:sendemail}';
+  var username=$("#username").val();
+  if(!username){
+	 $("#username").addClass("is-invalid");
+ 	 $("#usernote").addClass("invalid-feedback");
+ 	 $("#username").removeClass("is-valid");
+ 	 $("#usernote").removeClass("valid-feedback");
+ 	 $("#usernote").text("请输入需要注册的账号！");
+	 return false;
+  }
+  $.ajax({
+    type: 'POST',
+    url: url,
+    dataType: 'json',
+    data: {
+    	to: username
+    },
+    success: function (response, status) {
+      if(response.code){
+    	 alert(response.data);
+      }else{
+    	 alert(response.data);
+      }
+    },
+    error:function(xhr,status,error){
+      alert('返回数据异常！');
+    }
+  });
+  return false;
+}
+
+//检查注册账号
+function isRegister(){
+  var url='{pboot:isregister}';
+  var username=$("#username").val();
+  if(!username){
+	 $("#username").addClass("is-invalid");
+ 	 $("#usernote").addClass("invalid-feedback");
+ 	 $("#username").removeClass("is-valid");
+ 	 $("#usernote").removeClass("valid-feedback");
+ 	 $("#usernote").text("请输入需要注册的账号！");
+	 return false;
+  }
+  $.ajax({
+    type: 'POST',
+    url: url,
+    dataType: 'json',
+    data: {
+    	username: username
+    },
+    success: function (response, status) {
+      if(response.code){//已经被注册
+    	 $("#username").addClass("is-invalid");
+    	 $("#usernote").addClass("invalid-feedback");
+    	 
+    	 $("#username").removeClass("is-valid");
+    	 $("#usernote").removeClass("valid-feedback");
+    	
+      }else{//未被注册
+    	 $("#username").addClass("is-valid");
+    	 $("#usernote").addClass("valid-feedback");
+    	 
+    	 $("#username").removeClass("is-invalid");
+    	 $("#usernote").removeClass("invalid-feedback");
+      }
+      $("#usernote").text(response.data);
+    },
+    error:function(xhr,status,error){
+      alert('返回数据异常！');
+    }
+  });
+  return false;
+}
+</script>
+
+{include file=comm/foot.html}

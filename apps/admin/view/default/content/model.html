@@ -1,0 +1,191 @@
+{include file='common/head.html'}
+
+<div class="layui-body">
+	{if([$list])}
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this" lay-id="t1">模型列表</li>
+	    <li lay-id="t2">模型新增</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	   <div class="layui-tab-item layui-show">
+	  	   		 <table class="layui-table">
+	            	<thead>
+	                    <tr>
+	                    	<th>序号</th>
+	                        <th>名称</th>
+	                        <th>类型</th>
+	                        <th>URL名称</th>
+	                        <th>列表页模板</th>
+	                        <th>详情页模板</th>
+	                        <th>状态</th>
+	                        <th>操作</th>
+	                    </tr>
+	                </thead>
+	                <tbody>
+	                    {foreach $models(key,value)}
+	                    <tr>
+	                    	<td>[num]</td>
+	                        <td>[value->name]</td>
+	                        <td>
+								{if($value->type==1)}单页{/if}
+	                        	{if($value->type==2)}列表{/if}
+							</td>
+							<td>[value->urlname]</td>
+	                        <td>[value->listtpl]</td>
+	                        <td>[value->contenttpl]</td>
+	                        <td>
+	                            {if($value->status)}
+	                            <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/status/value/0}" class="switch"><i class='fa fa-toggle-on' title="点击禁用"></i></a>
+	                            {else}
+	                            <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/status/value/1}" class="switch"><i class='fa fa-toggle-off' title="点击启用"></i></a>
+	                            {/if}
+	                        </td>
+	                        <td>
+	                        	{if(!$value->issystem)}
+	                            	{fun=get_btn_del($value->id)}
+	                            {/if}
+	                            {fun=get_btn_mod($value->id)}
+	                        </td>
+	                    </tr>
+	                    {/foreach}
+	                </tbody>
+	            </table>
+	            <div class="page">{$pagebar}</div>
+	  	   </div>
+	  	   
+	  	   <div class="layui-tab-item">
+	  	   		<form action="{url./admin/Model/add}" method="post" class="layui-form">
+	                <input type="hidden" name="formcheck" value="{$formcheck}" > 
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">模型名称  <span class="layui-text-red">*</span></label>
+	                     <div class="layui-input-block">
+	                     	<input type="text" name="name" required lay-verify="required" placeholder="请输入模型名称" class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                 <div class="layui-form-item">
+	                     <label class="layui-form-label">模型类型  <span class="layui-text-red">*</span></label>
+	                     <div class="layui-input-block">
+	                     	 <select name="type" lay-verify="required">
+		                     	<option value="">请选择模型类型</option>
+		                        <option value="1">单页</option>
+		                        <option value="2">列表</option>
+		                    </select>
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">URL名称 </label>
+	                     <div class="layui-input-block">
+	                     	<input type="text" name="urlname"  placeholder="请输入URL地址名称，如：news" class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">列表页模板</label>
+	                     <div class="layui-input-block">
+	                     	<input type="text" name="listtpl" placeholder="请输入列表页模板" class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">详情页模板</label>
+	                     <div class="layui-input-block">
+	                     	<input type="text" name="contenttpl" placeholder="请输入详情页模板" class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">状态</label>
+	                     <div class="layui-input-block">
+	                     	<input type="radio" name="status" value="1" title="启用" checked>
+							<input type="radio" name="status" value="0" title="禁用">
+	                     </div>
+	                </div>
+	  	   		
+	  	   			<div class="layui-form-item">
+						 <div class="layui-input-block">
+						    <button class="layui-btn" lay-submit>立即提交</button>
+						    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+						 </div>
+					</div>
+
+	  	   		</form>
+	  	   </div>
+	  </div>
+	</div>
+	{/if} 
+	
+	{if([$mod])}
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this">模型修改</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	<div class="layui-tab-item layui-show">
+	  		<form action="{url./admin/Model/mod/id/'.[$get.id].'}{$backurl}" method="post" class="layui-form">
+	  			<input type="hidden" name="formcheck" value="{$formcheck}" > 
+	  			<div class="layui-form-item">
+                     <label class="layui-form-label">模型名称 <span class="layui-text-red">*</span></label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="name" required lay-verify="required" value="{$model->name}" placeholder="请输入模型名称" class="layui-input">
+                     </div>
+                </div>
+                
+                 <div class="layui-form-item">
+                     <label class="layui-form-label">模型类型  <span class="layui-text-red">*</span></label>
+                     <div class="layui-input-block">
+                     	 <select name="type" lay-verify="required">
+	                     	<option value="">请选择模型类型</option>
+	                        <option value="1" {if([$model->type]==1)}selected{/if}>单页</option>
+	                        <option value="2" {if([$model->type]==2)}selected{/if}>列表</option>
+	                    </select>
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">URL名称</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="urlname" value="{$model->urlname}" placeholder="请输入URL地址名称，如：news" class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">列表页模板</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="listtpl" value="{$model->listtpl}" placeholder="请输入列表页模板" class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">详情页模板</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="contenttpl"  value="{$model->contenttpl}" placeholder="请输入详情页模板" class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">状态</label>
+                     <div class="layui-input-block">
+                     	<input type="radio" name="status" value="1" title="启用" {if([$model->status]==1)}checked{/if}>
+						<input type="radio" name="status" value="0" title="禁用" {if([$model->status]==0)}checked{/if}>
+                     </div>
+                </div>
+  	   		
+  	   			<div class="layui-form-item">
+					 <div class="layui-input-block">
+					    <button class="layui-btn" lay-submit>立即提交</button>
+					    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+					    {fun=get_btn_back()}
+					 </div>
+				</div>	
+	  		</form>
+	  	</div>
+	  </div>
+	 </div>
+	{/if} 
+
+</div>
+
+{include file='common/foot.html'}

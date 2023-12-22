@@ -1,0 +1,135 @@
+{include file='common/head.html'}
+<style>
+.huancuna{
+display: inline-block;
+padding: 9px 25px;
+font-weight: 400;
+line-height: 20px;
+text-align: right;
+color:#ffffff;
+background-color: #009688;
+border-radius:2px;
+}
+.huancuna:hover{
+background-color: #33aba0;
+color:#ffffff;
+}
+
+</style>
+<div class="layui-body">
+	
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this" lay-id="t1">更新缓存</li>
+	  </ul>
+	  
+	  <div class="layui-tab-content">
+  	     <div class="layui-tab-item layui-form  layui-show">
+  	     
+  	     	 <div class="layui-form-item">
+                  <label class="layui-form-label">更新首页和栏目</label>
+                  <button type="button" class="layui-btn deletecache" data-type="1">立即更新首页和栏目</button>
+             </div>
+           
+     		 <div class="layui-form-item">
+                  <label class="layui-form-label">更新栏目分页</label>
+                  <div class="layui-input-inline">
+	                  <select name="scode">
+	                      <option value="0" >全部栏目</option>
+	                      {$sort_select}
+	                  </select>
+                  </div>
+                  <button type="button" class="layui-btn deletecache" data-type="2">立即更新栏目页</button>
+             </div>
+             
+             <div class="layui-form-item">
+                  <label class="layui-form-label">更新内容页</label> &nbsp;&nbsp;起始ID
+				  <input type="text" id="idzuixiao" value="1" placeholder="最小ID"  class="layui-input input" style="width:15%; display:inline;">
+				  &nbsp;&nbsp;结束ID
+				  <input type="text" id="idzuida" value="10" placeholder="最大ID"  class="layui-input input" style="width:15%; display:inline;">
+                  <button type="button" class="layui-btn deletecache" data-type="3">立即更新内容页</button>
+             </div>
+			 <div class="layui-form-item">
+                  <label class="layui-form-label">更新系统缓存</label>
+				  <a href="{url./admin/Index/clearOnlySysCache}" class="ajaxlink huancuna">清理系统缓存</a> 
+
+             </div>
+			 <div class="layui-form-item">
+                  <label class="layui-form-label">更新所有缓存</label>
+				  <a href="{url./admin/Index/clearCache}" class="ajaxlink huancuna">清理所有缓存</a> 
+
+             </div>
+			 <div class="layui-form-item" style="padding-left:20px; line-height:24px;">
+                  功能说明：
+				  <br />1、《更新首页和栏目》：随便使用。
+				  <br />2、《更新栏目分页》：每天发布量<200篇。7天一次。每天发布量<500篇。3天只需使用一次。每天发布量>1000篇。1天只需使用一次。
+				  <br />3、《更新内容页》：根据需要去更新，无全局更新永远不使用。
+				  <br />4、《更新系统缓存》：随便使用。
+				  <br />5、《更新所有缓存》：如果数据量小，随便使用。如果数据量大，无全局更新永远不要使用。
+				  <br />6、一定要做好301，保证链接的唯一性。
+             </div>
+
+  	     </div>
+	   </div>
+	</div>
+	
+</div>
+
+ <script>
+ $(".deletecache").on("click",function(){
+	 var type=$(this).data("type");
+	 var scode=$(this).parents(".layui-form-item").find("select").val();
+	 var idzuixiao=$("#idzuixiao").val();
+	 var idzuida=$("#idzuida").val();
+	 
+	 var lyindex;
+	 layui.use('layer', function(){
+		var layer = layui.layer;
+		lyindex = layer.open({
+			type: 1,
+			title:'温馨提示',
+			closeBtn:0,
+			content: '<div style="padding:20px 10px;"><img src="{APP_THEME_DIR}/layui/css/modules/layer/default/loading-0.gif">正在更新...<div>' 
+		});
+	 });
+	
+	var url= "?p=/DeleCache/index";
+	$.ajax({
+   	  type: 'GET',
+   	  url: url,
+   	  data:{
+   		  type:type,
+   		  scode:scode,
+		  idzuixiao:idzuixiao,
+		  idzuida:idzuida
+   	  },
+   	  dataType: 'json',
+   	  success: function (response, status) {
+   		  if(response.code==1){
+   			 layer.close(lyindex);
+      		 layer.msg(response.data, {icon: 1});
+   		  }else{
+   			layer.close(lyindex);
+   			layer.open({
+	  			  type: 0,
+	  			  title:'错误提示：',
+	  			  closeBtn:0,
+	  			  btn: ['确认'],
+	  			  content: response.data,
+	  			  yes: function(index, layero){
+	  				  layer.close(index); 
+	  			  }
+	  		 });
+   		  }
+        },
+        error:function(xhr,status,error){
+     	  layer.close(lyindex);
+       	  layer.msg("执行更新发生错误!", {icon: 5});
+        }
+   	});
+	
+ });
+ 
+ </script>
+
+{include file='common/foot.html'}

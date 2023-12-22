@@ -1,0 +1,113 @@
+{include file='common/head.html'}
+
+<div class="layui-body">
+
+	<div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this">公司信息</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	<div class="layui-tab-item layui-show">
+	  		<form action="{url./admin/Company/mod}" method="post">
+	  			<input type="hidden" name="formcheck" value="{$formcheck}" > 
+	  			<div class="layui-form-item">
+                     <label class="layui-form-label">公司名称</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="name" value="{$companys->name}" placeholder="请输入公司名称"  class="layui-input">
+                     </div>
+                </div>
+                
+	  			<div class="layui-form-item">
+                     <label class="layui-form-label">公司地址</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="address" value="{$companys->address}" placeholder="请输入公司地址"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">邮政编码</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="postcode" value="{$companys->postcode}" placeholder="请输入邮政编码"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">联系人</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="contact" value="{$companys->contact}" placeholder="请输入联系人"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">手机号码</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="mobile" value="{$companys->mobile}" placeholder="请输入手机号码"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">电话号码</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="phone" value="{$companys->phone}" placeholder="请输入电话号码"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">传真号码</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="fax" value="{$companys->fax}" placeholder="请输入传真号码"  class="layui-input">
+                     </div>
+                </div>
+
+                <div class="layui-form-item">
+                     <label class="layui-form-label">电子邮箱</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="email" value="{$companys->email}" placeholder="请输入电子邮箱"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">QQ号码</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="qq" value="{$companys->qq}" placeholder="请输入QQ号码"  class="layui-input">
+                     </div>
+                </div>
+
+                <div class="layui-form-item">
+                     <label class="layui-form-label">微信图标</label>
+                     <div class="layui-input-inline">
+                     	<input type="text" name="weixin" id="weixin" value="{$companys->weixin}" placeholder="请上传微信图标"  class="layui-input">
+                     </div>
+                     <button type="button" class="layui-btn upload" data-des="weixin">
+					 	 <i class="layui-icon">&#xe67c;</i>上传图片
+					 </button>
+					 <div id="weixin_box" class="pic"><dl><dt>{if(@[$companys->weixin])}<img src="{SITE_DIR}{$companys->weixin}" data-url="{$companys->weixin}"></dt><dd>删除</dd></dl>{/if}</div>
+                </div>
+                
+                <div class="layui-form-item">
+                     <label class="layui-form-label">营业执照代码</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="blicense" value="{$companys->blicense}" placeholder="请输入营业执照代码"  class="layui-input">
+                     </div>
+                </div>
+
+                <div class="layui-form-item">
+                     <label class="layui-form-label">其它信息</label>
+                     <div class="layui-input-block">
+                     	<input type="text" name="other" value="{$companys->other}" placeholder="请输入其它信息"  class="layui-input">
+                     </div>
+                </div>
+                
+                <div class="layui-form-item">
+					 <div class="layui-input-block">
+					    <button class="layui-btn" lay-submit>立即提交</button>
+					    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+					 </div>
+				</div>
+	  		</form>
+	  	</div>
+	  </div>
+	</div>
+</div>
+
+{include file='common/foot.html'}

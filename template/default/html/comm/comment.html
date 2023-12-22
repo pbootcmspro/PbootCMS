@@ -1,0 +1,164 @@
+{pboot:if({pboot:commentstatus})}
+<div class="container">
+	<div class="shadow-sm p-3 my-5 bg-white rounded">
+		<h4>发表评论：</h4>
+		<form class="my-4" onsubmit="return submitcomment(this);" data-action="{pboot:commentaction}" >
+		        <div class="form-group">
+		            <textarea name="comment" id="comment" class="form-control" placeholder="请输入评论内容"></textarea>
+		        </div>
+		        
+		        {pboot:2if({pboot:commentcodestatus})}
+		        <div class="form-group">
+		            <div class="row">
+		                <div class="col-6 col-md-3">
+		                    <input type="text" name="checkcode" required id="checkcode" class="form-control" placeholder="请输入验证码">
+		                </div>
+		                <div class="col-6  col-md-3">
+		                    <img title="点击刷新" class="codeimg"  style="height:33px;" src="{pboot:checkcode}" onclick="this.src='{pboot:checkcode}?'+Math.round(Math.random()*10);" />
+		                </div>
+		            </div>
+		        </div>
+		        {/pboot:2if}
+		        
+		        <div class="form-group">
+		           <button type="submit" class="btn btn-info mb-2">提交评论</button>
+		        </div>
+		    </form>
+		    
+		    
+		    <h4>评论记录：</h4>
+		      <a name="comment"></a>
+		     {pboot:comment contentid={content:id} num=20}
+		    <div class="media border-bottom pb-3 pt-3">
+			  <img class="mr-3" src="[comment:headpic]" height="25">
+			  <div class="media-body">
+			    <h6 class="mt-0">
+			    	<strong>[comment:nickname]</strong> 
+			    	<small style="color:#999">[comment:date]</small>
+			    </h6>
+			    <p>[comment:comment] 
+			    	<span class="badge badge-light text-secondary font-weight-normal replybtn"  data-action="[comment:replyaction]">回复</span>
+			    </p>
+			    
+			    {pboot:commentsub} <!-- 调用子评论 -->
+			    <div class="media mt-3 border-top-dashed pt-3">
+			      <img class="mr-3" src="[commentsub:headpic]" height="25">
+			      <div class="media-body">
+			        <h6 class="mt-0"><strong>[commentsub:nickname]</strong> <small style="color:#999">[commentsub:date]</small></h6>
+			        <p>
+			        	@[commentsub:pnickname] [commentsub:comment] 
+			        	<span class="badge badge-light text-secondary font-weight-normal replybtn"  data-action="[commentsub:replyaction]">回复</span>
+			        </p>
+			      </div>
+			    </div>
+			    {/pboot:commentsub}
+			    
+			  </div>
+			</div>
+		  {/pboot:comment}
+		  
+		  <!-- 分页 -->
+			{pboot:2if({page:rows}>0)}
+			   <nav aria-label="page navigation" class="my-4">
+			     <div class="pagination justify-content-center">
+			     	<a class="page-item page-link" href="{page:index}#comment">首页</a>
+			     	<a class="page-item page-link" href="{page:pre}#comment">上一页</a>
+			      	<a class="page-item page-link" href="{page:next}#comment">下一页</a>
+			      	<a class="page-item page-link" href="{page:last}#comment">尾页</a>
+			     </div>
+			   </nav>	
+			{2else}
+			   	<div class="text-center my-5 text-secondary">未查询到任何数据！</div>
+			{/pboot:2if}
+	</div>
+</div>
+
+<!-- 评论回复弹框 -->
+<div class="modal" tabindex="-1" role="dialog" id="reply">
+  <div class="modal-dialog">
+    <div class="modal-content">
+    
+      <div class="modal-header">
+        <h5 class="modal-title">回复评论：</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      
+      <form  onsubmit="return submitcomment(this);" data-action=""  id="replyform">
+	      <div class="modal-body">
+		         <div class="form-group">
+		             <textarea name="comment" id="comment" class="form-control" placeholder="请输入评论内容"></textarea>
+		         </div>
+		         {pboot:2if({pboot:commentcodestatus})}
+		         <div class="form-group">
+		             <div class="row">
+		                 <div class="col-6">
+		                     <input type="text" name="checkcode" required id="checkcode" class="form-control" placeholder="请输入验证码">
+		                 </div>
+		                 <div class="col-6">
+		                     <img title="点击刷新" class="codeimg" style="height:33px;" src="{pboot:checkcode}" onclick="this.src='{pboot:checkcode}?'+Math.round(Math.random()*10);" />
+		                 </div>
+		             </div>
+		         </div>
+		         {/pboot:2if}
+	      </div>
+	      <div class="modal-footer">
+	        <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+	        <button type="submit" class="btn btn-info">提交评论</button>
+	      </div>
+       </form>
+    </div>
+  </div>
+</div>
+
+
+<script>
+
+//评论回复弹框
+$('.replybtn').on("click",function(){ 
+	var url=$(this).data("action");
+	$("#reply").modal("show");	
+	$("#replyform").data("action",url);
+});
+
+//提交评论
+function submitcomment(obj){
+  var url= $(obj).data("action");
+  var comment=$(obj).find("#comment").val();
+  var checkcode=$(obj).find("#checkcode").val();
+  
+  $.ajax({
+    type: 'POST',
+    url: url,
+    dataType: 'json',
+    data: {
+    	comment: comment,
+    	checkcode: checkcode
+    },
+    success: function (response, status) {
+      if(response.code){
+    	 alert(response.data);
+		 $(obj)[0].reset(); 
+		 $(".modal").modal("hide");	
+		 window.location.reload()
+      }else{
+    	 if(response.tourl!=""){
+    		 if(confirm(response.data+'是否立即跳转登录？')){
+    			 location.href=response.tourl; 
+   	   	     }
+    	 }
+    	 $('.codeimg').click();//更新验证码
+      }
+    },
+    error:function(xhr,status,error){
+      alert('返回数据异常！');
+    }
+  });
+  return false;
+}
+</script>
+{/pboot:if}
+
+
+

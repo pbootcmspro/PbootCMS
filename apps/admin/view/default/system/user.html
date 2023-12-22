@@ -1,0 +1,215 @@
+{include file='common/head.html'}
+
+<div class="layui-body">
+    {if([$list])}
+    <div class="layui-tab layui-tab-brief" lay-filter="tab">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this" lay-id="t1">用户列表</li>
+	    <li lay-id="t2">用户新增</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	   <div class="layui-tab-item layui-show">
+	  	   		<form action="{url./admin/User/index}" method="get" class="layui-form">
+		  	   		<div class="layui-form-item nospace">
+		  	   			<div class="layui-input-inline">
+		  	   			  {$pathinfo}
+					       <select name="field" lay-verify="required">
+	                            <option value="ucode" {if(get('field')=='ucode')}selected="selected" {/if} >用户编码</option>
+								<option value="username" {if(get('field')=='username')}selected="selected" {/if}>用户名</option>
+	                       </select>
+					    </div>
+	                     <div class="layui-input-inline">
+	                     	<input type="text" name="keyword"  value="{$get.keyword}"  placeholder="请输入搜索关键字" class="layui-input">
+	                     </div>
+	                     <div class="layui-input-inline">
+	                     	<button class="layui-btn" lay-submit>搜索</button>
+	                     	<a class="layui-btn layui-btn-primary"  href="{url./admin/User/index}">清除搜索</a>
+	                     </div>
+	                </div>
+                </form>
+	                
+	  	   		<table class="layui-table">
+	  	   			 <tr>
+	                    <th>序号</th>
+	                    <th>用户编码</th>
+	                    <th>用户名</th>
+	                    <th>真实名字</th>
+	                    <th>状态</th>
+	                    <th>用户角色</th>
+	                    <th>登录次数</th>
+	                    <th>最后登录IP</th>
+	                    <th>最后登录时间</th>
+	                    <th>操作</th>
+	                </tr>
+	                
+	                {foreach $users(key,value,num)}
+	                <tr>
+	                    <td>[num]</td>
+	                    <td>[value->ucode]</td>
+	                    <td>[value->username]</td>
+	                    <td>[value->realname]</td>
+	                    <td>
+	                    	{if($value->ucode=='10001')}
+	                    		<i class='fa fa-toggle-on' title="超级管理员不可操作"></i>
+	                    	{else}
+		                        {if($value->status)}
+		                        <a href="{url./admin/'.C.'/mod/ucode/'.$value->ucode.'/field/status/value/0}"><i class='fa fa-toggle-on' title="点击关闭"></i></a>
+		                        {else}
+		                        <a href="{url./admin/'.C.'/mod/ucode/'.$value->ucode.'/field/status/value/1}"><i class='fa fa-toggle-off' title="点击开启"></i></a>
+		                        {/if}
+	                        {/if}
+	                    </td>
+	                    <td>[value->rolename]</td>
+	                    <td>[value->login_count]</td>
+	                    <td>{fun=@long2ip($value->last_login_ip)}</td>
+	                    <td>[value->update_time]</td>
+	                    <td>
+	                    	{if($value->ucode=='10001')}
+	                        	不可操作
+	                        {else}
+	                        	{fun=get_btn_del($value->ucode,'ucode')}
+	                        	{fun=get_btn_mod($value->ucode,'ucode')}
+	                        {/if}
+	                        
+	                    </td>
+	                </tr>
+	                {/foreach}
+	  	   		</table>
+	  	   		<div class="page">{$pagebar}</div>
+	  	   	</div>
+	  	   	
+	  	   	<div class="layui-tab-item">
+	  	   		<form action="{url./admin/User/add}" method="post" class="layui-form">
+	  	   			<input type="hidden" name="formcheck" value="{$formcheck}" > 
+	  	   			<div class="layui-form-item">
+	                     <label class="layui-form-label">用户账号</label>
+	                     <div class="layui-input-block">
+	                     	<input type="text" name="username" required  lay-verify="required" placeholder="请输入用户账号" class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">真实姓名</label>
+	                     <div class="layui-input-block">
+	                     	<input type="text" name="realname"  placeholder="请输入真实姓名" class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">用户密码</label>
+	                     <div class="layui-input-block">
+	                     	<input type="password" name="password" required lay-verify="required" placeholder="请输入用户密码" autocomplete="off" class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">确认密码</label>
+	                     <div class="layui-input-block">
+	                     	<input type="password" name="rpassword" required lay-verify="required" placeholder="请输入确认密码" autocomplete="off" class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">账号状态</label>
+	                     <div class="layui-input-block">
+	                     	<input type="radio" name="status" value="1" title="启用" checked>
+							<input type="radio" name="status" value="0" title="禁用">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">用户角色</label>
+	                     <div class="layui-input-block">
+	                     	<select name="roles[]">
+		                        {foreach $roles(key,value)}
+		                            <option value="[value->rcode]">[value->name]</option>
+		                        {/foreach}
+		                    </select>
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+						 <div class="layui-input-block">
+						    <button class="layui-btn" lay-submit>立即提交</button>
+						    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+						 </div>
+				    </div>
+	  	   		</form>
+	  	   	</div>
+	  </div>
+	</div>
+    {/if}
+
+    {if([$mod])}
+    
+    <div class="layui-tab layui-tab-brief" lay-filter="docDemoTabBrief">
+	  <ul class="layui-tab-title">
+	    <li class="layui-this">用户修改</li>
+	  </ul>
+	  <div class="layui-tab-content">
+	  	   <div class="layui-tab-item layui-show">
+	  	   		 <form action="{url./admin/User/mod/ucode/'.[$get.ucode].'}{$backurl}" method="post" class="layui-form">
+	  	   		 	<input type="hidden" name="formcheck" value="{$formcheck}" > 
+	  	   		 	<div class="layui-form-item">
+	                     <label class="layui-form-label">用户账号</label>
+	                     <div class="layui-input-block">
+	                     	<input type="text" name="username" required  lay-verify="required" value="{$user->username}" placeholder="请输入用户账号" class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">真实姓名</label>
+	                     <div class="layui-input-block">
+	                     	<input type="text" name="realname" value="{$user->realname}" placeholder="请输入真实姓名" class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">用户密码</label>
+	                     <div class="layui-input-block">
+	                     	<input type="password" name="password"  placeholder="请输入用户密码" autocomplete="off" class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">确认密码</label>
+	                     <div class="layui-input-block">
+	                     	<input type="password" name="rpassword"  placeholder="请输入确认密码" autocomplete="off" class="layui-input">
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">账号状态</label>
+	                     <div class="layui-input-block">
+	                     	<input type="radio" name="status" value="1" title="启用" {if([$user->status]==1)}checked{/if}>
+							<input type="radio" name="status" value="0" title="禁用" {if([$user->status]==0)}checked{/if}>
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+	                     <label class="layui-form-label">用户角色</label>
+	                     <div class="layui-input-block">
+	                     	<select name="roles[]">
+		                        {foreach $roles(key,value)}
+		                            <option value="[value->rcode]" {if(in_array($value->rcode,[$user->rcodes]))}selected{/if}>[value->name]</option>
+		                        {/foreach}
+		                    </select>
+	                     </div>
+	                </div>
+	                
+	                <div class="layui-form-item">
+						 <div class="layui-input-block">
+						    <button class="layui-btn" lay-submit>立即提交</button>
+						    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+						    {fun=get_btn_back()}
+						 </div>
+				    </div>
+	  	   		 </form>
+	  	   </div>
+	  </div>
+	</div>
+    {/if}
+ 
+</div>
+
+{include file='common/foot.html'}
