@@ -1214,7 +1214,7 @@ class ParserController extends Controller
                                     $order = 'a.id DESC,a.istop DESC,a.isrecommend DESC,a.isheadline DESC,a.sorting ASC,a.date DESC';
                                     break;
                                 case 'date':
-                                    $order = 'a.date DESC,a.istop DESC,a.isrecommend DESC,a.isheadline DESC,a.sorting ASC,a.id DESC';
+                                    $order = 'a.istop DESC,a.date DESC,a.isrecommend DESC,a.isheadline DESC,a.sorting ASC,a.id DESC';
                                     break;
                                 case 'sorting':
                                     $order = 'a.sorting ASC,a.istop DESC,a.isrecommend DESC,a.isheadline DESC,a.date DESC,a.id DESC';

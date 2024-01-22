@@ -5,9 +5,13 @@
     <div class="swiper-wrapper">
     	{pboot:slide num=5 gid=1}
         	<div class="swiper-slide">
-        		<a href="[slide:link]">
-        			<img src="[slide:src]" class="d-block w-100" >
-        		</a>
+            {pboot:if([slide:link] != '')}
+              <a href="[slide:link]">
+                <img src="[slide:src]" class="d-block w-100 slideshow" >
+              </a>
+            {else}
+              <img src="[slide:src]" class="d-block w-100 slideshow" >
+            {/pboot:if}
         		<div class="container">
 			    	<div class="position-absolute text-light" style="top:30%;">
 						<h1 class="fs-20 fs-sm-32 wow slideInUp">[slide:title]</h1>

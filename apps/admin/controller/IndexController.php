@@ -108,6 +108,8 @@ class IndexController extends Controller
         // 就收数据
         $username = post('username');
         $password = post('password');
+        $checkcode = post('checkcode');
+        $formcheck = post('formcheck');
 
         if (!preg_match('/^[\x{4e00}-\x{9fa5}\w\-\.@]+$/u', $username)) {
             json(0, '用户名含有不允许的特殊字符！');
@@ -119,6 +121,14 @@ class IndexController extends Controller
 
         if (!$password) {
             json(0, '密码不能为空！');
+        }
+
+        if (!$checkcode) {
+            json(0, '验证码不能为空！');
+        }
+
+        if (!$formcheck) {
+            json(0, '表单提交校验失败,请刷新后重试！');
         }
 
         if (!!$time = $this->checkLoginBlack()) {
