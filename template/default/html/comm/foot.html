@@ -106,6 +106,9 @@
 <script src="{pboot:sitetplpath}/bootstrap/js/bootstrap.min.js"></script>
 <script src="{pboot:sitetplpath}/js/wow.min.js"></script>
 <script src="{pboot:sitetplpath}/js/aoyun.js?v=v1.2.2"></script>
+{if(USE_POLYFILL==1)}
+<script src="https://cdn.polyfill.io/v3/polyfill.min.js"></script>
+{/if}
 <script>
 //ajax提交表单
 function subform(obj){

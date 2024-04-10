@@ -136,6 +136,7 @@ INSERT INTO `ay_config` (`id`,`name`,`value`,`type`,`sorting`,`description`) VAL
 ('41','ip_deny','','2','255','IP黑名单'),
 ('42','ip_allow','','2','255','IP白名单'),
 ('43','url_index_404','0','2','255','跳转404');
+('44','use_polyfill','0','2','255','是否使用PolyFill');
 
 -- --------------------------------------------------------
 

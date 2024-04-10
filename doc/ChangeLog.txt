@@ -3,6 +3,9 @@
 标签手册：https://www.pbootcms.com/docs.html
 ##########################################
 
+PbootCMS V3.2.7 build 2024-04-10
+1、后台加入Polyfill.js加载选项
+
 PbootCMS V3.2.6 build 2024-01-22
 1. 404页面加入返回首页功能。
 2. 修复列表页list排序错误。

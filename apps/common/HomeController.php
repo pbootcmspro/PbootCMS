@@ -21,6 +21,9 @@ class HomeController extends Controller
         
         // 从配置文件读取cmsname参数来设置系统名称
         define("CMSNAME", $this->config("cmsname") ?: 'PbootCMS');
+
+        // 从配置文件读取是否自动加载Polyfill
+        define("USE_POLYFILL", Config::get('use_polyfill'));
         
         // 站点关闭检测
         if (! ! $close_site = Config::get('close_site')) {
