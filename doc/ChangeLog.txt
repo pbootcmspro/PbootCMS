@@ -3,6 +3,9 @@
 标签手册：https://www.pbootcms.com/docs.html
 ##########################################
 
+PbootCMS V3.2.9 build 2024-08-01
+1、修正Polyfill.js加载地址
+
 PbootCMS V3.2.8 build 2024-06-30
 1、修正Polyfill.js加载地址
 
