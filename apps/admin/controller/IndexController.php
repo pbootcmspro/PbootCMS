@@ -123,7 +123,9 @@ class IndexController extends Controller
             json(0, '密码不能为空！');
         }
 
-        if (!$checkcode) {
+        if ($this->config('admin_check_code') &&
+            !$checkcode
+        ) {
             json(0, '验证码不能为空！');
         }
 
