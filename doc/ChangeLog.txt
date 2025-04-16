@@ -2,6 +2,8 @@
 官方网站：https://www.pbootcms.com
 标签手册：https://www.pbootcms.com/docs.html
 ##########################################
+PbootCMS V3.2.11 build 2025-04-16
+1、下架Polyfill功能
 
 PbootCMS V3.2.10 build 2024-09-24
 1、修正后台关闭验证码后，依旧提示输入验证码
