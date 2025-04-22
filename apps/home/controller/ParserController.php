@@ -3050,13 +3050,24 @@ class ParserController extends Controller
                 } else {
                     $receive = $_GET;
                 }
+                
+                // 定义允许的字段白名单
+                $allowed_fields = array(
+                    'id', 'acode', 'scode', 'subscode', 'title', 'titlecolor', 'subtitle', 
+                    'filename', 'author', 'source', 'outlink', 'date', 'ico', 'pics', 
+                    'picstitle', 'content', 'tags', 'enclosure', 'keywords', 'description', 
+                    'sorting', 'status', 'istop', 'isrecommend', 'isheadline', 'visits', 
+                    'likes', 'oppose', 'create_user', 'update_user', 'create_time', 
+                    'update_time', 'gtype', 'gid', 'gnote'
+                );
 
                 foreach ($receive as $key => $value) {
                     if (!!$value = request($key, 'vars')) {
                         if ($key == 'title') {
                             $key = 'a.title';
                         }
-                        if (preg_match('/^[\w\-\.]+$/', $key)) { // 带有违规字符时不带入查询
+                        // 只允许白名单中的字段，并且检查字段格式
+                        if (in_array($key, $allowed_fields) && preg_match('/^[\w\-\.]+$/', $key)) {
                             $where3[$key] = $value;
                         }
                     }
