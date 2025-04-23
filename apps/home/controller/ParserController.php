@@ -24,6 +24,15 @@ class ParserController extends Controller
 
     protected $var = array();
 
+    protected $allowed_fields = array(
+        'id', 'acode', 'scode', 'subscode', 'title', 'titlecolor', 'subtitle', 
+        'filename', 'author', 'source', 'outlink', 'date', 'ico', 'pics', 
+        'picstitle', 'content', 'tags', 'enclosure', 'keywords', 'description', 
+        'sorting', 'status', 'istop', 'isrecommend', 'isheadline', 'visits', 
+        'likes', 'oppose', 'create_user', 'update_user', 'create_time', 
+        'update_time', 'gtype', 'gid', 'gnote'
+    );
+
     public function __construct()
     {
         $this->model = new ParserModel();
@@ -1297,7 +1306,7 @@ class ParserController extends Controller
                 $where1 = array();
                 if ($filter) {
                     $filter = explode('|', $filter);
-                    if (count($filter) == 2) {
+                    if (count($filter) == 2 && in_array($filter[0], $this->allowed_fields)) {
                         $filter_arr = explode(',', $filter[1]);
                         if ($filter[0] == 'title') {
                             $filter[0] = 'a.title';
@@ -3050,16 +3059,6 @@ class ParserController extends Controller
                 } else {
                     $receive = $_GET;
                 }
-                
-                // 定义允许的字段白名单
-                $allowed_fields = array(
-                    'id', 'acode', 'scode', 'subscode', 'title', 'titlecolor', 'subtitle', 
-                    'filename', 'author', 'source', 'outlink', 'date', 'ico', 'pics', 
-                    'picstitle', 'content', 'tags', 'enclosure', 'keywords', 'description', 
-                    'sorting', 'status', 'istop', 'isrecommend', 'isheadline', 'visits', 
-                    'likes', 'oppose', 'create_user', 'update_user', 'create_time', 
-                    'update_time', 'gtype', 'gid', 'gnote'
-                );
 
                 foreach ($receive as $key => $value) {
                     if (!!$value = request($key, 'vars')) {
@@ -3067,7 +3066,7 @@ class ParserController extends Controller
                             $key = 'a.title';
                         }
                         // 只允许白名单中的字段，并且检查字段格式
-                        if (in_array($key, $allowed_fields) && preg_match('/^[\w\-\.]+$/', $key)) {
+                        if (in_array($key, $this->allowed_fields) && preg_match('/^[\w\-\.]+$/', $key)) {
                             $where3[$key] = $value;
                         }
                     }
