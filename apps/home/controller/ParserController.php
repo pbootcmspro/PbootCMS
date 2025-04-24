@@ -1308,7 +1308,7 @@ class ParserController extends Controller
                 $where1 = array();
                 if ($filter) {
                     $filter = explode('|', $filter);
-                    if (count($filter) == 2 && in_array($filter[0], $this->$allowed_tags_fields)) {
+                    if (count($filter) == 2 && in_array($filter[0], $this->allowed_tags_fields)) {
                         $filter_arr = explode(',', $filter[1]);
                         if ($filter[0] == 'title') {
                             $filter[0] = 'a.title';
