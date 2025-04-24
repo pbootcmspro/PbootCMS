@@ -32,6 +32,8 @@ class ParserController extends Controller
         'likes', 'oppose', 'create_user', 'update_user', 'create_time', 
         'update_time', 'gtype', 'gid', 'gnote'
     );
+    protected $allowed_tags_fields = array('title','isico','ispics','istop','isrecommend','isheadline');
+
 
     public function __construct()
     {
@@ -1306,7 +1308,7 @@ class ParserController extends Controller
                 $where1 = array();
                 if ($filter) {
                     $filter = explode('|', $filter);
-                    if (count($filter) == 2 && in_array($filter[0], $this->allowed_fields)) {
+                    if (count($filter) == 2 && in_array($filter[0], $this->$allowed_tags_fields)) {
                         $filter_arr = explode(',', $filter[1]);
                         if ($filter[0] == 'title') {
                             $filter[0] = 'a.title';
