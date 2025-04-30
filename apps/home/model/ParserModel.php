@@ -334,6 +334,7 @@ class ParserModel extends Model
                 'a.scode',
                 'a.subscode',
                 'a.title',
+		'a.subtitle',
                 'a.filename',
                 'a.outlink',
                 'a.date',
