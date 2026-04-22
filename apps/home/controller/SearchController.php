@@ -34,7 +34,7 @@ class SearchController extends Controller
         
         $content = parent::parser($this->htmldir . $searchtpl); // 框架标签解析
         $content = $this->parser->parserBefore($content); // CMS公共标签前置解析
-        $pagetitle = get('keyword', 'var') ? get('keyword', 'var') . '-' : '';
+        $pagetitle = get('keyword', 'var') ? htmlspecialchars(get('keyword', 'var'), ENT_QUOTES, 'UTF-8') . '-' : '';
         $content = str_replace('{pboot:pagetitle}', $this->config('search_title') ?: $pagetitle . '搜索结果-{pboot:sitetitle}-{pboot:sitesubtitle}', $content);
         $content = $this->parser->parserPositionLabel($content, 0, '搜索', Url::home('search')); // CMS当前位置标签解析
         $content = $this->parser->parserSpecialPageSortLabel($content, - 1, '搜索结果', Url::home('search')); // 解析分类标签

@@ -218,7 +218,7 @@ class Parser
     {
         $pattern = '/\{\$post\.([\w\-]+)\}/';
         if (preg_match($pattern, self::$content)) {
-            self::$content = preg_replace($pattern, "<?php echo post('$1');?>", self::$content);
+            self::$content = preg_replace($pattern, "<?php echo htmlspecialchars(post('$1'), ENT_QUOTES, 'UTF-8');?>", self::$content);
         }
     }
 
@@ -227,7 +227,7 @@ class Parser
     {
         $pattern = '/\{\$get\.([\w\-]+)\}/';
         if (preg_match($pattern, self::$content)) {
-            self::$content = preg_replace($pattern, "<?php echo get('$1');?>", self::$content);
+            self::$content = preg_replace($pattern, "<?php echo htmlspecialchars(get('$1'), ENT_QUOTES, 'UTF-8');?>", self::$content);
         }
     }
 

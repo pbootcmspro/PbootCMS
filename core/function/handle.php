@@ -413,6 +413,58 @@ function decode_string($string)
     return $string;
 }
 
+// 过滤HTML内容中的危险标签和属性，保留安全的HTML标签
+// 用于富文本内容字段（如文章content），允许显示格式化内容但阻止XSS攻击
+function filter_html($html)
+{
+    if (! $html || ! is_string($html))
+        return $html;
+
+    // 1. 移除所有危险标签（script, iframe, object, embed, applet, form, base, meta, link, svg等）
+    $dangerous_tags = array(
+        'script', 'iframe', 'object', 'embed', 'applet', 'form', 'input',
+        'button', 'select', 'textarea', 'base', 'meta', 'link', 'svg',
+        'math', 'noscript', 'template', 'frame', 'frameset', 'body', 'head'
+    );
+    foreach ($dangerous_tags as $tag) {
+        // 移除开标签、闭标签和自闭合标签
+        $html = preg_replace('/<' . $tag . '[\s>\/][^>]*>/i', '', $html);
+        $html = preg_replace('/<\/' . $tag . '[^>]*>/i', '', $html);
+        $html = preg_replace('/<' . $tag . '\s*\/?>/i', '', $html);
+    }
+
+    // 2. 移除所有 on 开头的事件属性（onclick, onerror, onload, onmouseover等）
+    $html = preg_replace('/\s+on\w+\s*=\s*(["\']?)[^>"\']*\1/i', '', $html);
+    // 处理无引号的事件属性
+    $html = preg_replace('/\s+on\w+\s*=\s*[^\s>]+/i', '', $html);
+
+    // 3. 移除 javascript: 和 vbscript: 协议
+    $html = preg_replace('/href\s*=\s*(["\']?)\s*javascript\s*:[^>"\']*\1/i', 'href="#"', $html);
+    $html = preg_replace('/href\s*=\s*(["\']?)\s*vbscript\s*:[^>"\']*\1/i', 'href="#"', $html);
+    $html = preg_replace('/src\s*=\s*(["\']?)\s*javascript\s*:[^>"\']*\1/i', '', $html);
+    $html = preg_replace('/src\s*=\s*(["\']?)\s*vbscript\s*:[^>"\']*\1/i', '', $html);
+    // 处理无引号的协议
+    $html = preg_replace('/href\s*=\s*javascript\s*:[^\s>]+/i', 'href="#"', $html);
+    $html = preg_replace('/src\s*=\s*javascript\s*:[^\s>]+/i', '', $html);
+
+    // 4. 移除 data: 协议中的危险内容（仅允许图片data URI）
+    $html = preg_replace('/src\s*=\s*(["\']?)\s*data\s*:(?!image\/(png|jpeg|jpg|gif|webp|bmp))[^>"\']*\1/i', '', $html);
+
+    // 5. 移除 style 属性中的表达式（expression, url, import等）
+    $html = preg_replace('/\s+style\s*=\s*(["\']?)[^>"\']*(?:expression|url\s*\(|@import|behavior\s*:\s*url)[^>"\']*\1/i', '', $html);
+
+    // 6. 移除 XML相关危险内容
+    $html = preg_replace('/<\?xml[^>]*\?>/i', '', $html);
+    $html = preg_replace('/<!\[CDATA\[/i', '', $html);
+    $html = preg_replace('/\]\]>/i', '', $html);
+
+    // 7. 移除HTML注释中的条件注释（IE条件注释可执行代码）
+    $html = preg_replace('/<!--\[if\s/i', '&lt;!--[if ', $html);
+    $html = preg_replace('/<!\[endif\]-->/i', '<![endif]--&gt;', $html);
+
+    return $html;
+}
+
 // 字符反转义斜杠，支持字符串、数组、对象
 function decode_slashes($string)
 {
