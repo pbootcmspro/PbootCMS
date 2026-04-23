@@ -169,6 +169,7 @@ class AdminController extends Controller
             '/admin/Index/loginOut',
             '/admin/Index/ucenter',
             '/admin/Index/area',
+            //'/admin/Index/clearSession', // 清理会话
         );
 
         $current_path = '/' . M . '/' . C . '/' . F;
