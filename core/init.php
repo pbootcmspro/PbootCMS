@@ -73,6 +73,8 @@ defined('CONF_PATH') ?: define('CONF_PATH', ROOT_PATH . '/config');
 
 // 定义静态文件目录
 defined('STATIC_DIR') ?: define('STATIC_DIR', SITE_DIR . '/static');
+// 定义核心数据文件目录
+defined('DATA_DIR') ?: define('DATA_DIR', SITE_DIR . '/data');
 
 // 载入基础函数库
 require CORE_PATH . '/function/handle.php';
