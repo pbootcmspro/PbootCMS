@@ -266,12 +266,46 @@ class Parser
         if (preg_match_all($pattern, self::$content, $matches)) {
             $count = count($matches[0]);
             for ($i = 0; $i < $count; $i ++) {
+                // 安全校验：阻止危险函数和模式注入编译后的PHP代码
+                if (!self::validateIfCondition($matches[1][$i])) {
+                    continue;
+                }
                 $content = preg_replace($pattern_if, "<?php if ($1) {?>", $matches[0][$i]);
                 $content = preg_replace($pattern_end_if, "<?php } ?>", $content);
                 $content = preg_replace($pattern_else, "<?php } else { ?>", $content);
                 self::$content = str_replace($matches[0][$i], $content, self::$content);
             }
         }
+    }
+
+    // 验证 {if()} 条件表达式的安全性（编译层防护）
+    // 后台模板需要支持 $variable、get()、in_array() 等，使用危险函数黑名单而非白名单
+    private static function validateIfCondition($condition)
+    {
+        $danger_patterns = array(
+            '/\b(system|exec|passthru|shell_exec|popen|proc_open|pcntl_exec)\s*\(/i',
+            '/\b(eval|assert|create_function)\s*\(/i',
+            '/\b(file_put_contents|file_get_contents|fwrite|fread|fputs)\s*\(/i',
+            '/\b(include|require|include_once|require_once)\s*[\(\'"]/i',
+            '/\b(base64_decode|base64_encode)\s*\(/i',
+            '/\b(phpinfo)\s*\(/i',
+            '/`/',                              // 反引号命令执行
+            '/\b(call_user_func|call_user_func_array)\s*\(/i',
+            '/\b(preg_replace)\s*\(.+[\'"]e[\'"\/]/i',
+            '/\b(ob_start|ob_end_clean)\s*\(/i',
+            '/\b(array_walk|array_map|usort|uasort|uksort)\s*\(/i',
+            '/\b(register_shutdown_function|register_tick_function)\s*\(/i',
+            '/\b(set_error_handler|set_exception_handler)\s*\(/i',
+            '/\b(array_filter|array_reduce)\s*\(/i',
+        );
+
+        foreach ($danger_patterns as $pattern) {
+            if (preg_match($pattern, $condition)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     // 解析循环语句 {foreach $var(key,value,num)}...[num][value->name]或[value]...{/foreach}

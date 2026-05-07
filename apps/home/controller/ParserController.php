@@ -3277,6 +3277,50 @@ class ParserController extends Controller
         return $content;
     }
 
+    // 验证 {pboot:if} 条件表达式的安全性（严格白名单机制）
+    // 只允许：比较运算符(==, !=, >, <, >=, <=)、逻辑运算符(&&, ||)、
+    //         字符串/数字/裸值标识符(VAL)、括号、逻辑非(!)
+    // 原理：逐层替换所有已知安全 token，残留内容即为非法 token
+    private function validateIfCondition($condition)
+    {
+        $test = $condition;
+
+        // 1. 替换字符串字面量（单引号、双引号）
+        $test = preg_replace("/'[^']*'/", ' __STR__ ', $test);
+        $test = preg_replace('/"[^"]*"/', ' __STR__ ', $test);
+
+        // 2. 替换数字字面量
+        $test = preg_replace('/\b\d+\.?\d*\b/', ' __NUM__ ', $test);
+        // 2.5 替换裸值标识符（模板变量替换后残留的值，如URL、文本标识符）
+        // 安全约束：标识符后不能紧跟 ( （阻止函数调用），且不以 __ 开头（跳过内部占位符）
+        // 例如：http://www.example.com → __VAL__，但 system( 中的 system 不会被替换
+        $test = preg_replace('/\b(?!__)[a-zA-Z_][a-zA-Z0-9_:\/.\-%]*\b(?!\s*\()/i', ' __VAL__ ', $test);
+        // 3. 替换比较运算符（双字符必须先于单字符替换，防止部分匹配）
+        $test = str_replace('>=', ' __CMP__ ', $test);
+        $test = str_replace('<=', ' __CMP__ ', $test);
+        $test = str_replace('!=', ' __CMP__ ', $test);
+        $test = str_replace('==', ' __CMP__ ', $test);
+
+        // 4. 替换逻辑运算符
+        $test = str_replace('&&', ' __LOG__ ', $test);
+        $test = str_replace('||', ' __LOG__ ', $test);
+
+        // 5. 替换单字符运算符和括号
+        $test = str_replace('>', ' __CMP__ ', $test);
+        $test = str_replace('<', ' __CMP__ ', $test);
+        $test = str_replace('!', ' __NOT__ ', $test);
+        $test = str_replace('(', ' __PAR__ ', $test);
+        $test = str_replace(')', ' __PAR__ ', $test);
+        $test = str_replace('%', ' __MOD__ ', $test);
+
+        // 6. 移除所有安全占位符和空白字符
+        $test = preg_replace('/__(STR|NUM|VAL|CMP|LOG|NOT|PAR|MOD)__/', '', $test);
+        $test = preg_replace('/\s+/', '', $test);
+
+        // 7. 如果仍有残留内容，说明存在不允许的 token（如函数名、$变量、%取模等）
+        return ($test === '');
+    }
+
     // 解析IF条件标签
     public function parserIfLabel($content)
     {
@@ -3287,42 +3331,23 @@ class ParserController extends Controller
             for ($i = 0; $i < $count; $i++) {
                 $flag = '';
                 $out_html = '';
-                $danger = false;
-
-                $white_fun = array(
-                    'date'
-                );
 
                 // 还原可能包含的保留内容，避免判断失效
                 $matches[1][$i] = $this->restorePreLabel($matches[1][$i]);
 
-                // 带有函数的条件语句进行安全校验
-                if (preg_match_all('/([\w]+)([\x00-\x1F\x7F\/\*\<\>\%\w\s\\\\]+)?\(/i', $matches[1][$i], $matches2)) {
-                    foreach ($matches2[1] as $value) {
-                        if (function_exists(trim($value)) && !in_array($value, $white_fun)) {
-                            $danger = true;
-                            break;
-                        }
-                    }
+                // 预处理：将 date() 函数调用替换为实际求值结果
+                // 安全机制：只允许 date('格式字符串') 单参数调用，参数必须为引号包裹的字符串字面量
+                // 预处理后条件表达式中不再存在函数调用，白名单机制保持纯粹
+                $matches[1][$i] = preg_replace_callback('/date\s*\(\s*[\'"]([^\'"]*)[\'"]\s*\)/i', function($m) {
+                    return "'" . date($m[1]) . "'";
+                }, $matches[1][$i]);
 
-                    foreach ($matches2[2] as $value) {
-                        if (function_exists(trim($value)) && !in_array($value, $white_fun)) {
-                            $danger = true;
-                            break;
-                        }
-                    }
-                }
-
-                // 过滤特殊字符串
-
-                if (preg_match('/(\([\w\s\.]+\))|(\$_GET\[)|(\$_POST\[)|(\$_REQUEST\[)|(\$_COOKIE\[)|(\$_SESSION\[)|(file_put_contents)|(file_get_contents)|(fwrite)|(phpinfo)|(base64)|(`)|(shell_exec)|(eval)|(assert)|(system)|(exec)|(passthru)|(pcntl_exec)|(popen)|(proc_open)|(print_r)|(print)|(urldecode)|(chr)|(include)|(request)|(__FILE__)|(__DIR__)|(copy)|(call_user_)|(preg_replace)|(array_map)|(array_reverse)|(array_filter)|(getallheaders)|(get_headers)|(decode_string)|(htmlspecialchars)|(session_id)|(strrev)|(substr)|(php.info)|(@file.@_put_content)/i', $matches[1][$i])) {
-                    $danger = true;
-                }
-
-                // 如果有危险函数，则不解析该IF
-                if ($danger) {
+                // 白名单安全校验：只允许比较运算符和安全的值
+                // 替代原有的 function_exists() + 黑名单正则方案
+                if (!$this->validateIfCondition($matches[1][$i])) {
                     continue;
                 }
+
                 //if标签解析
                 $flag = symbol($matches[1][$i]);
                 if (preg_match('/^([\s\S]*)\{else\}([\s\S]*)$/', $matches[2][$i], $matches2)) { // 判断是否存在else
