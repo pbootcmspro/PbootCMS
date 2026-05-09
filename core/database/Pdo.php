@@ -110,7 +110,7 @@ class Pdo implements Builder
     }
 
     // 执行SQL语句,接受完整SQL语句，返回结果集对象
-    public function query($sql, $type = 'master')
+    public function query($sql, $type = 'master', $params = array())
     {
         $time_s = microtime(true);
         switch ($type) {
@@ -130,9 +130,18 @@ class Pdo implements Builder
                     $this->begin();
                 }
                 
-                $result = $this->master->query($sql);
-                if ($result === false) {
-                    $this->error($sql, 'master');
+                if (!empty($params)) {
+                    $stmt = $this->master->prepare($sql);
+                    if ($stmt === false) {
+                        $this->error($sql, 'master');
+                    }
+                    $stmt->execute($params);
+                    $result = $stmt;
+                } else {
+                    $result = $this->master->query($sql);
+                    if ($result === false) {
+                        $this->error($sql, 'master');
+                    }
                 }
                 break;
             case 'slave':
@@ -149,7 +158,16 @@ class Pdo implements Builder
                     }
                     $this->slave = $this->conn($cfg);
                 }
-                $result = $this->slave->query($sql) or $this->error($sql, 'slave');
+                if (!empty($params)) {
+                    $stmt = $this->slave->prepare($sql);
+                    if ($stmt === false) {
+                        $this->error($sql, 'slave');
+                    }
+                    $stmt->execute($params);
+                    $result = $stmt;
+                } else {
+                    $result = $this->slave->query($sql) or $this->error($sql, 'slave');
+                }
                 break;
         }
         return $result;
@@ -230,9 +248,9 @@ class Pdo implements Builder
      * 查询一条数据模型，接受完整SQL语句，有数据返回对象数组，否则空数组
      * @$type 可以是MYSQLI_ASSOC(FETCH_ASSOC) ,MYSQLI_NUM(FETCH_NUM) ,MYSQLI_BOTH(FETCH_BOTH),不设置则返回对象模式
      */
-    public function one($sql, $type = null)
+    public function one($sql, $type = null, $params = array())
     {
-        $result = $this->query($sql, 'slave');
+        $result = $this->query($sql, 'slave', $params);
         $row = array();
         if ($type) {
             $type ++; // 与mysqli统一返回类型设置
@@ -247,9 +265,9 @@ class Pdo implements Builder
      * 查询多条数据模型，接受完整SQL语句，有数据返回二维对象数组，否则空数组
      * @$type 可以是MYSQLI_ASSOC(FETCH_ASSOC) ,MYSQLI_NUM(FETCH_NUM) ,MYSQLI_BOTH(FETCH_BOTH),不设置则返回对象模式
      */
-    public function all($sql, $type = null)
+    public function all($sql, $type = null, $params = array())
     {
-        $result = $this->query($sql, 'slave');
+        $result = $this->query($sql, 'slave', $params);
         $rows = array();
         if ($type) {
             $type ++; // 与mysqli统一返回类型设置
@@ -263,11 +281,11 @@ class Pdo implements Builder
     }
 
     // 数据增、删、改模型，接受完整SQL语句，返回影响的行数的int数据
-    public function amd($sql)
+    public function amd($sql, $params = array())
     {
-        $result = $this->query($sql, 'master');
-        if ($result > 0) {
-            return $result;
+        $result = $this->query($sql, 'master', $params);
+        if ($result) {
+            return $result->rowCount();
         } else {
             return 0;
         }
@@ -301,7 +319,7 @@ class Pdo implements Builder
         if (preg_match('/XPATH/i', $err)) {
             $err = '';
         }
-        if ($this->begin) { // 如果是事务模式，发生错误，则回滚
+        if ($this->begin && $this->$conn->inTransaction()) { // 如果是事务模式，发生错误，则回滚
             $this->$conn->rollBack();
             $this->begin = false;
         }

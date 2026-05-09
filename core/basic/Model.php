@@ -44,6 +44,9 @@ class Model
     // 查询语句构建
     private $sql = array();
 
+    // 预处理语句参数绑定数组
+    private $bindParams = array();
+
     // 直接显示SQL语句
     private $showSql = false;
 
@@ -412,10 +415,13 @@ class Model
                     $flag = true;
                 }
                 if (!is_int($key)) {
+                    $safeKey = $this->safeField($key);
                     if ($fuzzy) {
-                        $where_string .= $key . " like '%" . $value . "%' ";
+                        $bindPlaceholder = $this->addBind('%' . $value . '%');
+                        $where_string .= $safeKey . " like " . $bindPlaceholder . " ";
                     } else {
-                        $where_string .= $key . "='" . $value . "' ";
+                        $bindPlaceholder = $this->addBind($value);
+                        $where_string .= $safeKey . "=" . $bindPlaceholder . " ";
                     }
                 } else {
                     $where_string .= $value;
@@ -481,17 +487,29 @@ class Model
     {
         if (!$field)
             return $this;
+        $safeField = $this->safeField($field);
         if (is_array($range)) {
             if (count($range) == 1) { // 单只有一个值时使用直接使用等于，提高读取性能
-                $in_string = "$field='$range[0]'";
+                $bindPlaceholder = $this->addBind($range[0]);
+                $in_string = "$safeField=$bindPlaceholder";
             } else {
-                $in_string = "$field IN (" . implode_quot(',', $range) . ")";
+                $placeholders = array();
+                foreach ($range as $val) {
+                    $placeholders[] = $this->addBind($val);
+                }
+                $in_string = "$safeField IN (" . implode(',', $placeholders) . ")";
             }
         } else {
             if (preg_match('/,/', $range)) {
-                $in_string = "$field IN (" . implode_quot(',', explode(',', $range)) . ")";
+                $items = explode(',', $range);
+                $placeholders = array();
+                foreach ($items as $val) {
+                    $placeholders[] = $this->addBind(trim($val));
+                }
+                $in_string = "$safeField IN (" . implode(',', $placeholders) . ")";
             } else { // 传递单个字符串时直接相等处理
-                $in_string = "$field = '$range'";
+                $bindPlaceholder = $this->addBind($range);
+                $in_string = "$safeField = $bindPlaceholder";
             }
         }
         if (isset($this->sql['where']) && $this->sql['where']) {
@@ -515,19 +533,30 @@ class Model
     {
         if (!$field)
             return $this;
+        $safeField = $this->safeField($field);
         if (is_array($range)) {
-            $in_string = implode_quot(',', $range);
+            $placeholders = array();
+            foreach ($range as $val) {
+                $placeholders[] = $this->addBind($val);
+            }
+            $in_string = implode(',', $placeholders);
         } else {
             if (preg_match('/,/', $range)) {
-                $in_string = implode_quot(',', explode(',', $range));
+                $items = explode(',', $range);
+                $placeholders = array();
+                foreach ($items as $val) {
+                    $placeholders[] = $this->addBind(trim($val));
+                }
+                $in_string = implode(',', $placeholders);
             } else {
-                $in_string = "'$range'";
+                $bindPlaceholder = $this->addBind($range);
+                $in_string = $bindPlaceholder;
             }
         }
         if (isset($this->sql['where']) && $this->sql['where']) {
-            $this->sql['where'] .= " AND $field NOT IN ($in_string)";
+            $this->sql['where'] .= " AND $safeField NOT IN ($in_string)";
         } else {
-            $this->sql['where'] = "WHERE $field NOT IN ($in_string)";
+            $this->sql['where'] = "WHERE $safeField NOT IN ($in_string)";
         }
         return $this;
     }
@@ -561,19 +590,22 @@ class Model
             default:
                 $keyword = "%$keyword%";
         }
+        $bindPlaceholder = $this->addBind($keyword);
         if (is_array($field) || preg_match('/,/', $field)) {
             if (!is_array($field)) {
                 $field = explode(',', $field);
             }
             foreach ($field as $value) {
+                $safeValue = $this->safeField($value);
                 if (isset($sqlStr)) {
-                    $sqlStr .= " OR $value LIKE '$keyword'";
+                    $sqlStr .= " OR $safeValue LIKE $bindPlaceholder";
                 } else {
-                    $sqlStr = "$value LIKE '$keyword'";
+                    $sqlStr = "$safeValue LIKE $bindPlaceholder";
                 }
             }
         } else {
-            $sqlStr = "$field LIKE '$keyword'";
+            $safeField = $this->safeField($field);
+            $sqlStr = "$safeField LIKE $bindPlaceholder";
         }
         if (isset($this->sql['where']) && $this->sql['where']) {
             $this->sql['where'] .= " AND ($sqlStr)";
@@ -612,19 +644,22 @@ class Model
             default:
                 $keyword = "%$keyword%";
         }
+        $bindPlaceholder = $this->addBind($keyword);
         if (is_array($field) || preg_match('/,/', $field)) {
             if (!is_array($field)) {
                 $field = explode(',', $field);
             }
             foreach ($field as $value) {
+                $safeValue = $this->safeField($value);
                 if (isset($sqlStr)) {
-                    $sqlStr .= " AND $value NOT LIKE '$keyword'";
+                    $sqlStr .= " AND $safeValue NOT LIKE $bindPlaceholder";
                 } else {
-                    $sqlStr = "$value NOT LIKE '$keyword'";
+                    $sqlStr = "$safeValue NOT LIKE $bindPlaceholder";
                 }
             }
         } else {
-            $sqlStr = "$field NOT LIKE '$keyword'";
+            $safeField = $this->safeField($field);
+            $sqlStr = "$safeField NOT LIKE $bindPlaceholder";
         }
         if (isset($this->sql['where']) && $this->sql['where']) {
             $this->sql['where'] .= " AND ($sqlStr)";
@@ -649,14 +684,19 @@ class Model
             $order_string = 'ORDER BY ';
             foreach ($order as $key => $value) {
                 if (is_int($key)) {
-                    $order_string .= $value . ',';
+                    $order_string .= $this->parseOrderField($value) . ',';
                 } else {
-                    $order_string .= $key . ' ' . $value . ',';
+                    $order_string .= $this->safeField($key) . ' ' . $this->parseOrderDirection($value) . ',';
                 }
             }
             $this->sql['order'] = substr($order_string, 0, -1);
         } else {
-            $this->sql['order'] = 'ORDER BY ' . $order;
+            $parts = $this->splitRespectingParens($order);
+            $order_string = 'ORDER BY ';
+            foreach ($parts as $part) {
+                $order_string .= $this->parseOrderField($part) . ',';
+            }
+            $this->sql['order'] = substr($order_string, 0, -1);
         }
         return $this;
     }
@@ -681,19 +721,21 @@ class Model
             } else {
                 $var_arr = explode(',', $limit);
             }
+            $offset = intval($var_arr[0]);
+            $count = intval($var_arr[1]);
             switch (get_db_type()) {
                 case 'mysql':
-                    $this->sql['limit'] = 'LIMIT ' . $var_arr[0] . ',' . $var_arr[1];
+                    $this->sql['limit'] = 'LIMIT ' . $offset . ',' . $count;
                     break;
                 case 'sqlite':
-                    $this->sql['limit'] = 'LIMIT ' . $var_arr[1] . ' OFFSET ' . $var_arr[0];
+                    $this->sql['limit'] = 'LIMIT ' . $count . ' OFFSET ' . $offset;
                     break;
                 case 'pgsql':
-                    $this->sql['limit'] = 'LIMIT ' . $var_arr[1] . ' OFFSET ' . $var_arr[0];
+                    $this->sql['limit'] = 'LIMIT ' . $count . ' OFFSET ' . $offset;
                     break;
             }
         } else {
-            $this->sql['limit'] = 'LIMIT ' . $limit;
+            $this->sql['limit'] = 'LIMIT ' . intval($limit);
         }
         return $this;
     }
@@ -710,11 +752,16 @@ class Model
         if (is_array($group)) {
             $group_string = 'GROUP BY ';
             foreach ($group as $key => $value) {
-                $group_string .= $value . ',';
+                $group_string .= $this->safeField($value) . ',';
             }
             $this->sql['group'] = substr($group_string, 0, -1);
         } else {
-            $this->sql['group'] = 'GROUP BY ' . $group;
+            $parts = $this->splitRespectingParens($group);
+            $group_string = 'GROUP BY ';
+            foreach ($parts as $part) {
+                $group_string .= $this->safeField($part) . ',';
+            }
+            $this->sql['group'] = substr($group_string, 0, -1);
         }
         return $this;
     }
@@ -744,14 +791,16 @@ class Model
                     $flag = true;
                 }
                 if (!is_int($key)) {
-                    $having_string .= $key . "='" . $value . "' ";
+                    $safeKey = $this->safeField($key);
+                    $bindPlaceholder = $this->addBind($value);
+                    $having_string .= $safeKey . "=" . $bindPlaceholder . " ";
                 } else {
-                    $having_string .= $value;
+                    $having_string .= $this->filterHavingExpr($value);
                 }
             }
             $this->sql['having'] .= $having_string . ')';
         } else {
-            $this->sql['having'] .= $having . ')';
+            $this->sql['having'] .= $this->filterHavingExpr($having) . ')';
         }
         return $this;
     }
@@ -930,9 +979,9 @@ class Model
                     $this->limit(Paging::getInstance()->quikLimit()); // 分页
                     $this->sql['field'] = 'SQL_CALC_FOUND_ROWS ' . $this->sql['field']; // 添加查询总记录
                     $sql = $this->buildSql($this->selectSql);
-                    $result = $this->getDb()->all($sql, $type);
+                    $result = $this->getDb()->all($sql, $type, $this->bindParams);
                     $count_sql = "select FOUND_ROWS() as sum";
-                    if (!!$rs = $this->getDb()->one($count_sql)) {
+                    if (!!$rs = $this->getDb()->one($count_sql, null, array())) {
                         $total = $rs->sum;
                         // 分页内容
                         $limit = Paging::getInstance()->limit($total, true); // 生成分页代码
@@ -940,7 +989,7 @@ class Model
                 } else {
                     $count_sql = $this->buildSql($this->countSql2, false);
                     // 获取记录总数
-                    if (!!$rs = $this->getDb()->all($count_sql)) {
+                    if (!!$rs = $this->getDb()->all($count_sql, null, $this->bindParams)) {
                         $total = count($rs);
                         // 分页内容
                         $limit = Paging::getInstance()->limit($total, true);
@@ -952,7 +1001,7 @@ class Model
                 // 生成总数计算语句
                 $count_sql = $this->buildSql($this->countSql, false);
                 // 获取记录总数
-                if (!!$rs = $this->getDb()->one($count_sql)) {
+                if (!!$rs = $this->getDb()->one($count_sql, null, $this->bindParams)) {
                     $total = $rs->sum;
                     // 分页内容
                     $limit = Paging::getInstance()->limit($total, true);
@@ -968,8 +1017,9 @@ class Model
             $sql = $this->buildSql($this->selectSql);
         }
         if (!isset($result)) {
-            $result = $this->getDb()->all($sql, $type);
+            $result = $this->getDb()->all($sql, $type, $this->bindParams);
         }
+        $this->bindParams = array();
         return $this->outData($result);
     }
 
@@ -995,7 +1045,8 @@ class Model
         if ($type === false) {
             return $sql;
         }
-        $result = $this->getDb()->one($sql, $type);
+        $result = $this->getDb()->one($sql, $type, $this->bindParams);
+        $this->bindParams = array();
         return $this->outData($result);
     }
 
@@ -1023,7 +1074,8 @@ class Model
         }
 
         $sql = $this->buildSql($this->selectSql);
-        $result = $this->getDb()->all($sql, 1);
+        $result = $this->getDb()->all($sql, 1, $this->bindParams);
+        $this->bindParams = array();
         $data = array();
         foreach ($result as $vkey => $value) {
             if ($key) {
@@ -1057,7 +1109,8 @@ class Model
         $this->sql['field'] = $field;
         $this->limit(1);
         $sql = $this->buildSql($this->selectSql);
-        $result = $this->getDb()->one($sql, 2);
+        $result = $this->getDb()->one($sql, 2, $this->bindParams);
+        $this->bindParams = array();
         if (isset($result[0])) {
             return $this->outData($result[0]);
         } else {
@@ -1076,7 +1129,8 @@ class Model
     {
         $this->sql['field'] = "MAX(`$field`)";
         $sql = $this->buildSql($this->selectSql);
-        $result = $this->getDb()->one($sql, 2);
+        $result = $this->getDb()->one($sql, 2, $this->bindParams);
+        $this->bindParams = array();
         return $this->outData($result[0]);
     }
 
@@ -1091,7 +1145,8 @@ class Model
     {
         $this->sql['field'] = "MIN(`$field`)";
         $sql = $this->buildSql($this->selectSql);
-        $result = $this->getDb()->one($sql, 2);
+        $result = $this->getDb()->one($sql, 2, $this->bindParams);
+        $this->bindParams = array();
         return $this->outData($result[0]);
     }
 
@@ -1106,7 +1161,8 @@ class Model
     {
         $this->sql['field'] = "AVG(`$field`)";
         $sql = $this->buildSql($this->selectSql);
-        $result = $this->getDb()->one($sql, 2);
+        $result = $this->getDb()->one($sql, 2, $this->bindParams);
+        $this->bindParams = array();
         return $this->outData($result[0]);
     }
 
@@ -1121,7 +1177,8 @@ class Model
     {
         $this->sql['field'] = "SUM(`$field`)";
         $sql = $this->buildSql($this->selectSql);
-        $result = $this->getDb()->one($sql, 2);
+        $result = $this->getDb()->one($sql, 2, $this->bindParams);
+        $this->bindParams = array();
         if ($result[0]) {
             return $this->outData($result[0]);
         } else {
@@ -1134,7 +1191,8 @@ class Model
     {
         $this->sql['field'] = "COUNT(*)";
         $sql = $this->buildSql($this->selectSql);
-        $result = $this->getDb()->one($sql, 2);
+        $result = $this->getDb()->one($sql, 2, $this->bindParams);
+        $this->bindParams = array();
         if ($result[0]) {
             return $this->outData($result[0]);
         } else {
@@ -1175,15 +1233,15 @@ class Model
                     $this->checkKey($key);
                     if (!is_numeric($key)) {
                         $keys .= "`" . $key . "`,";
-                        $values .= "'" . $value . "',";
+                        $values .= $this->addBind($value) . ",";
                     }
                 }
                 if ($this->autoTimestamp || (isset($this->sql['auto_time']) && $this->sql['auto_time'] == true)) {
                     $keys .= "`" . $this->createTimeField . "`,`" . $this->updateTimeField . "`,";
                     if ($this->intTimeFormat) {
-                        $values .= "'" . time() . "','" . time() . "',";
+                        $values .= $this->addBind(time()) . "," . $this->addBind(time()) . ",";
                     } else {
-                        $values .= "'" . date('Y-m-d H:i:s') . "','" . date('Y-m-d H:i:s') . "',";
+                        $values .= $this->addBind(date('Y-m-d H:i:s')) . "," . $this->addBind(date('Y-m-d H:i:s')) . ",";
                     }
                 }
                 if ($keys) { // 如果插入数据关联字段,则字段以关联数据为准,否则以设置字段为准
@@ -1198,6 +1256,7 @@ class Model
                     $key_string = '';
                     $value_string = '';
                     $flag = false;
+                    $estimatedDataSize = 0;
                     foreach ($data as $keys => $value) {
                         if (!$flag) {
                             $value_string .= ' SELECT ';
@@ -1210,14 +1269,15 @@ class Model
                                 $this->checkKey($key2);
                                 $key_string .= "`" . $key2 . "`,";
                             }
-                            $value_string .= "'" . $value2 . "',";
+                            $value_string .= $this->addBind($value2) . ",";
+                            $estimatedDataSize += strlen($value2) + 2; // 估算实际值大小
                         }
                         $flag = true;
                         if ($this->autoTimestamp || (isset($this->sql['auto_time']) && $this->sql['auto_time'] == true)) {
                             if ($this->intTimeFormat) {
-                                $value_string .= "'" . time() . "','" . time() . "',";
+                                $value_string .= $this->addBind(time()) . "," . $this->addBind(time()) . ",";
                             } else {
-                                $value_string .= "'" . date('Y-m-d H:i:s') . "','" . date('Y-m-d H:i:s') . "',";
+                                $value_string .= $this->addBind(date('Y-m-d H:i:s')) . "," . $this->addBind(date('Y-m-d H:i:s')) . ",";
                             }
                         }
                         $value_string = substr($value_string, 0, -1);
@@ -1232,13 +1292,18 @@ class Model
                     }
                     $this->sql['value'] = $value_string;
                     $sql = $this->buildSql($this->insertMultSql);
-                    // 判断SQL语句是否超过数据库设置
+                    // 判断SQL语句是否超过数据库设置（使用占位符后SQL较短，需加上数据实际大小估算）
+                    $estimatedTotalSize = strlen($sql) + $estimatedDataSize;
                     if (get_db_type() == 'mysql') {
                         $max_allowed_packet = $this->getDb()->one('SELECT @@global.max_allowed_packet', 2);
                     } else {
                         $max_allowed_packet = 1 * 1024 * 1024; // 其他类型数据库按照1M限制
                     }
-                    if (strlen($sql) > $max_allowed_packet) { // 如果要插入的数据过大，则转换为一条条插入
+                    if ($estimatedTotalSize > $max_allowed_packet) { // 如果要插入的数据过大，则转换为一条条插入
+                        // 重置bindParams，回退到逐条插入模式
+                        $refBind = new \ReflectionProperty(Model::class, 'bindParams');
+                        $refBind->setAccessible(true);
+                        $refBind->setValue($this, array());
                         return $this->insert($data, false);
                     }
                 } else { // 批量一条条插入
@@ -1259,7 +1324,9 @@ class Model
 
         $sql = preg_replace_r('/pboot:if/i', 'pboot@if', $sql); // 过滤插入cms条件语句
         $sql = preg_replace_r('/pboot:sql/i', 'pboot@sql', $sql); // 过滤插入cms条件语句
-        return $this->getDb()->amd($sql);
+        $result = $this->getDb()->amd($sql, $this->bindParams);
+        $this->bindParams = array();
+        return $result;
     }
 
     /**
@@ -1297,6 +1364,11 @@ class Model
         if (!$data && $this->sql['data']) {
             return $this->update($this->sql['data']);
         }
+
+        // 暂存WHERE子句的绑定参数，避免与SET子句参数顺序冲突
+        $whereBindParams = $this->bindParams;
+        $this->bindParams = array();
+
         $update_string = '';
         if (is_array($data)) {
             if (!$data)
@@ -1310,7 +1382,8 @@ class Model
                 } elseif (is_numeric($temp_v_end) && $temp_v_start == "+=") {
                     $update_string .= "`$key`= $key+$temp_v_end,"; // 自加
                 } else {
-                    $update_string .= "`$key`='$value',";
+                    $bindPlaceholder = $this->addBind($value);
+                    $update_string .= "`$key`=$bindPlaceholder,";
                 }
             }
             $update_string = substr($update_string, 0, -1);
@@ -1319,16 +1392,22 @@ class Model
         }
         if ($this->autoTimestamp || (isset($this->sql['auto_time']) && $this->sql['auto_time'] == true)) {
             if ($this->intTimeFormat) {
-                $update_string .= ",`" . $this->updateTimeField . "`=' " . time() . "'";
+                $update_string .= ",`" . $this->updateTimeField . "`=" . $this->addBind(time());
             } else {
-                $update_string .= ",`" . $this->updateTimeField . "`=' " . date('Y-m-d H:i:s') . "'";
+                $update_string .= ",`" . $this->updateTimeField . "`=" . $this->addBind(date('Y-m-d H:i:s'));
             }
         }
         $this->sql['value'] = $update_string;
         $sql = $this->buildSql($this->updateSql);
+
+        // 合并绑定参数：SET参数在前，WHERE参数在后
+        $params = array_merge($this->bindParams, $whereBindParams);
+
         $sql = preg_replace_r('/pboot:if/i', 'pboot@if', $sql); // 过滤插入cms条件语句
         $sql = preg_replace_r('/pboot:sql/i', 'pboot@sql', $sql); // 过滤插入cms条件语句
-        return $this->getDb()->amd($sql);
+        $result = $this->getDb()->amd($sql, $params);
+        $this->bindParams = array();
+        return $result;
     }
 
     /**
@@ -1343,16 +1422,28 @@ class Model
     final public function setField($field, $value)
     {
         $this->checkKey($field);
-        $this->sql['value'] = "`$field`='$value'";
+
+        // 暂存WHERE子句的绑定参数，避免与SET子句参数顺序冲突
+        $whereBindParams = $this->bindParams;
+        $this->bindParams = array();
+
+        $bindPlaceholder = $this->addBind($value);
+        $this->sql['value'] = "`$field`=$bindPlaceholder";
         if ($this->autoTimestamp || (isset($this->sql['auto_time']) && $this->sql['auto_time'] == true)) {
             if ($this->intTimeFormat) {
-                $this->sql['value'] .= ",`" . $this->updateTimeField . "`=' " . time() . "'";
+                $this->sql['value'] .= ",`" . $this->updateTimeField . "`=" . $this->addBind(time());
             } else {
-                $this->sql['value'] .= ",`" . $this->updateTimeField . "`=' " . date('Y-m-d H:i:s') . "'";
+                $this->sql['value'] .= ",`" . $this->updateTimeField . "`=" . $this->addBind(date('Y-m-d H:i:s'));
             }
         }
         $sql = $this->buildSql($this->updateSql);
-        return $this->getDb()->amd($sql);
+
+        // 合并绑定参数：SET参数在前，WHERE参数在后
+        $params = array_merge($this->bindParams, $whereBindParams);
+
+        $result = $this->getDb()->amd($sql, $params);
+        $this->bindParams = array();
+        return $result;
     }
 
     /**
@@ -1367,16 +1458,27 @@ class Model
     final public function setInc($field, $value = 1)
     {
         $this->checkKey($field);
+
+        // 暂存WHERE子句的绑定参数，避免与SET子句参数顺序冲突
+        $whereBindParams = $this->bindParams;
+        $this->bindParams = array();
+
         $this->sql['value'] = " `$field`= $field+$value";
         if ($this->autoTimestamp || (isset($this->sql['auto_time']) && $this->sql['auto_time'] == true)) {
             if ($this->intTimeFormat) {
-                $this->sql['value'] .= ",`" . $this->updateTimeField . "`=' " . time() . "'";
+                $this->sql['value'] .= ",`" . $this->updateTimeField . "`=" . $this->addBind(time());
             } else {
-                $this->sql['value'] .= ",`" . $this->updateTimeField . "`=' " . date('Y-m-d H:i:s') . "'";
+                $this->sql['value'] .= ",`" . $this->updateTimeField . "`=" . $this->addBind(date('Y-m-d H:i:s'));
             }
         }
         $sql = $this->buildSql($this->updateSql);
-        return $this->getDb()->amd($sql);
+
+        // 合并绑定参数：SET参数在前，WHERE参数在后
+        $params = array_merge($this->bindParams, $whereBindParams);
+
+        $result = $this->getDb()->amd($sql, $params);
+        $this->bindParams = array();
+        return $result;
     }
 
     /**
@@ -1391,16 +1493,27 @@ class Model
     final public function setDec($field, $value = 1)
     {
         $this->checkKey($field);
+
+        // 暂存WHERE子句的绑定参数，避免与SET子句参数顺序冲突
+        $whereBindParams = $this->bindParams;
+        $this->bindParams = array();
+
         $this->sql['value'] = " `$field`= $field-$value";
         if ($this->autoTimestamp || (isset($this->sql['auto_time']) && $this->sql['auto_time'] == true)) {
             if ($this->intTimeFormat) {
-                $this->sql['value'] .= ",`" . $this->updateTimeField . "`=' " . time() . "'";
+                $this->sql['value'] .= ",`" . $this->updateTimeField . "`=" . $this->addBind(time());
             } else {
-                $this->sql['value'] .= ",`" . $this->updateTimeField . "`=' " . date('Y-m-d H:i:s') . "'";
+                $this->sql['value'] .= ",`" . $this->updateTimeField . "`=" . $this->addBind(date('Y-m-d H:i:s'));
             }
         }
         $sql = $this->buildSql($this->updateSql);
-        return $this->getDb()->amd($sql);
+
+        // 合并绑定参数：SET参数在前，WHERE参数在后
+        $params = array_merge($this->bindParams, $whereBindParams);
+
+        $result = $this->getDb()->amd($sql, $params);
+        $this->bindParams = array();
+        return $result;
     }
 
     // ***************************数据删除*******************************************************
@@ -1423,11 +1536,13 @@ class Model
             if (is_array($data) || preg_match('/,/', $data)) {
                 $this->in($key, $data);
             } else {
-                $this->where("$key='$data'");
+                $this->where(array($key => $data));
             }
         }
         $sql = $this->buildSql($this->deleteSql);
-        return $this->getDb()->amd($sql);
+        $result = $this->getDb()->amd($sql, $this->bindParams);
+        $this->bindParams = array();
+        return $result;
     }
 
     // 检测key值
@@ -1440,11 +1555,148 @@ class Model
         }
     }
 
+    // 添加参数绑定值
+    private function addBind($value)
+    {
+        if (is_null($value)) {
+            $value = '';
+        }
+        $this->bindParams[] = $value;
+        return '?';
+    }
+
+    // 安全处理字段名（加反引号）
+    private function safeField($field)
+    {
+        $field = trim($field);
+        
+        // SQL函数表达式（如 RAND(), length(name), count(*)）
+        if (preg_match('/^\w+\([^)]*\)$/i', $field)) {
+            if (!preg_match('/^\w+\([\w\.\*\s,]*\)$/i', $field)) {
+                error('SQL函数表达式含有非法字符:' . $field);
+            }
+            // 危险函数黑名单（防止时间盲注等攻击）
+            if (preg_match('/^(\w+)\(/i', $field, $m)) {
+                $dangerous_funcs = ['SLEEP', 'BENCHMARK', 'WAITFOR', 'PG_SLEEP'];
+                if (in_array(strtoupper($m[1]), $dangerous_funcs)) {
+                    error('SQL函数不允许使用危险函数:' . $m[1]);
+                }
+            }
+            return $field;
+        }
+        
+        $this->checkKey($field);
+        // 处理别名.字段格式（如 a.pcode → `a`.`pcode`）
+        if (strpos($field, '.') !== false) {
+            $parts = explode('.', $field);
+            return '`' . implode('`.`', $parts) . '`';
+        }
+        return '`' . $field . '`';
+    }
+
+    // 解析ORDER BY字段（验证字段名和排序方向）
+    private function parseOrderField($field)
+    {
+        $field = trim($field);
+        
+        // 提取末尾的排序方向（ASC/DESC）
+        $dir = '';
+        if (preg_match('/\s+(ASC|DESC)$/i', $field, $m)) {
+            $dir = strtoupper($m[1]);
+            $field = trim(substr($field, 0, -strlen($m[0])));
+        }
+        
+        // 情况1：SQL函数表达式（如 RAND(), length(name), count(*)）
+        if (preg_match('/^(\w+)\(([^)]*)\)$/i', $field, $m)) {
+            $funcName = $m[1];
+            $args = $m[2];
+            // 验证函数名安全性（必须以字母开头）
+            if (!preg_match('/^[A-Za-z]\w*$/', $funcName)) {
+                error('ORDER BY函数名含有非法字符:' . $funcName);
+            }
+            // 危险函数黑名单（防止时间盲注等攻击）
+            $dangerous_funcs = ['SLEEP', 'BENCHMARK', 'WAITFOR', 'PG_SLEEP'];
+            if (in_array(strtoupper($funcName), $dangerous_funcs)) {
+                error('ORDER BY不允许使用危险函数:' . $funcName);
+            }
+            // 验证参数安全性：仅允许字段名、点号、星号、逗号、空格
+            if ($args !== '' && !preg_match('/^[\w\.\*\s,]+$/', $args)) {
+                error('ORDER BY函数参数含有非法字符:' . $args);
+            }
+            return $field . ($dir ? ' ' . $dir : '');
+        }
+        
+        // 情况2：已加反引号的字段名
+        if (preg_match('/^`[^`]+`$/', $field)) {
+            return $field . ($dir ? ' ' . $dir : '');
+        }
+        
+        // 情况3：简单字段名（含别名.字段格式）
+        if (preg_match('/^[\w\.\-]+$/', $field)) {
+            $this->checkKey($field);
+            if (strpos($field, '.') !== false) {
+                $parts = explode('.', $field);
+                $f = '`' . implode('`.`', $parts) . '`';
+            } else {
+                $f = '`' . $field . '`';
+            }
+            return $f . ($dir ? ' ' . $dir : '');
+        }
+        
+        error('ORDER BY字段含有非法字符:' . $field);
+    }
+
+    // 解析排序方向
+    private function parseOrderDirection($dir)
+    {
+        $dir = strtoupper(trim($dir));
+        if ($dir === 'ASC' || $dir === 'DESC') {
+            return $dir;
+        }
+        error('ORDER BY排序方向只能是ASC或DESC:' . $dir);
+    }
+
+    // 按逗号分割字符串，但跳过括号内的逗号（避免拆分函数参数）
+    private function splitRespectingParens($str)
+    {
+        $result = array();
+        $current = '';
+        $depth = 0;
+        for ($i = 0; $i < strlen($str); $i++) {
+            $char = $str[$i];
+            if ($char === '(') {
+                $depth++;
+            } elseif ($char === ')') {
+                $depth--;
+            } elseif ($char === ',' && $depth === 0) {
+                $result[] = $current;
+                $current = '';
+                continue;
+            }
+            $current .= $char;
+        }
+        if ($current !== '') {
+            $result[] = $current;
+        }
+        return $result;
+    }
+
+    // 过滤HAVING字符串表达式（仅允许基本字符）
+    private function filterHavingExpr($expr)
+    {
+        $expr = trim($expr);
+        if (!preg_match('/^[\w\s\.\,\(\)\+\-\*\/\=<>!%&|\'"]+$/', $expr)) {
+            error('HAVING表达式含有非法字符:' . $expr);
+        }
+        return $expr;
+    }
+
     //查询索引
     public function checkIndexSql(): array
     {
         $sql = $this->buildSql($this->checkIndex);
-        $result = $this->getDb()->query($sql);
+        $result = $this->getDb()->query($sql, 'master', $this->bindParams);
+        $this->bindParams = array();
         return $this->getDb()->fetchQuery($result);
     }
 
@@ -1468,35 +1720,25 @@ class Model
      * @param array $data
      * @return false|int|mixed|\PDOStatement
      */
+    // Model.php 第1684-1714行 replace() 方法
     public function replace(array $data = [])
     {
         $columns = $this->getKeysFromArray($data[0]);
-
-        $this->sql['field'] = '(`'.implode("`, `", $columns).'`)';
-
+        $this->sql['field'] = '(`' . implode("`, `", $columns) . '`)';
         $values = [];
-
         foreach ($data as $item) {
-            $rowValues = [];
-
+            $rowPlaceholders = [];
             foreach ($columns as $column) {
-                $value = $item[$column];
-
-                // Apply appropriate escaping to the value to prevent SQL injection
-                $value = $this->check_value_escape($value);
-
-                $rowValues[] = "'$value'";
+                $value = isset($item[$column]) ? $item[$column] : '';
+                $rowPlaceholders[] = $this->addBind($value);
             }
-
-            $values[] = "(".implode(", ", $rowValues).")";
+            $values[] = "(" . implode(",", $rowPlaceholders) . ")";
         }
-
         $this->sql['value'] = implode(", ", $values);
-
         $sql = $this->buildSql($this->replaceSql);
-
-        return $this->getDb()->amd($sql);
-
+        $result = $this->getDb()->amd($sql, $this->bindParams);
+        $this->bindParams = array();
+        return $result;
     }
 
 
@@ -1504,15 +1746,39 @@ class Model
         $type = Config::get('database.type');
 
         if($type=='mysqli'){
-            // Escape the value using mysqli_real_escape_string
-            return mysqli_real_escape_string($this->getDb()->conn, $value);
+            // Escape the value using master connection's real_escape_string
+            $db = $this->getDb();
+            // 确保master连接已初始化
+            $ref = new \ReflectionProperty($db, 'master');
+            $ref->setAccessible(true);
+            $master = $ref->getValue($db);
+            if ($master) {
+                return $master->real_escape_string($value);
+            }
+            return addslashes($value);
         }else if($type=='sqlite'){
-
-            ## should debug
-            // Escape the value using SQLite3::escapeString
-            return $this->getDb()->conn->escapeString($value);
+            // Escape the value using master connection's escapeString
+            $db = $this->getDb();
+            $ref = new \ReflectionProperty($db, 'master');
+            $ref->setAccessible(true);
+            $master = $ref->getValue($db);
+            if ($master) {
+                return $master->escapeString($value);
+            }
+            return addslashes($value);
+        }else{
+            // PDO驱动：使用quote方法或addslashes
+            $db = $this->getDb();
+            $ref = new \ReflectionProperty($db, 'master');
+            $ref->setAccessible(true);
+            $master = $ref->getValue($db);
+            if ($master) {
+                $quoted = $master->quote($value);
+                // PDO::quote() 包含引号，需要去除首尾引号
+                return substr($quoted, 1, -1);
+            }
+            return addslashes($value);
         }
-        return $value;
     }
 
 }
