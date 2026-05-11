@@ -19,6 +19,11 @@ class IndexController extends Controller
     public function __construct()
     {
         $this->model = new IndexModel();
+        // 密码安全检查：未修改默认密码的用户只能访问特定页面
+        $pw_public_actions = array('index', 'login', 'loginOut', 'ucenter', 'area', 'clearSession');
+        if (session('sid') && !session('pwsecurity') && !in_array(F, $pw_public_actions)) {
+            location(url('/admin/Index/ucenter'));
+        }
     }
 
     // 登录页面

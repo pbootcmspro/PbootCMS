@@ -5,6 +5,23 @@
  * Date: 14-04-14
  * Time: 下午19:18
  */
+// 防止直接访问：未通过 controller.php 引入时执行独立验证
+if (!isset($CONFIG)) {
+    require_once '../../../init.php';
+    error_reporting(0);
+    if (!session('sid')) {
+        echo json_encode(array('state' => '权限不足，请重新登录'));
+        exit;
+    }
+    $sid = encrypt_string(session_id() . session('id'));
+    if ($sid != session('sid')) {
+        session_destroy();
+        echo json_encode(array('state' => '权限不足，请重新登录'));
+        exit;
+    }
+    $CONFIG = json_decode(preg_replace("/\/\*[\s\S]+?\*\//", "", file_get_contents("config.json")), true);
+}
+
 set_time_limit(0);
 include ("Uploader.class.php");
 

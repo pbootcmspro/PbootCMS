@@ -62,7 +62,7 @@ class ParserController extends Controller
         $content = str_replace('{pboot:pagetitle}', $this->config('other_title') ?: '{pboot:sitetitle}-{pboot:sitesubtitle}', $content);
         $content = str_replace('{pboot:pagekeywords}', '{pboot:sitekeywords}', $content);
         $content = str_replace('{pboot:pagedescription}', '{pboot:sitedescription}', $content);
-        $content = str_replace('{pboot:keyword}', get('keyword', 'vars'), $content); // 当前搜索的关键字
+        $content = str_replace('{pboot:keyword}', htmlspecialchars(get('keyword', 'vars'), ENT_QUOTES, 'UTF-8'), $content); // 当前搜索的关键字
 
         // 解析个人扩展标签，升级不覆盖
         if (file_exists(APP_PATH . '/home/controller/ExtLabelController.php')) {
@@ -252,7 +252,7 @@ class ParserController extends Controller
                         break;
                     case 'statistical':
                         if (isset($data->statistical)) {
-                            $content = str_replace($matches[0][$i], decode_string($data->statistical), $content);
+                            $content = str_replace($matches[0][$i], filter_html(decode_string($data->statistical)), $content);
                         } else {
                             $content = str_replace($matches[0][$i], '', $content);
                         }
@@ -3363,6 +3363,8 @@ class ParserController extends Controller
         if (!$data)
             return $data;
 
+        $is_html = false; // 标记是否为已过滤的HTML内容，跳过htmlspecialchars
+
         // 图片缩放功能
         if (isset($params['maxwidth']) || isset($params['maxheight'])) {
             $maxwidth = isset($params['maxwidth']) ? $params['maxwidth'] : null;
@@ -3441,10 +3443,14 @@ class ParserController extends Controller
                         }
                         break;
                     case 'decode': // 解码或转义字符
-                        if ($params['decode']) {
+                        if (isset($params['decode']) && $params['decode']) {
                             $data = decode_string($data);
-                        } else {
-                            $data = escape_string($data);
+                        }
+                        // decode=0 或未设置decode时，默认由下方安全转义处理
+                        break;
+                    case 'html': // 标记为已过滤的HTML内容，跳过htmlspecialchars但不执行decode_string
+                        if (isset($params['html']) && $params['html']) {
+                            $is_html = true;
                         }
                         break;
                     case 'substr': // 截取字符串
@@ -3516,10 +3522,19 @@ class ParserController extends Controller
                         break;
                     case 'mark':
                         if ($label && $reqdata = request($label, 'vars') ?: request('keyword', 'vars')) {
-                            $data = preg_replace('/(' . $reqdata . ')/i', '<span style="color:red">$1</span>', $data);
+                            // 对搜索关键词进行安全转义，防止XSS和正则注入
+                            $reqdata = preg_quote(htmlspecialchars($reqdata, ENT_QUOTES, 'UTF-8'), '/');
+                            $data = preg_replace('/(' . $reqdata . ')/i', '<mark>$1</mark>', $data);
                         }
                         break;
                 }
+            }
+        }
+
+        // 默认安全转义：对未显式设置decode=1且未标记为html的数据进行HTML转义
+        if (!$is_html && (!isset($params['decode']) || !$params['decode'])) {
+            if (is_string($data)) {
+                $data = htmlspecialchars($data, ENT_QUOTES, 'UTF-8');
             }
         }
 
@@ -3647,6 +3662,9 @@ class ParserController extends Controller
                 $content = str_replace($search, Url::get('home/Do/oppose/id/' . $data->id), $content);
                 break;
             case 'content':
+                // 对列表中的富文本内容进行安全过滤
+                $data->content = filter_html($data->content);
+                $params['html'] = 1; // 富文本已过滤，跳过htmlspecialchars但不执行decode_string
                 $content = str_replace($search, $this->adjustLabelData($params, $data->content, $label, true), $content); // 占位替换
                 break;
             case 'keywords':
@@ -3888,6 +3906,9 @@ class ParserController extends Controller
                         }
                     }
                 }
+                // 对富文本内容进行安全过滤，移除危险标签和事件属性，保留安全的HTML
+                $data->content = filter_html($data->content);
+                $params['html'] = 1; // 富文本已过滤，跳过htmlspecialchars但不执行decode_string
                 $content = str_replace($search, $this->adjustLabelData($params, $data->content, null, true), $content);
                 break;
             case 'keywords': // 如果内容关键字为空，则自动使用全局关键字

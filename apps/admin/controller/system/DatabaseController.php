@@ -99,7 +99,7 @@ class DatabaseController extends Controller
                 }
                 break;
             case 'bfsqlite':
-                if (copy(DOC_PATH . $this->dbauth['dbname'], DOC_PATH . STATIC_DIR . '/backup/sql/' . get_uniqid() . '_' . date('YmdHis') . '.db')) {
+                if (copy(DOC_PATH . $this->dbauth['dbname'], DOC_PATH . DATA_DIR . '/backup/sql/' . get_uniqid() . '_' . date('YmdHis') . '.db')) {
                     $this->log('备份数据库成功！');
                     success('备份数据库成功！', - 1);
                 } else {
@@ -227,7 +227,7 @@ class DatabaseController extends Controller
     // 写入文件
     private function writeFile($filename, $content)
     {
-        $sqlfile = DOC_PATH . STATIC_DIR . '/backup/sql/' . $filename;
+        $sqlfile = DOC_PATH . DATA_DIR . '/backup/sql/' . $filename;
         check_file($sqlfile, true);
         if (file_put_contents($sqlfile, $content)) {
             return true;

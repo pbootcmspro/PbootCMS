@@ -80,7 +80,7 @@ class UpgradeController extends Controller
         if (! check_dir(RUN_PATH . '/upgrade', true)) {
             json(0, '目录写入权限不足，无法正常升级！' . RUN_PATH . '/upgrade');
         }
-        check_dir(DOC_PATH . STATIC_DIR . '/backup/upgrade', true);
+        check_dir(DOC_PATH . DATA_DIR . '/backup/upgrade', true);
         
         $files = $this->getServerList();
         $db = get_db_type();
@@ -171,7 +171,7 @@ class UpgradeController extends Controller
                     } else {
                         $path = RUN_PATH . '/upgrade' . $value;
                         $des_path = ROOT_PATH . $value;
-                        $back_path = DOC_PATH . STATIC_DIR . '/backup/upgrade/' . $backdir . $value;
+                        $back_path = DOC_PATH . DATA_DIR . '/backup/upgrade/' . $backdir . $value;
                         if (! check_dir(dirname($des_path), true)) {
                             json(0, '目录写入权限不足，无法正常升级！' . dirname($des_path));
                         }
@@ -199,7 +199,7 @@ class UpgradeController extends Controller
                     $db = new DatabaseController();
                     switch (get_db_type()) {
                         case 'sqlite':
-                            copy(DOC_PATH . $this->config('database.dbname'), DOC_PATH . STATIC_DIR . '/backup/sql/' . date('YmdHis') . '_' . basename($this->config('database.dbname')));
+                            copy(DOC_PATH . $this->config('database.dbname'), DOC_PATH . DATA_DIR . '/backup/sql/' . date('YmdHis') . '_' . basename($this->config('database.dbname')));
                             break;
                         case 'mysql':
                             $db->backupDB();

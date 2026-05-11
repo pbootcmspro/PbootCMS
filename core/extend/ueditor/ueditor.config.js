@@ -516,7 +516,7 @@
       // 图片的浮动方式，独占一行剧中,左右浮动，默认: center,left,right,none 去掉这个属性表示不执行排版
       imageBlockLine: "center",
       // 根据规则过滤没事粘贴进来的内容
-      pasteFilter: false,
+      pasteFilter: true,
       // 去掉所有的内嵌字号，使用编辑器默认的字号
       clearFontSize: false,
       // 去掉所有的内嵌字体，使用编辑器默认的字体
