@@ -146,6 +146,8 @@ class AdminController extends Controller
             '/admin/Index/loginOut', // 退出登录
             '/admin/Index/ucenter', // 用户中心
             '/admin/Index/area', // 区域选择
+            '/admin/DeleCache',
+            '/admin/DeleCache/index',
             '/admin/Index/clearCache', // 清理缓存
 			'/admin/Index/clearOnlySysCache', // 清理系统缓存
             '/admin/Index/upload' // 上传文件
