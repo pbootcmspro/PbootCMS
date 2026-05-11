@@ -49,7 +49,7 @@ class AboutController extends Controller
                 json(0, '分类编码为' . $scode . '的内容已经不存在了！');
             }
         } else {
-            json(1, '请求错误，传递的内容scode有误！');
+            json(0, '请求错误，传递的内容scode有误！');
         }
     }
 }

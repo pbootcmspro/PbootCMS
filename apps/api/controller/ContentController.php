@@ -25,12 +25,12 @@ class ContentController extends Controller
 
     public function index()
     {
-        if (! ! $id = request('id', 'int')) {
+        if (!!$id = request('id', 'int')) {
             // 区域获取
             $acode = request('acode', 'var') ?: get_default_lg();
-            
+
             // 读取数据
-            if (! ! $data = $this->model->getContent($acode, $id)) {
+            if (!!$data = $this->model->getContent($acode, $id)) {
                 if ($data->outlink) {
                     $data->link = $data->outlink;
                 } else {
@@ -38,7 +38,7 @@ class ContentController extends Controller
                 }
                 $data->likeslink = url('/home/Do/likes/id/' . $data->id, false);
                 $data->opposelink = url('/home/Do/oppose/id/' . $data->id, false);
-                
+
                 // 返回网页链接地址
                 $Parser = new ParserController();
                 $data->contentlink = $Parser->parserLink(2, $data->urlname, 'content', $data->scode, $data->sortfilename, $data->id, $data->filename);
@@ -48,7 +48,7 @@ class ContentController extends Controller
                 json(0, 'id为' . $id . '的内容已经不存在了！');
             }
         } else {
-            json(1, '请求错误，传递的内容id有误！');
+            json(0, '请求错误，传递的内容id有误！');
         }
     }
 }
