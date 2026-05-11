@@ -70,7 +70,7 @@ class MemberController extends Controller
             if (! $password) {
                 alert_back('用户密码不能为空！');
             } else {
-                $password = md5(md5($password));
+                $password = encrypt_string($password);
             }
             
             // 登录验证
@@ -188,7 +188,7 @@ class MemberController extends Controller
             if (! $password) {
                 alert_back('密码不能为空！');
             } else {
-                $password = md5(md5($password));
+                $password = encrypt_string($password);
             }
             
             // 默认值设置
@@ -283,7 +283,7 @@ class MemberController extends Controller
             }
             $data = [
                 'useremail' => $email,
-                'password' => md5(md5($password))
+                'password' => encrypt_string($password)
             ];
             $this->model->updatePassword($where,$data);
             alert_location('修改成功！', Url::home('member/login'), 1);
@@ -339,7 +339,7 @@ class MemberController extends Controller
             if (! $opassword) {
                 alert_back('请输入当前密码！');
             } else {
-                if (! $this->model->checkUsername(" password='" . md5(md5($opassword)) . "' AND id='" . session('pboot_uid') . "'")) {
+                if (! $this->model->checkUsername(" password='" . encrypt_string($opassword) . "' AND id='" . session('pboot_uid') . "'")) {
                     alert_back('您输入的当前密码不正确！');
                 }
             }
@@ -375,7 +375,7 @@ class MemberController extends Controller
                 if ($password != $rpassword) {
                     alert_back('确认密码不正确！');
                 } else {
-                    $data['password'] = md5(md5($password));
+                    $data['password'] = encrypt_string($password);
                 }
             }
             

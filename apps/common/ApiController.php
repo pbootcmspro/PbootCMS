@@ -65,7 +65,7 @@ class ApiController extends Controller
             }
             
             // 验证签名
-            if ($signature != md5(md5($config['api_appid'] . $config['api_secret'] . $timestamp))) {
+            if ($signature != encrypt_string($config['api_appid'] . $config['api_secret'] . $timestamp)) {
                 error('请求失败：接口签名信息错误！');
             }
         }

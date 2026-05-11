@@ -175,7 +175,7 @@ class ParserController extends Controller
 
         $content = str_replace('{pboot:appid}', $this->config('api_appid'), $content); // API认证用户
         $content = str_replace('{pboot:timestamp}', time(), $content); // 认证时间戳
-        $content = str_replace('{pboot:signature}', md5(md5($this->config('api_appid') . $this->config('api_secret') . time())), $content); // API认证密钥
+        $content = str_replace('{pboot:signature}', encrypt_string($this->config('api_appid') . $this->config('api_secret') . time()), $content); // API认证密钥
 
         $content = str_replace('{pboot:httpurl}', get_http_url(), $content); // 当前访问的域名地址
         $content = str_replace('{pboot:pageurl}', get_current_url(), $content); // 当前页面的地址

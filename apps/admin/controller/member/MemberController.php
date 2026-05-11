@@ -91,7 +91,7 @@ class MemberController extends Controller
             if (! $password) {
                 alert_back('密码不能为空！');
             } else {
-                $password = md5(md5($password));
+                $password = encrypt_string($password);
             }
             
             // 构建数据
@@ -262,7 +262,7 @@ class MemberController extends Controller
             );
             
             if ($password) {
-                $data['password'] = md5(md5($password));
+                $data['password'] = encrypt_string($password);
             }
             
             // 执行添加
