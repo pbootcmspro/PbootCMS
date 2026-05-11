@@ -28,19 +28,55 @@ if (isset($_POST[$fieldName])) {
 } else {
     $source = $_GET[$fieldName];
 }
+
+// 检查是否启用 OSS
+$ossEnabled = \core\basic\Config::get('upload.oss_enabled');
+
 foreach ($source as $imgUrl) {
     $item = new Uploader($imgUrl, $config, "remote");
     $info = $item->getFileInfo();
     
-    // 图片打水印
-    $ext = array(
-        '.jpg',
-        '.png',
-        '.gif'
-    );
-    if (in_array($info['type'], $ext)) {
-        resize_img(ROOT_PATH . $info['url']); // 缩放大小
-        watermark_img(ROOT_PATH . $info['url']); // 水印
+    // 未启用 OSS，使用原有的图片处理逻辑
+    if (!$ossEnabled) {
+        // 图片打水印
+        $ext = array(
+            '.jpg',
+            '.jpeg',
+            '.png',
+            '.gif',
+            '.webp'
+        );
+        if (in_array($info['type'], $ext)) {
+            resize_img(ROOT_PATH . $info['url']); // 缩放大小
+            watermark_img(ROOT_PATH . $info['url']); // 水印
+        }
+    } else {
+        // 如果启用了 OSS，则上传到阿里云 OSS
+        $localFilePath = ROOT_PATH . $info['url'];
+        if (file_exists($localFilePath)) {
+            // 生成 OSS 路径（添加固定父级目录 ztfxcx）
+            $ossPath = 'ztfxcx/image/' . date('Ymd') . '/' . basename($info['url']);
+            // 如果是图片，先进行缩放和水印处理
+            $ext = strtolower(pathinfo($info['url'], PATHINFO_EXTENSION));
+            if (in_array($ext, array('jpg', 'jpeg', 'png', 'gif'))) {
+                resize_img($localFilePath);
+                watermark_img($localFilePath);
+            }
+            
+            // 上传到 OSS
+            require_once CORE_PATH . '/extend/oss/AmazonS3.php';
+            $ossConfig = \core\basic\Config::get('upload.oss_config', true);
+            $oss = new \core\extend\oss\AmazonS3($ossConfig);
+            $result = $oss->uploadFile($localFilePath, $ossPath);
+            
+            if ($result['code'] == 1) {
+                // 上传成功，更新 URL 为 OSS URL
+                $info['url'] = $result['url'];
+                
+                // 删除本地临时文件
+                @unlink($localFilePath);
+            }
+        }
     }
     
     array_push($list, array(

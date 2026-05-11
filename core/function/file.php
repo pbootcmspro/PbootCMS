@@ -130,7 +130,7 @@ function get_dir($path): array
 /**
  * 删除目录及目录下所有文件或删除指定文件
  *
- * @param str $path
+ * @param string $path
  *            待删除目录路径
  * @param int $delDir
  *            是否删除目录，true删除目录，false则只删除文件保留目录
@@ -237,14 +237,19 @@ function upload($input_name, $file_ext = null, $max_width = null, $max_height = 
     if (! $watermark && get('watermark', 'int')) {
         $watermark = true;
     }
-    
+
+    // 检查是否启用 OSS
+    $ossEnabled = Config::get('upload.oss_enabled');
+
     $array_save_file = array();
     if (is_array($files['tmp_name'])) { // 多文件情况
         $file_count = count($files['tmp_name']);
-        for ($i = 0; $i < $file_count; $i ++) {
-            if (! $files['error'][$i]) {
+        for ($i = 0; $i < $file_count; $i++) {
+            if (!$files['error'][$i]) {
                 $upfile = handle_upload($files['name'][$i], $files['tmp_name'][$i], $array_ext_allow, $max_width, $max_height, $watermark);
-                if (strrpos($upfile, '/') > 0) {
+                if ($ossEnabled && stripos($upfile, 'http') !== false) {
+                    $array_save_file[] = $upfile;
+                } elseif (strrpos($upfile, '/') > 0) {
                     $array_save_file[] = $upfile;
                 } else {
                     $err = $upfile;
@@ -254,9 +259,11 @@ function upload($input_name, $file_ext = null, $max_width = null, $max_height = 
             }
         }
     } else { // 单文件情况
-        if (! $files['error']) {
+        if (!$files['error']) {
             $upfile = handle_upload($files['name'], $files['tmp_name'], $array_ext_allow, $max_width, $max_height, $watermark);
-            if (strrpos($upfile, '/') > 0) {
+            if ($ossEnabled && stripos($upfile, 'http') !== false) {
+                $array_save_file[] = $upfile;
+            } elseif (strrpos($upfile, '/') > 0) {
                 $array_save_file[] = $upfile;
             } else {
                 $err = $upfile;
@@ -311,8 +318,10 @@ function handle_upload($file, $temp, $array_ext_allow, $max_width, $max_height, 
     $image = array(
         'png',
         'jpg',
+        'jpeg',
         'gif',
-        'bmp'
+        'bmp',
+        'webp'
     );
     $file = array(
         'ppt',
@@ -331,29 +340,78 @@ function handle_upload($file, $temp, $array_ext_allow, $max_width, $max_height, 
     } else {
         $file_type = 'other';
     }
-    
-    // 检查文件存储路径
-    if (! check_dir($save_path . '/' . $file_type . '/' . date('Ymd'), true)) {
-        return '存储目录创建失败！';
-    }
-    $file_path = $save_path . '/' . $file_type . '/' . date('Ymd') . '/' . time() . mt_rand(100000, 999999) . '.' . $file_ext;
-    if (! move_uploaded_file($temp, $file_path)) { // 从缓存中转存
-        return '从缓存中转存失败！';
-    }
-    $save_file = str_replace(ROOT_PATH, '', $file_path); // 获取文件站点路径
-                                                         
-    // 如果是图片
-    if (is_image($file_path)) {
-        // 进行等比例缩放
-        if (($reset = resize_img($file_path, $file_path, $max_width, $max_height)) !== true) {
-            return $reset;
+
+    // 生成文件名
+    $fileName = time() . mt_rand(100000, 999999) . '.' . $file_ext;
+    $ossPath = 'oss/' . $file_type . '/' . date('Ymd') . '/' . $fileName;
+
+    // 检查是否启用 OSS
+    $ossEnabled = Config::get('upload.oss_enabled');
+    // 如果启用 OSS，上传到阿里云 OSS
+    if ($ossEnabled) {
+        // 创建临时存储目录
+        $tempDir = $save_path . '/temp';
+        check_dir($tempDir, true);
+
+        // 生成临时文件完整路径
+        $tempFilePath = $tempDir . '/' . $fileName;
+
+        if (!move_uploaded_file($temp, $tempFilePath)) {
+            return '从缓存中转存失败！';
         }
-        // 图片打水印
-        if ($watermark) {
-            watermark_img($file_path);
+
+        // 如果是图片，进行处理
+        if (is_image($tempFilePath)) {
+            // 进行等比例缩放
+            if (($reset = resize_img($tempFilePath, $tempFilePath, $max_width, $max_height)) !== true) {
+                @unlink($tempFilePath);
+                return $reset;
+            }
+            // 图片打水印
+            if ($watermark) {
+                watermark_img($tempFilePath);
+            }
         }
+
+        // 上传到 OSS
+        require_once CORE_PATH . '/extend/oss/AmazonS3.php';
+        $ossConfig = Config::get('upload.oss_config', true);
+        $oss = new \core\extend\oss\AmazonS3($ossConfig);
+        $result = $oss->uploadFile($tempFilePath, $ossPath);
+
+        // 删除临时文件
+        @unlink($tempFilePath);
+
+        if ($result['code'] == 1) {
+            return $result['url']; // 返回 OSS URL
+        } else {
+            return $result['msg'];
+        }
+    } else {
+
+        // 检查文件存储路径
+        if (!check_dir($save_path . '/' . $file_type . '/' . date('Ymd'), true)) {
+            return '存储目录创建失败！';
+        }
+        $file_path = $save_path . '/' . $file_type . '/' . date('Ymd') . '/' . $fileName;
+        if (!move_uploaded_file($temp, $file_path)) { // 从缓存中转存
+            return '从缓存中转存失败！';
+        }
+        $save_file = str_replace(ROOT_PATH, '', $file_path); // 获取文件站点路径
+
+        // 如果是图片
+        if (is_image($file_path)) {
+            // 进行等比例缩放
+            if (($reset = resize_img($file_path, $file_path, $max_width, $max_height)) !== true) {
+                return $reset;
+            }
+            // 图片打水印
+            if ($watermark) {
+                watermark_img($file_path);
+            }
+        }
+        return $save_file;
     }
-    return $save_file;
 }
 
 /**

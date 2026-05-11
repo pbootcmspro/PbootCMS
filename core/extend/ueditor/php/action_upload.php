@@ -58,25 +58,75 @@ $up = new Uploader($fieldName, $config, $base64);
 $rs = $up->getFileInfo();
 $ext = array(
     '.jpg',
+    '.jpeg',
     '.png',
-    '.gif'
+    '.gif',
+    '.webp'
 );
-if (in_array($rs['type'], $ext)) {
-    resize_img(ROOT_PATH . $rs['url']); // 缩放大小
-    watermark_img(ROOT_PATH . $rs['url']); // 水印
+
+$ossEnabled = \core\basic\Config::get('upload.oss_enabled');
+
+// 如果上传成功且启用了 OSS，则上传到阿里云 OSS
+if (!$ossEnabled) {
+    // 未启用 OSS，使用原有的图片处理逻辑
+    if (in_array($rs['type'], $ext)) {
+        resize_img(ROOT_PATH . $rs['url']); // 缩放大小
+        watermark_img(ROOT_PATH . $rs['url']); // 水印
+    }
+
+    /**
+     * 得到上传文件所对应的各个参数,数组结构
+     * array(
+     * "state" => "", //上传状态，上传成功时必须返回"SUCCESS"
+     * "url" => "", //返回的地址
+     * "title" => "", //新文件名
+     * "original" => "", //原始文件名
+     * "type" => "" //文件类型
+     * "size" => "", //文件大小
+     * )
+     */
+
+    /* 返回数据 */
+    return json_encode($up->getFileInfo());
+} else {
+    // 获取本地文件路径
+    $localFilePath = ROOT_PATH . $rs['url'];
+
+    if (file_exists($localFilePath)) {
+        // 确定文件类型
+        $extension = '.' . strtolower(pathinfo($rs['url'], PATHINFO_EXTENSION));
+        if (in_array($extension, $ext)) {
+            $fileType = 'image';
+        } elseif (in_array($extension, array('.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.md', '.mkd', '.txt'))) {
+            $fileType = 'file';
+        } else {
+            $fileType = 'other';
+        }
+
+        // 生成 OSS 路径（添加固定父级目录 ztfxcx）
+        $ossPath = 'ztfxcx/' . $fileType . '/' . date('Ymd') . '/' . basename($rs['url']);
+
+        // 如果是图片，先进行缩放和水印处理
+        if (in_array($extension, $ext)) {
+            resize_img($localFilePath);
+            watermark_img($localFilePath);
+        }
+
+        // 上传到 OSS
+        require_once CORE_PATH . '/extend/oss/AmazonS3.php';
+        $ossConfig = \core\basic\Config::get('upload.oss_config', true);
+
+        $oss = new \core\extend\oss\AmazonS3($ossConfig);
+        $result = $oss->uploadFile($localFilePath, $ossPath);
+
+        if ($result['code'] == 1) {
+            // 上传成功，更新 URL 为 OSS URL
+            $rs['url'] = $result['url'];
+
+            // 删除本地临时文件
+            @unlink($localFilePath);
+        }
+    }
+    /* 返回数据 */
+    return json_encode($rs);
 }
-
-/**
- * 得到上传文件所对应的各个参数,数组结构
- * array(
- * "state" => "", //上传状态，上传成功时必须返回"SUCCESS"
- * "url" => "", //返回的地址
- * "title" => "", //新文件名
- * "original" => "", //原始文件名
- * "type" => "" //文件类型
- * "size" => "", //文件大小
- * )
- */
-
-/* 返回数据 */
-return json_encode($up->getFileInfo());

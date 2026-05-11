@@ -28,9 +28,18 @@ return array(
     
     // 上传配置
     'upload' => array(
-        'format' => 'jpg,jpeg,png,gif,xls,xlsx,doc,docx,ppt,pptx,rar,zip,pdf,txt,mp4,avi,flv,rmvb,mp3,otf,ttf',
+        'format' => 'jpg,jpeg,png,gif,webp,xls,xlsx,doc,docx,ppt,pptx,rar,zip,pdf,txt,mp4,avi,flv,rmvb,mp3,otf,ttf',
         'max_width' => '1920',
-        'max_height' => ''
+        'max_height' => '',
+        // 亚马逊S3协议通用OSS服务配置（启用后上传到 OSS，否则上传到本地）
+        'oss_enabled' => false, // 是否启用 OSS：true 启用，false 不启用
+        'oss_config' => array(
+            'accessKeyId' => 'Your AccessKey ID',
+            'accessKeySecret' => 'Your AccessKey Secret',
+            'endpoint' => 'OSS Endpoint',
+            'bucket' => 'Bucket Name',
+            'cdnDomain' => ''
+        )
     ),
     
     // 缩略图配置
@@ -42,7 +51,20 @@ return array(
     // 模块模板路径定义
     'tpl_dir' => array(
         'home' => '/template'
-    )
+    ),
+
+    // 缓存配置
+    'cache' => array(
+        // 缓存驱动：filecache（文件缓存）, memcache（Memcache缓存）
+        'handler' => 'filecache',
+        // 文件缓存目录（仅在handler为filecache时有效）
+        'dir' => RUN_PATH . '/cache',
+        // Memcache服务器配置（仅在handler为memcache时有效）
+        'server' => array(
+            'host' => '127.0.0.1',
+            'port' => 11211
+        )
+    ),
 
 );
  
