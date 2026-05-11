@@ -236,7 +236,7 @@ class ContentController extends Controller
             } else {
                 $select = '';
             }
-            $list_html .= "<option value='{$value->scode}' $select>{$this->blank}{$value->name}";
+            $list_html .= "<option value='{$value->scode}' $select>{$this->blank}{$value->name}</option>";
             // 子菜单处理
             if ($value->son) {
                 $this->blank .= '　　';
