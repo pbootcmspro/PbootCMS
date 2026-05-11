@@ -10,6 +10,7 @@ namespace core\basic;
 
 use core\basic\Config;
 use core\cache\Memcache;
+use core\cache\Filecache;
 
 class Cache
 {
@@ -21,17 +22,20 @@ class Cache
             case 'memcache':
                 $instance = Memcache::getInstance();
                 break;
+            case 'filecache':
             default:
-                $instance = Memcache::getInstance();
+                // 默认使用文件缓存，无需额外配置
+                $instance = Filecache::getInstance();
+                break;
         }
         return $instance;
     }
 
     // 写入缓存
-    public static function set($key, $value)
+    public static function set($key, $value, $expire = 0)
     {
         $cache = self::getCacheInstance();
-        return $cache->set($key, $value);
+        return $cache->set($key, $value, $expire);
     }
 
     // 读取缓存

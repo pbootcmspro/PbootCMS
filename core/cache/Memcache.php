@@ -53,10 +53,10 @@ class Memcache implements Builder
     }
 
     // 设置值
-    public function set($key, $value)
+    public function set($key, $value, $expire = 0)
     {
         $memcache = $this->conn();
-        return $memcache->set($key, $value);
+        return $memcache->set($key, $value, $expire);
     }
 
     // 读取值
