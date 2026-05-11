@@ -1,5 +1,7 @@
 <?php
 return array(
+    // 是否调试模式
+    "debug" => false,
     
     // 定义CMS名称
     'cmsname' => 'PbootCMS',

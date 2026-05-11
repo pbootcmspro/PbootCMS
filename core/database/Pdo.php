@@ -312,8 +312,11 @@ class Pdo implements Builder, Transaction
             $this->$conn->rollBack();
             $this->begin = false;
         }
-        // error('执行SQL发生错误！' . $err . '语句：' . $sql);
-        error('执行SQL发生错误！' . $err);
+        if (Config::get('debug')) {
+            error('执行SQL发生错误！' . $err . '，语句：' . $sql);
+        } else {
+            error('执行SQL发生错误！' . $err);
+        }
     }
 
     //返回对象结果集

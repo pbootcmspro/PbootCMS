@@ -35,7 +35,12 @@ class ApiController extends Controller
             json(0, '系统尚未开启API功能，请到后台配置');
         }
         
-        // 验证总开关
+        // 代码里配置了接口调试模式，则不需要验证接口签名
+        if (Config::get("debug")) {
+            return;
+        }
+        
+        // 后台配置的接口验证总开关
         if ($config['api_auth']) {
             
             // 判断用户
