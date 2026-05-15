@@ -14,6 +14,9 @@ class Sqlite implements Builder, Transaction
 {
 
     protected static $sqlite;
+    
+    // 支持多实例（用于分库场景）
+    protected static $instances = array();
 
     protected $master;
 
@@ -31,13 +34,44 @@ class Sqlite implements Builder, Transaction
         }
     }
 
-    // 获取单一实例，使用单一实例数据库连接类
-    public static function getInstance()
+    // 获取单一实例，使用单一实例数据库连接类（兼容旧代码）
+    public static function getInstance($dbPath = null, $walMode = false)
     {
+        // 如果指定了数据库路径，使用多实例模式
+        if ($dbPath) {
+            $key = md5($dbPath);
+            if (!isset(self::$instances[$key])) {
+                self::$instances[$key] = new self();
+                self::$instances[$key]->initConnection($dbPath, $walMode);
+            }
+            return self::$instances[$key];
+        }
+        
+        // 默认单实例模式（向后兼容）
         if (!self::$sqlite) {
             self::$sqlite = new self();
+            $cfg = ROOT_PATH . Config::get('database.dbname');
+            self::$sqlite->initConnection($cfg, $walMode);
         }
         return self::$sqlite;
+    }
+    
+    /**
+     * 初始化数据库连接
+     * @param string $dbPath 数据库文件路径
+     */
+    private function initConnection($dbPath, $walMode = false)
+    {
+        $conn = $this->conn($dbPath);
+        $this->master = $conn;
+        $this->slave = $conn;
+        
+        // 启用 WAL 模式，提升并发写入性能
+        if ($walMode) {
+            $conn->exec('PRAGMA journal_mode=WAL;');
+            $conn->exec('PRAGMA synchronous=NORMAL;');
+            $conn->exec('PRAGMA cache_size=-64000;'); // 64MB 缓存
+        }
     }
 
     // 连接数据库，接受数据库连接参数，返回数据库连接对象
@@ -83,6 +117,7 @@ class Sqlite implements Builder, Transaction
     public function query($sql, $type = 'master')
     {
         $time_s = microtime(true);
+        // 如果 master/slave 未初始化，说明是通过 getInstance() 无参调用，需要自动初始化
         if (!$this->master || !$this->slave) {
             $cfg = ROOT_PATH . Config::get('database.dbname');
             $conn = $this->conn($cfg);

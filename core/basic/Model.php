@@ -105,7 +105,7 @@ class Model
     }
 
     // 获取数据库连接对象
-    private function getDb()
+    protected function getDb()
     {
         if (!$this->dbDriver) {
             $type = Config::get('database.type');
