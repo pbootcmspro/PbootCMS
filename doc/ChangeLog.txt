@@ -2,6 +2,12 @@
 官方网站：https://www.pbootcms.com
 标签手册：https://www.pbootcms.com/docs.html
 ##########################################
+PbootCMS V3.2.13 build 2026-05-25
+1、安全加固：ORM参数化绑定、XSS防护、ueditor鉴权、备份路径迁移、PHP最低版本升至7.0
+
+PbootCMS V3.2.12 build 2025-04-24
+1、修复SQL注入问题
+
 PbootCMS V3.2.11 build 2025-04-16
 1、下架Polyfill功能
 

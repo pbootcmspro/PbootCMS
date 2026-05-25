@@ -413,6 +413,164 @@ function decode_string($string)
     return $string;
 }
 
+// 清洗 CSS 文本中的危险声明（用于 <style> 块与 style 属性）
+function sanitize_css($css)
+{
+    if (! $css || ! is_string($css))
+        return $css;
+
+    // @import 外链样式
+    $css = preg_replace('/@import\s+[^;}\n]+;?/i', '', $css);
+
+    // IE expression()，支持一层嵌套括号；畸形括号时避免死循环
+    $prev = null;
+    while ($prev !== $css && preg_match('/expression\s*\(/i', $css)) {
+        $prev = $css;
+        $css = preg_replace('/expression\s*\((?:[^()]|\([^()]*\))*\)/i', '', $css);
+        if ($prev === $css) {
+            $css = preg_replace('/expression\s*\([^;}\n]*/i', '', $css);
+            break;
+        }
+    }
+    // expression 清除后的空属性/残留括号
+    $css = preg_replace('/[a-z_-][\w-]*\s*:\s*(?=[;}])/i', '', $css);
+    $css = preg_replace('/\{\s*\}/', '', $css);
+
+    // IE behavior: url()
+    $css = preg_replace('/behavior\s*:\s*url\s*\([^)]*\)/i', '', $css);
+
+    // url(javascript:) / url(vbscript:)
+    $css = preg_replace('/url\s*\(\s*["\']?\s*javascript\s*:[^)]*\)/i', '', $css);
+    $css = preg_replace('/url\s*\(\s*["\']?\s*vbscript\s*:[^)]*\)/i', '', $css);
+
+    // 旧版 Firefox -moz-binding
+    $css = preg_replace('/-moz-binding\s*:[^;}]*/i', '', $css);
+
+    return $css;
+}
+
+// 移除富文本中针对整站布局的全局劫持规则（保留文章局部 class 样式）
+function filter_css_global_hijack_rules($css)
+{
+    if (! $css || ! is_string($css))
+        return $css;
+
+    // 先剔除 display:none 劫持（[^{}]+ 避免把规则体内的 } 误当作选择器边界）
+    $css = preg_replace_callback('/([^{}]+)\{([^}]*)\}/is', function ($m) {
+        $selector = trim($m[1]);
+        $declarations = $m[2];
+        if (preg_match('/display\s*:\s*none/i', $declarations) &&
+            preg_match('/\b(?:body|html|header|nav|footer|#header)\b/i', $selector)) {
+            return '';
+        }
+        // 裸 a / a:pseudo / a, ... 会影响整页导航与所有外链（富文本 <style> 为全局生效）
+        if (preg_match('/^\s*a(?:\s*:[\w-]+)?\s*(?:,|$)/i', $selector) &&
+            ! preg_match('/^\s*a[.#\[]/i', $selector)) {
+            return '';
+        }
+        // 通配符劫持
+        if (preg_match('/^\s*\*[\s,:#.[]/i', $selector) || preg_match('/^\s*\*\s*$/', $selector)) {
+            return '';
+        }
+        return $m[0];
+    }, $css);
+
+    // body/html 伪元素全屏遮罩
+    $css = preg_replace('/\b(?:body|html)\s*::\s*(?:before|after)\s*\{[^{}]*\}/is', '', $css);
+
+    // 兜底：剔除残留 body/html display:none（防止规则被破坏后漏网）
+    $css = preg_replace('/\b(?:body|html)\s*\{[^}]*display\s*:\s*none[^}]*\}/is', '', $css);
+
+    // 清理空声明与空规则块
+    $css = preg_replace('/[a-z_-][\w-]*\s*:\s*(?=[;}])/i', '', $css);
+    $css = preg_replace('/[^{};,@\s][^{}]*\{\s*\}/', '', $css);
+
+    return $css;
+}
+
+// 过滤 style 属性值，危险内容剔除后尽量保留合法声明
+function filter_inline_style_attr($css)
+{
+    $css = filter_css_global_hijack_rules(sanitize_css($css));
+    // 折叠多余分号与空白
+    $css = preg_replace('/;\s*;/', ';', $css);
+    return trim($css, " \t\n\r\0\x0B;");
+}
+
+// 过滤HTML内容中的危险标签和属性，保留安全的HTML标签
+// 用于富文本内容字段（如文章content），允许显示格式化内容但阻止XSS攻击
+function filter_html($html)
+{
+    if (! $html || ! is_string($html))
+        return $html;
+
+    // 1. 移除所有危险标签（script, iframe, object, embed, applet, form, base, meta, link, svg等）
+    $dangerous_tags = array(
+        'script', 'iframe', 'object', 'embed', 'applet', 'form', 'input',
+        'button', 'select', 'textarea', 'base', 'meta', 'link', 'svg',
+        'math', 'noscript', 'template', 'frame', 'frameset', 'body', 'head'
+    );
+    foreach ($dangerous_tags as $tag) {
+        // 移除开标签、闭标签和自闭合标签
+        $html = preg_replace('/<' . $tag . '[\s>\/][^>]*>/i', '', $html);
+        $html = preg_replace('/<\/' . $tag . '[^>]*>/i', '', $html);
+        $html = preg_replace('/<' . $tag . '\s*\/?>/i', '', $html);
+    }
+
+    // 2. 移除所有 on 开头的事件属性（onclick, onerror, onload, onmouseover等）
+    $html = preg_replace('/\s+on\w+\s*=\s*(["\']?)[^>"\']*\1/i', '', $html);
+    // 处理无引号的事件属性
+    $html = preg_replace('/\s+on\w+\s*=\s*[^\s>]+/i', '', $html);
+
+    // 3. 移除 javascript: 和 vbscript: 协议
+    $html = preg_replace('/href\s*=\s*(["\']?)\s*javascript\s*:[^>"\']*\1/i', 'href="#"', $html);
+    $html = preg_replace('/href\s*=\s*(["\']?)\s*vbscript\s*:[^>"\']*\1/i', 'href="#"', $html);
+    $html = preg_replace('/src\s*=\s*(["\']?)\s*javascript\s*:[^>"\']*\1/i', '', $html);
+    $html = preg_replace('/src\s*=\s*(["\']?)\s*vbscript\s*:[^>"\']*\1/i', '', $html);
+    // 处理无引号的协议
+    $html = preg_replace('/href\s*=\s*javascript\s*:[^\s>]+/i', 'href="#"', $html);
+    $html = preg_replace('/src\s*=\s*javascript\s*:[^\s>]+/i', '', $html);
+
+    // 4. 移除 data: 协议中的危险内容（仅允许图片data URI）
+    $html = preg_replace('/src\s*=\s*(["\']?)\s*data\s*:(?!image\/(png|jpeg|jpg|gif|webp|bmp))[^>"\']*\1/i', '', $html);
+
+    // 5. 清洗 <style> 块：保留合法排版，剔除恶意 CSS
+    $html = preg_replace_callback('/<style\b([^>]*)>(.*?)<\/style>/is', function ($matches) {
+        $attrs = preg_replace('/\s+on\w+\s*=\s*[^\s>]*/i', '', $matches[1]);
+        $css = filter_css_global_hijack_rules(sanitize_css($matches[2]));
+        $css = trim($css);
+        if ($css === '') {
+            return '';
+        }
+        return '<style' . $attrs . '>' . $css . '</style>';
+    }, $html);
+    // 移除空 <style/> 自闭合标签
+    $html = preg_replace('/<style\b[^>]*\/>/i', '', $html);
+
+    // 6. 清洗 style 属性（双引号 / 单引号）
+    $html = preg_replace_callback('/\s+style\s*=\s*(")([^"]*)"/is', function ($matches) {
+        $css = filter_inline_style_attr($matches[2]);
+        return $css === '' ? '' : ' style="' . $css . '"';
+    }, $html);
+    $html = preg_replace_callback("/\s+style\s*=\s*(')([^']*)'/is", function ($matches) {
+        $css = filter_inline_style_attr($matches[2]);
+        return $css === '' ? '' : " style='" . $css . "'";
+    }, $html);
+    // 无引号 style 属性：含危险模式则整段移除
+    $html = preg_replace('/\s+style\s*=\s*[^"\'>\s][^>]*(?:expression|@import|behavior\s*:\s*url|javascript\s*:)/i', '', $html);
+
+    // 7. 移除 XML相关危险内容
+    $html = preg_replace('/<\?xml[^>]*\?>/i', '', $html);
+    $html = preg_replace('/<!\[CDATA\[/i', '', $html);
+    $html = preg_replace('/\]\]>/i', '', $html);
+
+    // 8. 移除HTML注释中的条件注释（IE条件注释可执行代码）
+    $html = preg_replace('/<!--\[if\s/i', '&lt;!--[if ', $html);
+    $html = preg_replace('/<!\[endif\]-->/i', '<![endif]--&gt;', $html);
+
+    return $html;
+}
+
 // 字符反转义斜杠，支持字符串、数组、对象
 function decode_slashes($string)
 {
@@ -977,6 +1135,3 @@ function create_code($len = 4)
     }
     return $code;
 }
-
-
-

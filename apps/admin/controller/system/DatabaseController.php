@@ -99,7 +99,7 @@ class DatabaseController extends Controller
                 }
                 break;
             case 'bfsqlite':
-                if (copy(DOC_PATH . $this->dbauth['dbname'], DOC_PATH . STATIC_DIR . '/backup/sql/' . get_uniqid() . '_' . date('YmdHis') . '.db')) {
+                if ($this->backupSqliteDB()) {
                     $this->log('备份数据库成功！');
                     success('备份数据库成功！', - 1);
                 } else {
@@ -227,7 +227,7 @@ class DatabaseController extends Controller
     // 写入文件
     private function writeFile($filename, $content)
     {
-        $sqlfile = DOC_PATH . STATIC_DIR . '/backup/sql/' . $filename;
+        $sqlfile = DOC_PATH . DATA_DIR . '/backup/sql/' . $filename;
         check_file($sqlfile, true);
         if (file_put_contents($sqlfile, $content)) {
             return true;
@@ -245,4 +245,33 @@ class DatabaseController extends Controller
         }
         return $list;
     }
+
+    // 备份SQLite数据库文件
+    public function backupSqliteDB($filename = '', $backup_dir_suffix='/backup/sql/')
+    {
+        // 仅在 SQLite 类型时执行
+        $type = isset($this->dbauth['type']) ? $this->dbauth['type'] : '';
+        if ($type !== 'sqlite' && $type !== 'pdo_sqlite') {
+            return false;
+        }
+
+        $source = DOC_PATH . $this->dbauth['dbname'];
+        if (! file_exists($source)) {
+            return false;
+        }
+
+        // 备份目录，不存在时自动创建（递归创建多级目录）
+        $backup_dir = DOC_PATH . DATA_DIR . $backup_dir_suffix;
+        if (! check_dir($backup_dir, true)) {
+            return false;
+        }
+
+        // 默认文件名规则与原逻辑保持一致
+        if (! $filename) {
+            $filename = get_uniqid() . '_' . date('YmdHis') . '.db';
+        }
+
+        return copy($source, $backup_dir . $filename);
+    }
+
 }

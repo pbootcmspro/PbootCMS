@@ -27,7 +27,7 @@ class Mysqli implements Builder
     public function __destruct()
     {
         if ($this->begin) { // 存在待提交的事务时自动进行提交
-            $this->commit();
+            $this->commitTransaction();
         }
     }
 
@@ -66,33 +66,50 @@ class Mysqli implements Builder
     }
 
     // 关闭自动提交，开启事务模式
-    public function begin()
+    public function beginTransaction()
     {
-        $this->master->autocommit(false);
-        $this->begin = true;
+        if (! $this->master) {
+            $cfg = Config::get('database');
+            $this->master = $this->conn($cfg);
+            $this->master->query("SET sql_mode='NO_ENGINE_SUBSTITUTION'");
+        }
+        if (! $this->begin) {
+            $this->master->autocommit(false);
+            $this->begin = true;
+        }
     }
 
     // 提交事务
-    public function commit()
+    public function commitTransaction()
     {
-        $this->master->commit(); // 提交事务
-        $this->master->autocommit(true); // 提交后恢复自动提交
-        $this->begin = false; // 关闭事务模式
+        if ($this->begin) {
+            $this->master->commit(); // 提交事务
+            $this->master->autocommit(true); // 提交后恢复自动提交
+            $this->begin = false; // 关闭事务模式
+        }
     }
 
     // 执行SQL语句,接受完整SQL语句，返回结果集对象
-    public function query($sql, $type = 'master')
+    public function query($sql, $type = 'master', $params = array())
     {
         $time_s = microtime(true);
+
+        // 确保master连接已初始化（bindParams需要使用master进行转义）
+        if (! $this->master) {
+            $cfg = Config::get('database');
+            $this->master = $this->conn($cfg);
+            $this->master->query("SET sql_mode='NO_ENGINE_SUBSTITUTION'"); // MySql写入规避严格模式
+        }
+
+        // 参数绑定统一处理（消除master/slave分支中的重复调用）
+        if (!empty($params)) {
+            $sql = $this->bindParams($sql, $params);
+        }
+
         switch ($type) {
             case 'master':
-                if (! $this->master) {
-                    $cfg = Config::get('database');
-                    $this->master = $this->conn($cfg);
-                    $this->master->query("SET sql_mode='NO_ENGINE_SUBSTITUTION'"); // 写入规避严格模式
-                }
                 if (Config::get('database.transaction') && ! $this->begin) { // 根据配置开启mysql事务，注意需要是InnoDB引擎
-                    $this->begin();
+                    $this->beginTransaction();
                 }
                 $result = $this->master->query($sql) or $this->error($sql, 'master');
                 break;
@@ -177,9 +194,9 @@ class Mysqli implements Builder
      *
      * @$type 可以是MYSQLI_ASSOC ,MYSQLI_NUM ,MYSQLI_BOTH,不设置则返回对象数组
      */
-    public function one($sql, $type = null)
+    public function one($sql, $type = null, $params = array())
     {
-        $result = $this->query($sql, 'slave');
+        $result = $this->query($sql, 'slave', $params);
         $row = array();
         if ($this->slave->affected_rows) {
             if ($type) {
@@ -196,9 +213,9 @@ class Mysqli implements Builder
      * 查询多条数据模型，接受完整SQL语句，有数据返回二维对象数组，否则空数组
      * @$type 可以是MYSQLI_ASSOC ,MYSQLI_NUM ,MYSQLI_BOTH,不设置则返回对象模式
      */
-    public function all($sql, $type = null)
+    public function all($sql, $type = null, $params = array())
     {
-        $result = $this->query($sql, 'slave');
+        $result = $this->query($sql, 'slave', $params);
         $rows = array();
         if ($this->slave->affected_rows) {
             if ($type) {
@@ -216,9 +233,9 @@ class Mysqli implements Builder
     }
 
     // 数据增、删、改模型，接受完整SQL语句，返回影响的行数的int数据
-    public function amd($sql)
+    public function amd($sql, $params = array())
     {
-        $result = $this->query($sql, 'master');
+        $result = $this->query($sql, 'master', $params);
         $num = $this->master->affected_rows;
         if ($num > 0) {
             return $num;
@@ -263,6 +280,27 @@ class Mysqli implements Builder
     //返回对象结果集
     public function fetchQuery($obj){
         return $obj->fetch_all();
+    }
+
+    // 安全替换参数占位符
+    private function bindParams($sql, $params)
+    {
+        $offset = 0;
+        foreach ($params as $param) {
+            $pos = strpos($sql, '?', $offset);
+            if ($pos !== false) {
+                if ($param === null) {
+                    $replacement = 'NULL';
+                } elseif (is_int($param) || is_float($param)) {
+                    $replacement = $param;
+                } else {
+                    $replacement = "'" . $this->master->real_escape_string($param) . "'";
+                }
+                $sql = substr_replace($sql, $replacement, $pos, 1);
+                $offset = $pos + strlen($replacement);
+            }
+        }
+        return $sql;
     }
 }
 

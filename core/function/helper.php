@@ -830,16 +830,14 @@ function compareSymbol1($str){
 
 function compareSymbol2($str){
     $res = null;
-    $symbol2 = ['%'];
-    foreach ($symbol2 as $items) {
-        if (strpos($str, $items) !== false) {
-            $arr = explode($items, $str);
-            if ($items == '%') {
-                $res = $arr[0] % $arr[1];
-            }
-            break;
+
+    if (strpos($str, '%') !== false) { // 取模运算
+        $arr = explode('%', $str);
+        if (count($arr) === 2 && is_numeric(trim($arr[0])) && is_numeric(trim($arr[1]))) {
+            $res = intval($arr[0]) % intval($arr[1]);
         }
     }
+
     if($res === null) {
         $str = trim($str);
         $str = trim($str,"'");

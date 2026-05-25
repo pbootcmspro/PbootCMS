@@ -27,7 +27,7 @@ class Pdo implements Builder
     public function __destruct()
     {
         if ($this->begin) { // 存在待提交的事务时自动进行提交
-            $this->commit();
+            $this->commitTransaction();
         }
     }
 
@@ -96,21 +96,32 @@ class Pdo implements Builder
     }
 
     // 关闭自动提交，开启事务模式
-    public function begin()
+    public function beginTransaction()
     {
-        $this->master->beginTransaction();
-        $this->begin = true;
+        if (! $this->master) {
+            $cfg = Config::get('database');
+            $this->master = $this->conn($cfg);
+            if ($cfg['type'] == 'pdo_mysql') {
+                $this->master->exec("SET sql_mode='NO_ENGINE_SUBSTITUTION'");
+            }
+        }
+        if (! $this->begin) {
+            $this->master->beginTransaction(); // PDO原生方法，保持不变
+            $this->begin = true;
+        }
     }
 
     // 提交事务
-    public function commit()
+    public function commitTransaction()
     {
-        $this->master->commit();
-        $this->begin = false;
+        if ($this->begin) {
+            $this->master->commit();
+            $this->begin = false;
+        }
     }
 
     // 执行SQL语句,接受完整SQL语句，返回结果集对象
-    public function query($sql, $type = 'master')
+    public function query($sql, $type = 'master', $params = array())
     {
         $time_s = microtime(true);
         switch ($type) {
@@ -125,14 +136,27 @@ class Pdo implements Builder
                 
                 // sqlite时自动启动事务
                 if ($cfg['type'] == 'pdo_sqlite' && ! $this->begin) {
-                    $this->begin();
+                    $this->beginTransaction();
                 } elseif ($cfg['type'] == 'pdo_mysql' && Config::get('database.transaction') && ! $this->begin) { // 根据配置开启mysql事务，注意需要是InnoDB引擎
-                    $this->begin();
+                    $this->beginTransaction();
                 }
                 
-                $result = $this->master->query($sql);
-                if ($result === false) {
-                    $this->error($sql, 'master');
+                if (!empty($params)) {
+                    $stmt = $this->master->prepare($sql);
+                    if ($stmt === false) {
+                        $this->error($sql, 'master');
+                        return false;
+                    }
+                    if ($stmt->execute($params) === false) {
+                        $this->error($sql, 'master', $stmt);
+                        return false;
+                    }
+                    $result = $stmt;
+                } else {
+                    $result = $this->master->query($sql);
+                    if ($result === false) {
+                        $this->error($sql, 'master');
+                    }
                 }
                 break;
             case 'slave':
@@ -149,7 +173,20 @@ class Pdo implements Builder
                     }
                     $this->slave = $this->conn($cfg);
                 }
-                $result = $this->slave->query($sql) or $this->error($sql, 'slave');
+                if (!empty($params)) {
+                    $stmt = $this->slave->prepare($sql);
+                    if ($stmt === false) {
+                        $this->error($sql, 'slave');
+                        return false;
+                    }
+                    if ($stmt->execute($params) === false) {
+                        $this->error($sql, 'slave', $stmt);
+                        return false;
+                    }
+                    $result = $stmt;
+                } else {
+                    $result = $this->slave->query($sql) or $this->error($sql, 'slave');
+                }
                 break;
         }
         return $result;
@@ -230,9 +267,9 @@ class Pdo implements Builder
      * 查询一条数据模型，接受完整SQL语句，有数据返回对象数组，否则空数组
      * @$type 可以是MYSQLI_ASSOC(FETCH_ASSOC) ,MYSQLI_NUM(FETCH_NUM) ,MYSQLI_BOTH(FETCH_BOTH),不设置则返回对象模式
      */
-    public function one($sql, $type = null)
+    public function one($sql, $type = null, $params = array())
     {
-        $result = $this->query($sql, 'slave');
+        $result = $this->query($sql, 'slave', $params);
         $row = array();
         if ($type) {
             $type ++; // 与mysqli统一返回类型设置
@@ -247,9 +284,9 @@ class Pdo implements Builder
      * 查询多条数据模型，接受完整SQL语句，有数据返回二维对象数组，否则空数组
      * @$type 可以是MYSQLI_ASSOC(FETCH_ASSOC) ,MYSQLI_NUM(FETCH_NUM) ,MYSQLI_BOTH(FETCH_BOTH),不设置则返回对象模式
      */
-    public function all($sql, $type = null)
+    public function all($sql, $type = null, $params = array())
     {
-        $result = $this->query($sql, 'slave');
+        $result = $this->query($sql, 'slave', $params);
         $rows = array();
         if ($type) {
             $type ++; // 与mysqli统一返回类型设置
@@ -263,11 +300,11 @@ class Pdo implements Builder
     }
 
     // 数据增、删、改模型，接受完整SQL语句，返回影响的行数的int数据
-    public function amd($sql)
+    public function amd($sql, $params = array())
     {
-        $result = $this->query($sql, 'master');
-        if ($result > 0) {
-            return $result;
+        $result = $this->query($sql, 'master', $params);
+        if ($result) {
+            return $result->rowCount();
         } else {
             return 0;
         }
@@ -293,15 +330,26 @@ class Pdo implements Builder
         }
     }
 
-    // 显示执行错误
-    protected function error($sql, $conn)
+    // 显示连接层执行错误（prepare失败、无参数query失败等，错误信息在连接对象上）
+    protected function error($sql, $conn, $stmt = null)
     {
-        $errs = $this->$conn->errorInfo();
-        $err = '错误：' . $errs[2];
+        // 错误信息来源：有 $stmt 时取 statement 层，否则取连接层
+        $source = $stmt ?: $this->$conn;
+        $errs = $source->errorInfo();
+
+        $err = '错误：' . (isset($errs[2]) ? $errs[2] : '未知错误');
+        // SQLSTATE 始终附加（若有）
+        if (isset($errs[0]) && $errs[0]) {
+            $err .= ' [SQLSTATE:' . $errs[0] . ']';
+        }
+
+        // 屏蔽XPATH相关错误信息，防止信息泄露
         if (preg_match('/XPATH/i', $err)) {
             $err = '';
         }
-        if ($this->begin) { // 如果是事务模式，发生错误，则回滚
+
+        // 如果是事务模式，发生错误，则回滚
+        if ($this->begin && $this->$conn->inTransaction()) {
             $this->$conn->rollBack();
             $this->begin = false;
         }

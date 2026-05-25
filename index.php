@@ -14,9 +14,9 @@ define('IS_INDEX', true);
 define('URL_BIND', 'home');
 
 // PHP版本检测
-if (PHP_VERSION < '5.4') {
+if (version_compare(PHP_VERSION,'7.0.0','<')) {
     header('Content-Type:text/html; charset=utf-8');
-    exit('您服务器PHP的版本太低，程序要求PHP版本不小于5.4');
+    exit('您服务器PHP的版本太低，程序要求PHP版本不小于7.0');
 }
 
 // 引用内核启动文件

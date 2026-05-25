@@ -1,7 +1,9 @@
 <IfModule mod_rewrite.c>
   Options +FollowSymlinks
   RewriteEngine On
-  
+
+  RewriteRule ^(data|static/backup)/ - [F,L]
+
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteCond %{REQUEST_FILENAME} !-f
   

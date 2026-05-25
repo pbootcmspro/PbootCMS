@@ -30,6 +30,30 @@ class Sqlite implements Builder
         }
     }
 
+    // 开启显式事务
+    public function beginTransaction()
+    {
+        if (! $this->master) {
+            $cfg = ROOT_PATH . Config::get('database.dbname');
+            $conn = $this->conn($cfg);
+            $this->master = $conn;
+            $this->slave = $conn;
+        }
+        if (!$this->begin) {
+            $this->master->exec('begin;');
+            $this->begin = true;
+        }
+    }
+
+    // 提交事务
+    public function commitTransaction()
+    {
+        if ($this->begin) {
+            $this->master->exec('commit;');
+            $this->begin = false;
+        }
+    }
+
     // 获取单一实例，使用单一实例数据库连接类
     public static function getInstance()
     {
@@ -60,7 +84,7 @@ class Sqlite implements Builder
     }
 
     // 执行SQL语句,接受完整SQL语句，返回结果集对象
-    public function query($sql, $type = 'master')
+    public function query($sql, $type = 'master', $params = array())
     {
         $time_s = microtime(true);
         if (! $this->master || ! $this->slave) {
@@ -68,6 +92,9 @@ class Sqlite implements Builder
             $conn = $this->conn($cfg);
             $this->master = $conn;
             $this->slave = $conn;
+        }
+        if (!empty($params)) {
+            $sql = $this->bindParams($sql, $params);
         }
         switch ($type) {
             case 'master':
@@ -82,6 +109,27 @@ class Sqlite implements Builder
                 break;
         }
         return $result;
+    }
+
+    // 安全替换参数占位符
+    private function bindParams($sql, $params)
+    {
+        $offset = 0;
+        foreach ($params as $param) {
+            $pos = strpos($sql, '?', $offset);
+            if ($pos !== false) {
+                if ($param === null) {
+                    $replacement = 'NULL';
+                } elseif (is_int($param) || is_float($param)) {
+                    $replacement = $param;
+                } else {
+                    $replacement = "'" . $this->master->escapeString($param) . "'";
+                }
+                $sql = substr_replace($sql, $replacement, $pos, 1);
+                $offset = $pos + strlen($replacement);
+            }
+        }
+        return $sql;
     }
 
     // 数据是否存在模型，接受完整SQL语句，返回boolean数据
@@ -139,7 +187,7 @@ class Sqlite implements Builder
     }
 
     // 查询一条数据模型，接受完整SQL语句，有数据返回对象数组，否则空数组
-    public function one($sql, $type = null)
+    public function one($sql, $type = null, $params = array())
     {
         if (! $type) {
             $my_type = SQLITE3_ASSOC;
@@ -147,7 +195,7 @@ class Sqlite implements Builder
             $my_type = $type;
         }
         $row = array();
-        $result = $this->query($sql, 'slave');
+        $result = $this->query($sql, 'slave', $params);
         if (! ! $row = $result->fetchArray($my_type)) {
             if (! $type && $row) {
                 $out = new \stdClass();
@@ -162,14 +210,14 @@ class Sqlite implements Builder
     }
 
     // 查询多条数据模型，接受完整SQL语句，有数据返回二维对象数组，否则空数组
-    public function all($sql, $type = null)
+    public function all($sql, $type = null, $params = array())
     {
         if (! $type) {
             $my_type = SQLITE3_ASSOC;
         } else {
             $my_type = $type;
         }
-        $result = $this->query($sql, 'slave');
+        $result = $this->query($sql, 'slave', $params);
         $rows = array();
         while (! ! $row = $result->fetchArray($my_type)) {
             if (! $type && $row) {
@@ -186,9 +234,9 @@ class Sqlite implements Builder
     }
 
     // 数据增、删、改模型，接受完整SQL语句，返回影响的行数的int数据
-    public function amd($sql)
+    public function amd($sql, $params = array())
     {
-        $result = $this->query($sql, 'master');
+        $result = $this->query($sql, 'master', $params);
         if ($result) {
             return $result;
         } else {

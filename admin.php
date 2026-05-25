@@ -14,7 +14,7 @@ define('IS_INDEX', true);
 define('URL_BIND', 'admin');
 
 // PHP版本检测
-if (version_compare(phpversion(),'7.0.0','<')) {
+if (version_compare(PHP_VERSION,'7.0.0','<')) {
     header('Content-Type:text/html; charset=utf-8');
     exit('您服务器PHP的版本太低，程序要求PHP版本不小于7.0');
 }

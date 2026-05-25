@@ -14,10 +14,10 @@ define('IS_INDEX', true);
 define('URL_BIND', 'api');
 
 // PHP版本检测
-if (PHP_VERSION < '5.3') {
+if (version_compare(PHP_VERSION,'7.0.0','<')) {
     echo json_encode(array(
         'code' => 0,
-        'data' => 'The version of your server PHP is too low, and the program requires PHP version not less than 5.3.'
+        'data' => 'The version of your server PHP is too low, and the program requires PHP version not less than 7.0'
     ));
     exit();
 }
