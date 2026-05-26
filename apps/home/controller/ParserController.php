@@ -1365,6 +1365,7 @@ class ParserController extends Controller
 
                     // tags数据传值筛选
                     if (!!$get_tag = get('tag', 'vars')) {
+                        $get_tag = escape_string($get_tag);
                         if ($fuzzy) {
                             $where2[] = "a.tags like '%" . $get_tag . "%'";
                         } else {
