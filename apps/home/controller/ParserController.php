@@ -252,13 +252,15 @@ class ParserController extends Controller
                         break;
                     case 'statistical':
                         if (isset($data->statistical)) {
-                            $content = str_replace($matches[0][$i], filter_html(decode_string($data->statistical)), $content);
+                            $statistical = filter_html(decode_string($data->statistical));
+                            $content = str_replace($matches[0][$i], $this->sanitizePhpOpenTag($this->adjustLabelData($params, $statistical)), $content);
                         } else {
                             $content = str_replace($matches[0][$i], '', $content);
                         }
                     case 'copyright':
                         if (isset($data->copyright)) {
-                            $content = str_replace($matches[0][$i], $this->adjustLabelData($params, decode_string($data->copyright)), $content);
+                            $copyright = $this->adjustLabelData($params, decode_string($data->copyright));
+                            $content = str_replace($matches[0][$i], $this->sanitizePhpOpenTag($copyright), $content);
                         } else {
                             $content = str_replace($matches[0][$i], '', $content);
                         }
@@ -274,6 +276,15 @@ class ParserController extends Controller
             }
         }
         return $content;
+    }
+
+    // 阻断被模板引擎当成 PHP 执行的开标签
+    protected function sanitizePhpOpenTag($content)
+    {
+        if (!is_string($content) || $content === '') {
+            return $content;
+        }
+        return preg_replace('/<\?(?:php|=)?/i', '&lt;?', $content);
     }
 
     // 解析公司标签
