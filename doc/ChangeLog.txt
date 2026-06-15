@@ -2,6 +2,10 @@
 官方网站：https://www.pbootcms.com
 标签手册：https://www.pbootcms.com/docs.html
 ##########################################
+PbootCMS V3.2.14 build 2026-06-15
+1. 【安全】修复 page 参数经蜘蛛标签反射写入HTML缓存导致的PHP代码执行漏洞
+2. 【安全】HTML页面缓存写入时剥离PHP标签，杜绝缓存被当作PHP执行
+
 PbootCMS V3.2.13 build 2026-05-25
 1、安全加固：ORM参数化绑定、XSS防护、ueditor鉴权、备份路径迁移、PHP最低版本升至7.0
 

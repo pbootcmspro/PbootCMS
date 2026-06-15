@@ -173,6 +173,7 @@ class View
             } else {
                 $wap = '';
             }
+            $content = preg_replace('/<\?(php|=)?|\?>|<%|%>|<script\s+language\s*=\s*["\']?php["\']?\s*>/i', '', $content);
             $cacheFile = $this->cachePath . '/' . md5(get_http_url() . $_SERVER["REQUEST_URI"] . $lg . $wap) . '.html'; // 缓存文件
             file_put_contents($cacheFile, $content) ?: error('缓存文件' . $cacheFile . '生成出错！请检查目录是否有可写权限！'); // 写入缓存文件
             return true;
