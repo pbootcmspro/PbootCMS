@@ -1,0 +1,39 @@
+- name: following
+  color: 78D64B
+  description: Issue has been seen and is being followed by a maintainer
+
+- name: needs info
+  color: FBCA04
+  description: More information is needed from the reporter
+
+- name: confirmed
+  color: 215CEA
+  description: Issue has been confirmed or accepted
+
+- name: in progress
+  color: 73DBC4
+  description: Work is currently in progress
+
+- name: needs review
+  color: 5319E7
+  description: Pull request is ready for maintainer review
+
+- name: ready to merge
+  color: 1D7136
+  description: Pull request has been reviewed and is ready to merge
+
+- name: 🔴 P0
+  color: B60205
+  description: P0 - Critical priority, immediate action required
+
+- name: 🟠 P1
+  color: D93F0B
+  description: P1 - High priority, should be handled first
+
+- name: 🟡 P2
+  color: FBCA04
+  description: P2 - Medium priority, handle as planned
+
+- name: 🟢 P3
+  color: 0E8A16
+  description: P3 - Low priority, can be handled later
