@@ -1,0 +1,527 @@
+<!-- AI 写作助手浮动按钮 + 弹窗（配置启用且为编辑/新增页时输出） -->
+{if([$ai_enabled]==1 && [$ai_show_assistant])}
+<style>
+	.ai-fab{position:fixed;right:30px;bottom:30px;width:54px;height:54px;border-radius:50%;
+		background:linear-gradient(135deg,#1E9FFF 0%,#5FB878 100%);color:#fff;text-align:center;
+		line-height:54px;cursor:pointer;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.2);
+		font-size:14px;font-weight:bold;user-select:none;transition:transform .2s;}
+	.ai-fab:hover{transform:scale(1.08);}
+	.ai-panel{padding:18px 20px;font-size:14px;}
+	.ai-panel .ai-tabs{display:flex;border-bottom:1px solid #e6e6e6;margin-bottom:14px;}
+	.ai-panel .ai-tabs span{padding:6px 14px;cursor:pointer;color:#666;border-bottom:2px solid transparent;}
+	.ai-panel .ai-tabs span.on{color:#1E9FFF;border-bottom-color:#1E9FFF;font-weight:bold;}
+	.ai-panel .ai-pane{display:none;}
+	.ai-panel .ai-pane.on{display:block;}
+	.ai-panel textarea,.ai-panel input[type=text]{width:100%;box-sizing:border-box;border:1px solid #e6e6e6;
+		border-radius:2px;padding:6px 10px;font-size:13px;line-height:1.6;}
+	.ai-panel textarea{min-height:120px;resize:vertical;}
+	.ai-panel .ai-row{margin-bottom:10px;}
+	.ai-panel .ai-row label{color:#888;display:block;margin-bottom:4px;}
+	.ai-panel .ai-actions{margin-top:10px;}
+	.ai-panel .ai-actions .layui-btn{margin-right:6px;}
+	.ai-panel .ai-result{background:#f7f7f7;padding:10px;border-radius:2px;max-height:180px;
+		overflow:auto;font-size:13px;line-height:1.7;color:#333;border:1px solid #eee;}
+	.ai-panel .ai-tip{color:#999;font-size:12px;margin-top:6px;}
+	.ai-panel .ai-loading{color:#1E9FFF;font-size:12px;display:none;margin-top:6px;}
+</style>
+
+<div class="ai-fab" id="aiFab" title="AI 写作助手" data-ai-mode="{$ai_show_assistant}">AI</div>
+
+<script id="aiPanelTpl" type="text/html">
+	<div class="ai-panel">
+		<div class="ai-tabs">
+			<span class="on" data-pane="gen">生成全文</span>
+			<span data-pane="rw">续写/改写/缩写/润色</span>
+			<span data-pane="tdk">生成TDK</span>
+		</div>
+		<div class="ai-loading" id="aiLoading">AI 正在思考，请稍候...</div>
+
+		<div class="ai-pane on" data-pane="gen">
+			<div class="ai-row">
+				<label>文章标题（基于编辑器外标题输入框自动同步）</label>
+				<input type="text" id="aiGenTitle" placeholder="请输入文章标题">
+			</div>
+			<div class="ai-actions">
+				<button class="layui-btn layui-btn-sm" id="aiBtnGen">生成全文</button>
+				<button class="layui-btn layui-btn-sm layui-btn-primary" id="aiBtnInsertGen" disabled>插入到编辑器</button>
+			</div>
+			<div class="ai-tip">将以 HTML 段落形式插入到光标位置；如需替换原内容请先在编辑器中手动清空。</div>
+			<div class="ai-row" style="margin-top:10px;">
+				<label>生成结果预览</label>
+				<div class="ai-result" id="aiGenResult">（暂无内容）</div>
+			</div>
+		</div>
+
+		<div class="ai-pane" data-pane="rw">
+			<div class="ai-row">
+				<label>处理方式</label>
+				<select id="aiRwMode" class="layui-input" style="width:160px;display:inline-block;">
+					<option value="continue">续写</option>
+					<option value="rewrite">改写</option>
+					<option value="shorten">缩写</option>
+					<option value="polish">润色</option>
+				</select>
+				<button class="layui-btn layui-btn-sm layui-btn-normal" id="aiBtnLoadSel" style="margin-left:6px;">读取编辑器选中文本</button>
+			</div>
+			<div class="ai-row">
+				<label>待处理文本</label>
+				<textarea id="aiRwInput" placeholder="可手动粘贴，或点击上方按钮读取编辑器中的选中文本"></textarea>
+			</div>
+			<div class="ai-actions">
+				<button class="layui-btn layui-btn-sm" id="aiBtnRw">执行</button>
+				<button class="layui-btn layui-btn-sm layui-btn-primary" id="aiBtnInsertRw" disabled>插入到编辑器</button>
+			</div>
+			<div class="ai-tip" id="aiRwTip">续写将追加到选中内容之后，不会替换原文；改写/缩写/润色将替换当前选区。</div>
+			<div class="ai-row" style="margin-top:10px;">
+				<label>处理结果预览</label>
+				<div class="ai-result" id="aiRwResult">（暂无内容）</div>
+			</div>
+		</div>
+
+		<div class="ai-pane" data-pane="tdk">
+			<div class="ai-tip">将基于当前文章标题与编辑器正文一键生成 SEO 三要素，并自动填入下方字段。</div>
+			<div class="ai-actions" style="margin-top:8px;">
+				<button class="layui-btn layui-btn-sm" id="aiBtnTdk">一键生成TDK</button>
+			</div>
+			<div class="ai-row" style="margin-top:10px;">
+				<label>SEO Title（自动填入「标题」输入框）</label>
+				<input type="text" id="aiTdkTitle" readonly>
+			</div>
+			<div class="ai-row">
+				<label>SEO Description（自动填入「内容描述」）</label>
+				<textarea id="aiTdkDesc" readonly style="min-height:60px;"></textarea>
+			</div>
+			<div class="ai-row">
+				<label>SEO Keywords（自动填入「关键字」）</label>
+				<input type="text" id="aiTdkKw" readonly>
+			</div>
+		</div>
+	</div>
+</script>
+
+<script>
+	(function(){
+		var FORMCHECK = '{$formcheck}';
+		var URL_GEN  = '{url./admin/Ai/generate}';
+		var URL_RW   = '{url./admin/Ai/rewrite}';
+		var URL_TDK  = '{url./admin/Ai/tdk}';
+		var URL_ALT  = '{url./admin/Ai/alt}';
+
+		var lastGen = '', lastRw = '';
+		var lastRwMode = '';
+		var cachedUeSelection = '';
+		var cachedUeRange = null;
+
+		function ueRangeToPlainText(range, doc) {
+			if (!range || range.collapsed) return '';
+			try {
+				var frag = range.cloneContents();
+				var div = (doc || document).createElement('div');
+				div.appendChild(frag);
+				return (div.textContent || div.innerText || '').trim();
+			} catch (e) {
+				return '';
+			}
+		}
+
+		function ueGet(){ try{ return UE.getEditor('editor'); }catch(e){ return null; } }
+
+		function ueGetSelectionText() {
+			var ue = ueGet();
+			if (!ue) return '';
+			if (ue.queryCommandState('source')===1){
+				return -1;
+			}
+			// 有焦点时优先用官方 API
+			try {
+				var t = ue.selection.getText();
+				if (t) return t;
+			} catch (e) {}
+			// 失焦：getRange() 会使用 _bakRange
+			try {
+				var range = ue.selection.getRange();
+				var fromRange = ueRangeToPlainText(range, ue.document);
+				if (fromRange) return fromRange;
+			} catch (e) {}
+			// 再尝试编辑器实例上的备份（部分浏览器 blur 逻辑）
+			try {
+				if (ue._bakRange) {
+					var fromBak = ueRangeToPlainText(ue._bakRange, ue.document);
+					if (fromBak) return fromBak;
+				}
+			} catch (e) {}
+			return cachedUeSelection || '';
+		}
+
+		function ueInsertHtml(html){
+			var ue = ueGet();
+			if(!ue){ layer.msg('编辑器未就绪'); return; }
+			if (ue.queryCommandState('source') === 1) {
+				layer.msg('请先切回富文本框可视化模式！');
+				return;
+			}
+			ue.focus();
+			ue.execCommand('inserthtml', html, true);
+		}
+
+		/** 续写：将内容追加到选区末尾，保留原文 */
+		function ueInsertContinueHtml(html) {
+			var ue = ueGet();
+			if (!ue) { layer.msg('编辑器未就绪'); return; }
+			if (ue.queryCommandState('source') === 1) {
+				layer.msg('请先切回富文本框可视化模式！');
+				return;
+			}
+			ue.focus();
+			try {
+				var range = cachedUeRange || ue._bakRange;
+				if (range) {
+					if (typeof range.cloneRange === 'function') {
+						range = range.cloneRange();
+					}
+					range.select();
+					range.collapse(false);
+					range.select();
+				}
+				ue.execCommand('inserthtml', html, true);
+			} catch (e) {
+				ue.execCommand('inserthtml', html, true);
+			}
+		}
+
+		function syncRwModeUi($box) {
+			if (!$box || !$box.length) return;
+			var mode = $box.find('#aiRwMode').val();
+			var $tip = $box.find('#aiRwTip');
+			var $btn = $box.find('#aiBtnInsertRw');
+			if (mode === 'continue') {
+				$tip.text('续写将追加到选中内容之后，不会替换原文。建议先选中段落并点击「读取编辑器选中文本」。');
+				$btn.text('追加到选中内容后');
+			} else {
+				$tip.text('改写/缩写/润色将用生成结果替换当前选区；无选区时插入到光标位置。');
+				$btn.text('插入到编辑器');
+			}
+		}
+		/** 启用/禁用「插入到编辑器」按钮（Layui 需同步 layui-btn-disabled） */
+		function setInsertBtnState($btn, enabled){
+			if(!$btn || !$btn.length) return;
+			$btn.prop('disabled', !enabled);
+			if(enabled){
+				$btn.removeClass('layui-btn-disabled');
+			}else{
+				$btn.addClass('layui-btn-disabled');
+			}
+		}
+		function ueGetContentText(){
+			var ue = ueGet();
+			if(!ue) return '';
+			try{ return ue.getContentTxt() || ''; }catch(e){ return ''; }
+		}
+		function getPageTitle(){
+			var $t = $('input[name=title]');
+			return $t.length ? ($t.val() || '') : '';
+		}
+		function aiCall(url, payload, cb){
+			payload.formcheck = FORMCHECK;
+			$('#aiLoading').show();
+			$.ajax({
+				url: url, type:'POST', data: payload, dataType:'json',
+				timeout: 90000,
+				success: function(r){
+					$('#aiLoading').hide();
+					if(r && r.code === 1){ cb(r.data); }
+					else{ layer.msg((r && r.msg) ? r.msg : (r && r.data ? r.data : '请求失败')); }
+				},
+				error: function(xhr, st){
+					$('#aiLoading').hide();
+					layer.msg('请求失败：' + (st || '未知错误'));
+				}
+			});
+		}
+
+		function cacheUeSelection() {
+			cachedUeSelection = '';
+			var ue = ueGet();
+			if (!ue) return;
+			try {
+				var t = ue.selection.getText();
+				if (t) { cachedUeSelection = t; return; }
+				var range = ue.selection.getRange();
+				cachedUeSelection = ueRangeToPlainText(range, ue.document);
+			} catch (e) {}
+		}
+
+		function cacheUeRange() {
+			cachedUeRange = null;
+			var ue = ueGet();
+			if (!ue) return;
+			try {
+				var range = ue.selection.getRange();
+				if ((!range || range.collapsed) && ue._bakRange) {
+					range = ue._bakRange;
+				}
+				if (range && !range.collapsed) {
+					cachedUeRange = typeof range.cloneRange === 'function' ? range.cloneRange() : range;
+				}
+			} catch (e) {}
+		}
+
+		// 弹出 AI 面板
+		function openAiPanel(){
+			layer.open({
+				type: 1,
+				title: 'AI 写作助手',
+				area: ['680px','580px'],
+				shade: 0.3,
+				content: $('#aiPanelTpl').html(),
+				success: function(layero){
+					var $box = layero;
+					// 同步标题
+					$box.find('#aiGenTitle').val(getPageTitle());
+					// tab 切换
+					$box.find('.ai-tabs span').on('click', function(){
+						var pane = $(this).data('pane');
+						$box.find('.ai-tabs span').removeClass('on');
+						$(this).addClass('on');
+						$box.find('.ai-pane').removeClass('on');
+						$box.find('.ai-pane[data-pane='+pane+']').addClass('on');
+					});
+
+					// 生成全文
+					$box.find('#aiBtnGen').on('click', function(){
+						var t = $.trim($box.find('#aiGenTitle').val());
+						if(!t){ layer.msg('请输入标题'); return; }
+
+						var ue = ueGet();
+						if (!ue) return '';
+						if (ue.queryCommandState('source')===1){
+							layer.msg('请先切回富文本框可视化模式！');
+							return -1;
+						}
+
+						aiCall(URL_GEN, {title:t}, function(d){
+							lastGen = d.content || '';
+							$box.find('#aiGenResult').html(lastGen || '（无返回）');
+							setInsertBtnState($box.find('#aiBtnInsertGen'), !!lastGen);
+						});
+					});
+					$box.find('#aiBtnInsertGen').on('click', function(){
+						if(!lastGen || $(this).prop('disabled')){ return; }
+						ueInsertHtml(lastGen);
+						layer.msg('已插入');
+						setInsertBtnState($box.find('#aiBtnInsertGen'), false);
+					});
+
+					// 续写/改写/缩写/润色：读取选中文本
+					syncRwModeUi($box);
+					$box.find('#aiRwMode').on('change', function(){
+						cachedUeRange = null;
+						syncRwModeUi($box);
+					});
+					$box.find('#aiBtnLoadSel').on('click', function(){
+						var sel = ueGetSelectionText();
+						if(!sel){ layer.msg('编辑器中没有选中文本'); return; }
+						else if(sel<0){ layer.msg('请先切回富文本框可视化模式！'); return; }
+						cacheUeRange();
+						$box.find('#aiRwInput').val(sel);
+					});
+					$box.find('#aiBtnRw').on('click', function(){
+						var text = $.trim($box.find('#aiRwInput').val());
+						var mode = $box.find('#aiRwMode').val();
+						if(!text){ layer.msg('请先填写或读取文本'); return; }
+						lastRwMode = mode;
+						cacheUeRange();
+						aiCall(URL_RW, {text:text, mode:mode}, function(d){
+							lastRw = d.content || '';
+							lastRwMode = mode;
+							$box.find('#aiRwResult').html(lastRw || '（无返回）');
+							setInsertBtnState($box.find('#aiBtnInsertRw'), !!lastRw);
+							syncRwModeUi($box);
+						});
+					});
+					$box.find('#aiBtnInsertRw').on('click', function(){
+						if(!lastRw || $(this).prop('disabled')){ return; }
+						if (lastRwMode === 'continue') {
+							ueInsertContinueHtml(lastRw);
+							layer.msg('已追加到选中内容之后');
+						} else {
+							ueInsertHtml(lastRw);
+							layer.msg('已插入');
+						}
+						setInsertBtnState($box.find('#aiBtnInsertRw'), false);
+					});
+
+					// TDK
+					$box.find('#aiBtnTdk').on('click', function(){
+						var t = getPageTitle();
+						var c = ueGetContentText();
+						if(!t && !c){ layer.msg('请先填写标题或正文'); return; }
+						aiCall(URL_TDK, {title:t, content:c}, function(d){
+							$box.find('#aiTdkTitle').val(d.title || '');
+							$box.find('#aiTdkDesc').val(d.description || '');
+							$box.find('#aiTdkKw').val(d.keywords || '');
+							// 自动回填到主表单
+							if(d.title){ $('input[name=title]').val(d.title); }
+							if(d.description){ $('textarea[name=description], input[name=description]').val(d.description); }
+							if(d.keywords){ $('input[name=keywords], textarea[name=keywords]').val(d.keywords); }
+							layer.msg('已生成并填入对应字段');
+						});
+					});
+				}
+			});
+		}
+
+		$(document).on('click', '#aiFab', function () {
+			cacheUeSelection();
+			cacheUeRange();
+			openAiPanel();
+		});
+
+		// UEditor 本地上传会把 alt 填成原文件名，不能据此跳过 AI
+		function isFilenameLikeAlt(alt){
+			if(alt === undefined || alt === null) return true;
+			alt = String(alt).trim();
+			if(!alt) return true;
+			return /^[^\\\/:*?"<>|]+\.(jpe?g|png|gif|webp|bmp|svg|ico)$/i.test(alt);
+		}
+
+		// 图片 Alt 自动生成：插入后异步请求，避免阻塞编辑器
+		function normalizeImgSrc(src){
+			if(!src) return '';
+			return String(src).split('?')[0];
+		}
+		function updateImgAltInEditor(ue, src, alt){
+			if(!ue || !src || !alt) return;
+			var key = normalizeImgSrc(src);
+			var doc = ue.document;
+			if(!doc) return;
+			var imgs = doc.getElementsByTagName('img');
+			for(var i = 0; i < imgs.length; i++){
+				var node = imgs[i];
+				var s = node.getAttribute('src') || node.getAttribute('_src') || '';
+				if(normalizeImgSrc(s) !== key) continue;
+				if(!isFilenameLikeAlt(node.getAttribute('alt'))) continue;
+				node.setAttribute('alt', alt);
+			}
+		}
+		function requestAiAlt(src, cb){
+			var ctx = ueGetContentText();
+			if(ctx.length > 1500) ctx = ctx.substring(0, 1500);
+			$.ajax({
+				url: URL_ALT, type:'POST', async:true,
+				data:{
+					image_src: src,
+					title: getPageTitle(),
+					content: ctx,
+					formcheck: FORMCHECK
+				},
+				dataType:'json', timeout:90000,
+				success: function(r){
+					if(r && r.code===1 && r.data && r.data.alt){
+						cb(null, r.data.alt);
+					}else{
+						cb((r && r.msg) ? r.msg : 'Alt 生成失败');
+					}
+				},
+				error: function(xhr, st){
+					cb('请求失败：' + (st || '网络错误'));
+				}
+			});
+		}
+		function showAltMsg(msg){
+			if(typeof layer !== 'undefined' && layer.msg){
+				layer.msg(msg, {time: 3000});
+			}else{
+				console.warn('[AI] ' + msg);
+			}
+		}
+		var ueAltBound = false;
+		function bindUeAltListener(){
+			var ue = ueGet();
+			if(!ue || ueAltBound){ return !!ue; }
+			ue.ready(function(){
+				if(ueAltBound) return;
+				ueAltBound = true;
+				ue.addListener('afterinsertimage', function(t, args){
+					if(!args || !args.length) return;
+					args.forEach(function(img){
+						if(!isFilenameLikeAlt(img.alt)) return;
+						var src = img.src || img._src || '';
+						if(!src) return;
+						requestAiAlt(src, function(err, alt){
+							if(err){
+								showAltMsg(err);
+								return;
+							}
+							updateImgAltInEditor(ue, src, alt);
+						});
+					});
+				});
+			});
+			return true;
+		}
+		// 等待 UEditor 初始化完成
+		var tryNum = 0, timer = setInterval(function(){
+			tryNum++;
+			if(bindUeAltListener() || tryNum > 30){
+				clearInterval(timer);
+			}
+		}, 500);
+	})();
+
+	// 内容列表+新增同页（data-ai-mode=tabbed）：随 Tab 列表 t1 / 新增 t2 显示或隐藏（layui 在 foot 才加载，须延后绑定）
+	(function(){
+		var fab = document.getElementById('aiFab');
+		if(!fab || fab.getAttribute('data-ai-mode') !== 'tabbed') return;
+		var ADD_TAB_ID = 't2';
+		var TAB_SEL = '.layui-body > .layui-tab[lay-filter="tab"]';
+		var eventsBound = false;
+
+		function isAddTabActive(){
+			var hash = (location.hash || '').replace(/^#tab=/, '');
+			if(hash === ADD_TAB_ID) return true;
+			var wrap = document.querySelector(TAB_SEL);
+			if(!wrap) return false;
+			var active = wrap.querySelector('.layui-tab-title li.layui-this');
+			return active && active.getAttribute('lay-id') === ADD_TAB_ID;
+		}
+
+		function syncFabVisibility(){
+			fab.style.display = isAddTabActive() ? '' : 'none';
+		}
+
+		function bindTabEvents(){
+			if(eventsBound) return;
+			eventsBound = true;
+			window.addEventListener('hashchange', syncFabVisibility);
+			document.addEventListener('pbootcms-tab-change', syncFabVisibility);
+			if(typeof jQuery !== 'undefined'){
+				jQuery(document).on('click', TAB_SEL + ' > .layui-tab-title li', function(){
+					setTimeout(syncFabVisibility, 0);
+				});
+			}
+			if(typeof layui !== 'undefined'){
+				layui.use('element', function(){
+					layui.element.on('tab(tab)', function(){
+						setTimeout(syncFabVisibility, 0);
+					});
+					syncFabVisibility();
+				});
+			}
+		}
+
+		function initAfterLayui(){
+			bindTabEvents();
+			syncFabVisibility();
+			setTimeout(syncFabVisibility, 50);
+		}
+
+		syncFabVisibility();
+		if(document.readyState === 'complete'){
+			initAfterLayui();
+		}else{
+			window.addEventListener('load', initAfterLayui);
+		}
+	})();
+</script>
+{/if}

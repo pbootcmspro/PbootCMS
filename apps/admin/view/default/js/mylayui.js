@@ -13,6 +13,7 @@ layui.use(['element','upload','laydate','form'], function(){
 	var clayid=this.getAttribute('lay-id');
 	if(clayid){
 		location.hash = 'tab='+ clayid;
+		document.dispatchEvent(new CustomEvent('pbootcms-tab-change', { detail: { layId: clayid } }));
 		$('.page').find('a').each(function(index,element){//避免tab翻页问题
 			var url=$(this).attr('href');
 			if(url.indexOf('tab=')==-1){

@@ -38,11 +38,15 @@ class IndexController extends Controller
 
         if (P) { // 采用pathinfo模式及p参数伪静态模式
             if ($url_rule_type == 2) { // 禁止伪静态时带index.php 和动态地址访问
-                if (stripos(URL, 'index.php') !== false) {
-                    _404('您访问的内容不存在，请核对后重试！');
-                }
-                if (stripos(URL, '?') !== false && stripos(URL, '/?tag=') == false && stripos(URL, '/?page=') == false && stripos(URL, '/?ext_') == false) {
-                    _404('您访问的内容不存在，请核对后重试！');
+                $url = parse_url(URL);
+                if (isset($url['path']) && preg_match('#/index\.php(?=/|$)#i', $url['path'])) {
+                    $clean = preg_replace('#/index\.php(?=/|$)#i', '', $url['path'], 1);
+                    $clean = $clean ?: '/';
+                    if (isset($url['query']) && $url['query'] !== '') {
+                        $clean .= '?' . $url['query'];
+                    }
+                    header("Location: " . $clean, true, 301);
+                    exit;
                 }
             }
             $path = P;

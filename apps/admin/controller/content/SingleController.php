@@ -264,6 +264,8 @@ class SingleController extends Controller
                 error('传递的模型编码参数有误，请核对后重试！');
             }
             $this->assign('extfield', model('admin.content.ExtField')->getModelField($mcode));
+
+            $this->assign('ai_show_assistant', '1');
             
             $this->display('content/single.html');
         }

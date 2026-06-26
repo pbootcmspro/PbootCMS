@@ -71,6 +71,9 @@ class ContentController extends Controller
 
             // 获取会员分组
             $this->assign('groups', model('admin.member.MemberGroup')->getSelect());
+
+            // AI 助手：列表+新增同页，仅在「新增」Tab 显示浮动按钮
+            $this->assign('ai_show_assistant', 'tabbed');
         }
 
         $this->display('content/content.html');
@@ -557,6 +560,8 @@ class ContentController extends Controller
 
             // 获取会员分组
             $this->assign('groups', model('admin.member.MemberGroup')->getSelect());
+
+            $this->assign('ai_show_assistant', '1');
 
             $this->display('content/content.html');
         }

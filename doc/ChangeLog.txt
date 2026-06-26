@@ -2,6 +2,10 @@
 官方网站：https://www.pbootcms.com
 标签手册：https://www.pbootcms.com/docs.html
 ##########################################
+PbootCMS V3.2.15 build 2026-06-26
+1. 新增AI写作助手模块，支持一键生成文章/改写/TDK/图片Alt，兼容OpenAI协议第三方服务
+2. 修复伪静态模式下index.php跳转误伤含query参数的URL，移除误拦截含?参数的正常链接
+
 PbootCMS V3.2.14 build 2026-06-15
 1. 【安全】修复 page 参数经蜘蛛标签反射写入HTML缓存导致的PHP代码执行漏洞
 2. 【安全】HTML页面缓存写入时剥离PHP标签，杜绝缓存被当作PHP执行

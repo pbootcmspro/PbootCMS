@@ -70,7 +70,7 @@
 
 ##  系统安装：
 
-发布的源码默认采用sqlite数据库，放入PHP（7.0+）空间即可直接使用(不支持php8.0)。 
+发布的源码默认采用sqlite数据库，放入PHP（7.0+）空间即可直接使用。 
 
 如果需要启用Mysql版本，请导入目录下数据库文件/static/backup/sql/xxx.sql，同时请注意使用最新日期名字的脚本文件，并修改config/database数据库连接文件信息。
 
@@ -100,4 +100,4 @@
 ##  联系我们：
 官方网站：https://www.pbootcms.com/
 
-Gitee：https://gitee.com/hnaoyun/PbootCMS 
+Github：https://github.com/pbootcmspro/PbootCMS

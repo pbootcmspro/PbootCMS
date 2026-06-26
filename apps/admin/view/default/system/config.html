@@ -13,6 +13,7 @@
 	    <li  lay-id="t8">标题样式</li>
 	    <li  lay-id="t9">会员配置</li>
 	    <li  lay-id="t10">远程附件配置</li>
+	    <li  lay-id="t11">AI 配置</li>
 	  </ul>
 		  <div class="layui-tab-content">
 		  	   <div class="layui-tab-item layui-show">
@@ -823,7 +824,125 @@
 						</div>
 	              </form>
 		  	   </div>
+		  	   <div class="layui-tab-item">
+		  	   	   <form action="{url./admin/Config/index}" method="post" class="layui-form">
+		  	   	   	   <input type="hidden" name="formcheck" value="{$formcheck}" >
+		                <div class="layui-form-item">
+		                     <div class="layui-input-block" style="line-height:32px;padding:16px 0;color:#666;">
+		                     	<p>待开发。</p>
+		                     </div>
+		                </div>
+	              </form>
+		  	   </div>
+		  	   <div class="layui-tab-item">
+		  	   	   <form action="{url./admin/Config/index}" method="post" class="layui-form">
+		  	   	   	   <input type="hidden" name="formcheck" value="{$formcheck}" >
+
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">启用AI助手</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="ai_enabled" value="1" {if([$configs.ai_enabled.value]==1)} checked="checked" {/if} title="启用">
+								<input type="radio" name="ai_enabled" value="0" {if([$configs.ai_enabled.value]!=1)} checked="checked" {/if} title="禁用">
+		                     	<span class="layui-icon layui-icon-about tips" data-content="启用后后台文章/单页编辑器右下角出现AI助手按钮！"></span>
+		                     </div>
+		                </div>
+
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">AI服务商</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="ai_provider" value="deepseek" {if([$configs.ai_provider.value]=='deepseek'||[$configs.ai_provider.value]=='')} checked="checked" {/if} title="DeepSeek">
+								<input type="radio" name="ai_provider" value="qwen" {if([$configs.ai_provider.value]=='qwen')} checked="checked" {/if} title="通义千问">
+								<input type="radio" name="ai_provider" value="claude" {if([$configs.ai_provider.value]=='claude')} checked="checked" {/if} title="Claude">
+		                     </div>
+		                </div>
+
+					   <div class="layui-form-item">
+						   <label class="layui-form-label">API Key</label>
+						   <div class="layui-input-inline" style="width:480px;">
+		                     	<input type="password" name="ai_api_key" value="{$configs.ai_api_key.value}" placeholder="请输入 sk-xxxxxx，已保存后展示为脱敏格式、修改请重新输入完整值" class="layui-input" autocomplete="new-password">
+							   {if([$ai_key_openssl_warn]==1)}
+							   <div style="color:#FF5722;font-size:12px;line-height:1.8;padding-top:6px;width:490px;">
+								   服务端不支持 AES 加密，请联系主机商开启 openssl 扩展；开启前 AI 功能无法正常使用。
+							   </div>
+							   {/if}
+						   </div>
+						   <span class="layui-icon layui-icon-about tips" data-content="API Key在服务端加密存储，前端仅展示脱敏值；保持脱敏值不变提交将不会修改已有Key！"></span>
+					   </div>
+
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">API URL</label>
+		                     <div class="layui-input-inline" style="width:480px;">
+		                     	<input type="text" name="ai_api_base" value="{$configs.ai_api_base.value}" placeholder="完整 API 地址；OpenAI 中转填 .../v1/chat/completions，留空用官方默认" class="layui-input">
+		                     </div>
+		                     <span class="layui-icon layui-icon-about tips" data-content="留空使用服务商官方默认。系统根据 URL 自动选择协议：仅 Anthropic 官方 Messages 走原生协议，其余（含 Claude 第三方中转）走 OpenAI 兼容，中转请填 /v1/chat/completions。"></span>
+		                </div>
+
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">AI模型</label>
+		                     <div class="layui-input-inline" style="width:480px;">
+		                     	<input type="text" name="ai_model" value="{$configs.ai_model.value}" placeholder="如 deepseek-v4-flash / qwen-plus-latest / claude-sonnet-4-20250514" class="layui-input">
+		                     </div>
+		                     <span class="layui-icon layui-icon-about tips" data-content="留空则按服务商默认模型：DeepSeek=deepseek-v4-flash / 通义千问=qwen-plus-latest / Claude=claude-sonnet-4-20250514。若填写 deepseek-v4-pro 等推理模型，系统将自动改用 flash 以保证正文输出。"></span>
+		                </div>
+
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">最大Token</label>
+		                     <div class="layui-input-inline">
+		                     	<input type="text" name="ai_max_tokens" value="{$configs.ai_max_tokens.value}" placeholder="默认2048" class="layui-input">
+		                     </div>
+		                     <div class="layui-form-mid layui-word-aux">tokens</div>
+		                </div>
+
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">限流 (次/分钟)</label>
+		                     <div class="layui-input-inline">
+		                     	<input type="text" name="ai_rate_limit" value="{$configs.ai_rate_limit.value}" placeholder="默认20" class="layui-input">
+		                     </div>
+		                     <div class="layui-form-mid layui-word-aux">次/分钟</div>
+		                </div>
+
+		                <div class="layui-form-item">
+							 <div class="layui-input-block">
+							    <button class="layui-btn" lay-submit name="submit" value="ai">立即提交</button>
+							    <button type="button" class="layui-btn layui-btn-primary" id="aiPingBtn">测试连接</button>
+							 </div>
+						</div>
+	              </form>
+		  	   </div>
 		  </div>
 	 </div>
 </div>
+<script>
+(function(){
+	var btn = document.getElementById('aiPingBtn');
+	if(!btn) return;
+	btn.onclick = function(){
+		var fc = btn.closest('form').querySelector('input[name=formcheck]');
+		if (!fc || !fc.value) {
+			layer.alert('表单校验令牌缺失，请刷新页面后重试');
+			return;
+		}
+		layer.msg('正在测试...', {icon:16, time:0, shade:0.1});
+		fetch('{url./admin/Ai/ping}', {
+			method: 'POST',
+			credentials: 'same-origin',
+			headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+			body: 'formcheck=' + encodeURIComponent(fc.value)
+		})
+			.then(function(r){return r.json();})
+			.then(function(r){
+				layer.closeAll('loading');
+				if(r && r.code===1){
+					layer.alert('连接成功！\nAI响应示例：\n' + (r.data && r.data.reply ? r.data.reply : ''));
+				}else{
+					layer.alert('连接失败：' + (r && r.msg ? r.msg : '未知错误'));
+				}
+			})
+			.catch(function(e){
+				layer.closeAll('loading');
+				layer.alert('请求异常：' + e.message);
+			});
+	};
+})();
+</script>
 {include file='common/foot.html'}

@@ -25,6 +25,7 @@ class ConfigController extends Controller
     // 应用配置列表
     public function index()
     {
+
         if (! ! $action = get('action')) {
             switch ($action) {
                 case 'sendemail':
@@ -44,6 +45,7 @@ class ConfigController extends Controller
             if (isset($_POST['sn'])) {
                 $_POST['licensecode'] = base64_encode(post('sn') . '/' . post('sn_user')) . substr(post('sn'), 1, 1);
             }
+
             foreach ($_POST as $key => $value) {
                 if (! preg_match('/^[\w\-]+$/', $key)) {
                     continue;
@@ -100,6 +102,9 @@ class ConfigController extends Controller
                 case 'upgrade':
                     success('修改成功！', url('/admin/Upgrade/index' . get_tab('t2'), false));
                     break;
+                case 'ai':
+                    success('修改成功！', url('/admin/Config/index' . get_tab('t11'), false));
+                    break;
                 default:
                     success('修改成功！', url('/admin/Config/index', false));
             }
@@ -115,6 +120,15 @@ class ConfigController extends Controller
         $configs['url_type']['value'] = $this->config('url_type');
         $configs['tpl_html_cache']['value'] = $this->config('tpl_html_cache');
         $configs['tpl_html_cache_time']['value'] = $this->config('tpl_html_cache_time');
+
+        // AI API Key 仅向前端展示脱敏值，不输出密文，避免泄露
+        $aiKeyOpensslWarn = function_exists('openssl_decrypt') ? '0':'1';
+        if (isset($configs['ai_api_key']['value']) && $configs['ai_api_key']['value']) {
+            $plain = aes_decrypt($configs['ai_api_key']['value']);
+            $configs['ai_api_key']['value'] = $plain ? mask_secret($plain) : '';
+        }
+
+        $this->assign('ai_key_openssl_warn', $aiKeyOpensslWarn);
         $this->assign('configs', $configs);
         
         $this->assign('groups', model('admin.member.MemberGroup')->getSelect());
@@ -200,6 +214,16 @@ class ConfigController extends Controller
             // 不允许特殊扩展
             if (preg_match('/(php|jsp|asp|exe|sh|cmd|vb|vbs|phtml)/i', $value)) {
                 return;
+            }
+        }
+
+        // AI API Key：未填写或为脱敏占位（含****）则跳过本次更新；否则加密后入库
+        if ($key == 'ai_api_key') {
+            if ($value === '' || $value === null || is_masked_secret($value)) {
+                return;
+            }
+            if (! $value = aes_encrypt($value)) {
+                error('服务端不支持 AES 加密，请联系主机商开启 openssl 扩展！', url('/admin/Config/index' . get_tab('t11'), false));
             }
         }
         

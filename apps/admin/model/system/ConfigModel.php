@@ -36,8 +36,16 @@ class ConfigModel extends Model
     // 修改应用配置值
     public function modValue($name, $value)
     {
-        return parent::table('ay_config')->where("name='$name'")->update("value='$value'");
+        return parent::table('ay_config')->where("name='$name'")->update(['value' => $value]);
     }
+
+    // 获取单个配置值
+    public function getValue($name)
+    {
+        $row = parent::table('ay_config')->field('value')->where("name='$name'")->find();
+        return $row ? $row->value : null;
+    }
+
 
     // 获取区域及主题
     public function getAreaTheme()

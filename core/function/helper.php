@@ -845,3 +845,108 @@ function compareSymbol2($str){
     }
     return $res;
 }
+
+/**
+ * 应用级密钥生成器（站点唯一、可隔离）
+ * @param string $namespace 业务命名空间标识（用于密钥隔离）。如 '|pboot_sign_v1'。
+ * @param int    $length    输出密钥长度（hex 字符数）。默认 32（适配 AES-256 的 32 字节 Key）。
+ * @param string $algo      哈希算法名称。默认 'sha256'。
+ * @return string 派生密钥（小写十六进制字符串，长度等于 $length）
+ */
+function app_secret_key($namespace = '|pbootcms_ai_secret_v1', $length = 32, $algo = 'sha256')
+{
+    if (! is_string($namespace) || $namespace === '') {
+        $namespace = '|pbootcms_ai_secret_v1';
+    }
+
+    $length = (int) $length;
+    if ($length < 8 || $length > 64) {
+        $length = 32;
+    }
+
+    if (! is_string($algo) || $algo === '' || ! in_array($algo, hash_algos(), true)) {
+        $algo = 'sha256';
+    }
+
+    $saltFile = DOC_PATH . DATA_DIR . '/.app_salt';
+    if (!file_exists($saltFile)) {
+        $salt = bin2hex(random_bytes(16));
+        @file_put_contents($saltFile, $salt, LOCK_EX);
+    } else {
+        $salt = trim(file_get_contents($saltFile));
+    }
+    return substr(hash($algo, $salt . $namespace), 0, $length);
+}
+
+/**
+ * 加密AI API Key
+ * @param string $plain 明文
+ * @return string base64(iv + cipher)
+ */
+function aes_encrypt($plain)
+{
+    if ($plain === null || $plain === '') {
+        return '';
+    }
+    if (! function_exists('openssl_encrypt')) {
+        return '';
+    }
+    $key = app_secret_key();
+    $iv = openssl_random_pseudo_bytes(16);
+    $cipher = openssl_encrypt($plain, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv);
+    if ($cipher === false) {
+        return '';
+    }
+    return base64_encode($iv . $cipher);
+}
+
+/**
+ * 解密AI API Key
+ * @param string $encoded base64(iv + cipher)
+ * @return string 解密后明文，失败返回''
+ */
+function aes_decrypt($encoded)
+{
+    if ($encoded === null || $encoded === '') {
+        return '';
+    }
+    if (! function_exists('openssl_decrypt')) {
+        return '';
+    }
+    $raw = base64_decode($encoded, true);
+    if ($raw === false || strlen($raw) < 17) {
+        return '';
+    }
+    $iv = substr($raw, 0, 16);
+    $cipher = substr($raw, 16);
+    $key = app_secret_key();
+    $plain = openssl_decrypt($cipher, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv);
+    return $plain === false ? '' : $plain;
+}
+
+/**
+ * 脱敏API Key：保留前4后4，中间用****替代
+ * @param string $key 明文Key
+ * @return string
+ */
+function mask_secret($key)
+{
+    if (! is_string($key) || $key === '') {
+        return '';
+    }
+    $len = strlen($key);
+    if ($len <= 8) {
+        return str_repeat('*', $len);
+    }
+    return substr($key, 0, 4) . '****' . substr($key, -4);
+}
+
+/**
+ * 判断是否为已脱敏的API Key（含****）
+ * @param string $val
+ * @return bool
+ */
+function is_masked_secret($val)
+{
+    return is_string($val) && strpos($val, '****') !== false;
+}

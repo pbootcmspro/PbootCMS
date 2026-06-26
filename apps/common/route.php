@@ -30,6 +30,7 @@ return array(
         'admin/Form' => 'admin/content.Form',
         'admin/Tags' => 'admin/content.Tags',
 		'admin/DeleCache' => 'admin/content.DeleCache',
+        'admin/Ai' => 'admin/content.Ai',
         
         // 会员模块
         'admin/MemberGroup' => 'admin/member.MemberGroup',
