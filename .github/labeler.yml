@@ -1,0 +1,18 @@
+needs review:
+  - changed-files:
+      - any-glob-to-any-file: '**'
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - README.md
+          - doc/**
+          - docs/**
+
+bug:
+  - head-branch: '^fix/'
+  - head-branch: '^bugfix/'
+
+enhancement:
+  - head-branch: '^feat/'
+  - head-branch: '^feature/'
