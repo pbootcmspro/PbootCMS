@@ -270,7 +270,7 @@ class MemberController extends Controller
             if (! $checkcode) {
                 alert_back('验证码不能为空！');
             }
-            if ($checkcode != session('checkcode')) {
+            if ($checkcode != session('retrieve_checkcode')) {
                 alert_back('验证码错误！');
             }
             $where = ['username' => $username];
@@ -278,14 +278,14 @@ class MemberController extends Controller
             if(!$userInfo){
                 alert_back('该用户不存在！');
             }
-            if(!empty($userInfo['useremail']) && $userInfo['useremail'] != $email){
+            if(empty($userInfo['useremail']) || strcasecmp($userInfo['useremail'], $email) !== 0){
                 alert_back('与注册邮箱不匹配，请联系管理员！');
             }
             $data = [
-                'useremail' => $email,
                 'password' => md5(md5($password))
             ];
             $this->model->updatePassword($where,$data);
+            unset($_SESSION['retrieve_checkcode']);
             alert_location('修改成功！', Url::home('member/login'), 1);
         } else {
             $content = parent::parser($this->htmldir . 'member/retrieve.html'); // 框架标签解析
@@ -499,7 +499,7 @@ class MemberController extends Controller
             session('lastsend', time()); // 记录最后提交时间
             $mail_subject = "【" . CMSNAME . "】您有新的验证码信息，请注意查收！";
             $code = create_code(4);
-            session('checkcode', strtolower($code));
+            session($retrieve ? 'retrieve_checkcode' : 'checkcode', strtolower($code));
             $mail_body = "您的验证码为：" . $code;
             $mail_body .= '<br>来自网站 ' . get_http_url() . ' （' . date('Y-m-d H:i:s') . '）';
             $rs = sendmail($this->config(), $to, $mail_subject, $mail_body);
