@@ -1,0 +1,63 @@
+name: LGTM Label
+
+on:
+  issue_comment:
+    types:
+      - created
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  lgtm:
+    if: github.event.issue.pull_request
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.issue.number;
+            const commenter = context.payload.comment.user.login;
+            const command = context.payload.comment.body.trim().toUpperCase();
+
+            if (command !== 'LGTM') {
+              core.info(`Ignoring comment: ${context.payload.comment.body}`);
+              return;
+            }
+
+            const { data: permission } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner,
+              repo,
+              username: commenter,
+            });
+
+            const allowedPermissions = new Set(['admin', 'maintain', 'write']);
+            if (!allowedPermissions.has(permission.permission)) {
+              core.info(`Ignoring LGTM from ${commenter}: permission is ${permission.permission}.`);
+              return;
+            }
+
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number,
+              labels: ['ready to merge'],
+            });
+
+            for (const name of ['needs review', 'in progress']) {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner,
+                  repo,
+                  issue_number,
+                  name,
+                });
+              } catch (error) {
+                if (error.status !== 404) {
+                  throw error;
+                }
+              }
+            }
