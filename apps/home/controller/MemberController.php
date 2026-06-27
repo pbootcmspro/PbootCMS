@@ -265,12 +265,15 @@ class MemberController extends Controller
             // 验证码验证
             $checkcode = strtolower(post('checkcode', 'var'));
             $email = post('email');
+            $retrieve_email = strtolower(trim($email));
             $username = post('username');
             $password = post('password');
             if (! $checkcode) {
                 alert_back('验证码不能为空！');
             }
-            if ($checkcode != session('retrieve_checkcode')) {
+            $retrieve_checkcode = session('retrieve_checkcode');
+            $session_retrieve_email = session('retrieve_email');
+            if (! $retrieve_checkcode || ! $session_retrieve_email || $checkcode != $retrieve_checkcode || $retrieve_email != $session_retrieve_email) {
                 alert_back('验证码错误！');
             }
             $where = ['username' => $username];
@@ -286,6 +289,7 @@ class MemberController extends Controller
             ];
             $this->model->updatePassword($where,$data);
             unset($_SESSION['retrieve_checkcode']);
+            unset($_SESSION['retrieve_email']);
             alert_location('修改成功！', Url::home('member/login'), 1);
         } else {
             $content = parent::parser($this->htmldir . 'member/retrieve.html'); // 框架标签解析
@@ -500,6 +504,9 @@ class MemberController extends Controller
             $mail_subject = "【" . CMSNAME . "】您有新的验证码信息，请注意查收！";
             $code = create_code(4);
             session($retrieve ? 'retrieve_checkcode' : 'checkcode', strtolower($code));
+            if ($retrieve) {
+                session('retrieve_email', strtolower(trim($to)));
+            }
             $mail_body = "您的验证码为：" . $code;
             $mail_body .= '<br>来自网站 ' . get_http_url() . ' （' . date('Y-m-d H:i:s') . '）';
             $rs = sendmail($this->config(), $to, $mail_subject, $mail_body);
