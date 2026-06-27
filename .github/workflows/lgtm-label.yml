@@ -21,9 +21,9 @@ jobs:
             const { owner, repo } = context.repo;
             const issue_number = context.payload.issue.number;
             const commenter = context.payload.comment.user.login;
-            const command = context.payload.comment.body.trim().toUpperCase();
+            const command = context.payload.comment.body.trim();
 
-            if (command !== 'LGTM') {
+            if (!['/lgtm', '/LGTM'].includes(command)) {
               core.info(`Ignoring comment: ${context.payload.comment.body}`);
               return;
             }
@@ -36,7 +36,7 @@ jobs:
 
             const allowedPermissions = new Set(['admin', 'maintain', 'write']);
             if (!allowedPermissions.has(permission.permission)) {
-              core.info(`Ignoring LGTM from ${commenter}: permission is ${permission.permission}.`);
+              core.info(`Ignoring /lgtm from ${commenter}: permission is ${permission.permission}.`);
               return;
             }
 
