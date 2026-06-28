@@ -71,8 +71,63 @@ if (defined('STATIC_DIR')) {
 /* 生成上传实例对象并完成上传 */
 $up = new Uploader($fieldName, $config, $base64);
 
-// 图片打水印
+// 获取上传结果
 $rs = $up->getFileInfo();
+
+// 安全加固：如果上传失败，直接返回错误
+if ($rs['state'] !== 'SUCCESS') {
+    return json_encode($rs);
+}
+
+// 安全加固：验证最终文件的扩展名是否合法（防止大小写绕过、双扩展名等）
+$uploadedExt = strtolower(pathinfo($rs['url'], PATHINFO_EXTENSION));
+$allowedExts = array('jpg', 'jpeg', 'png', 'gif', 'bmp', 'ico', 'svg',
+    'mp4', 'mp3', 'webm', 'avi', 'flv', 'swf', 'mkv', 'rm', 'rmvb', 'mpeg', 'mpg', 'ogg', 'ogv', 'mov', 'wmv',
+    'rar', 'zip', 'tar', 'gz', '7z', 'bz2', 'cab', 'iso',
+    'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'pdf', 'txt', 'md', 'xml',
+    'wav', 'mid');
+if (!in_array($uploadedExt, $allowedExts)) {
+    @unlink(ROOT_PATH . $rs['url']);
+    return json_encode(array(
+        'state' => '上传失败：文件扩展名不合法',
+        'url' => '',
+        'title' => '',
+        'original' => '',
+        'type' => '',
+        'size' => 0
+    ));
+}
+
+// 安全加固：检查上传路径是否在允许的目录下
+$uploadDir = realpath(dirname(ROOT_PATH . $rs['url']));
+$allowedDirs = array(
+    realpath(ROOT_PATH . '/upload/image'),
+    realpath(ROOT_PATH . '/upload/video'),
+    realpath(ROOT_PATH . '/upload/file'),
+    realpath(ROOT_PATH . STATIC_DIR . '/upload/image'),
+    realpath(ROOT_PATH . STATIC_DIR . '/upload/video'),
+    realpath(ROOT_PATH . STATIC_DIR . '/upload/file'),
+);
+$pathValid = false;
+foreach ($allowedDirs as $allowedDir) {
+    if ($allowedDir !== false && strpos($uploadDir, $allowedDir) === 0) {
+        $pathValid = true;
+        break;
+    }
+}
+if (!$pathValid) {
+    @unlink(ROOT_PATH . $rs['url']);
+    return json_encode(array(
+        'state' => '上传失败：非法的保存路径',
+        'url' => '',
+        'title' => '',
+        'original' => '',
+        'type' => '',
+        'size' => 0
+    ));
+}
+
+// 图片打水印
 $ext = array(
     '.jpg',
     '.png',

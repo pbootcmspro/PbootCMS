@@ -108,6 +108,12 @@ class Uploader
             return;
         }
 
+        //安全加固：MIME类型校验
+        if (!$this->checkMimeType()) {
+            $this->stateInfo = "文件内容与扩展名不匹配";
+            return;
+        }
+
         //创建目录失败
         if (!file_exists($dirname) && !mkdir($dirname, 0777, true)) {
             $this->stateInfo = $this->getStateInfo("ERROR_CREATE_DIR");
@@ -120,9 +126,20 @@ class Uploader
         //移动文件
         if (!(move_uploaded_file($file["tmp_name"], $this->filePath) && file_exists($this->filePath))) { //移动失败
             $this->stateInfo = $this->getStateInfo("ERROR_FILE_MOVE");
-        } else { //移动成功
-            $this->stateInfo = $this->stateMap[0];
+            return;
         }
+
+        //安全加固：上传后检查文件内容是否包含恶意代码
+        if (!$this->checkFileContent()) {
+            @unlink($this->filePath);
+            $this->stateInfo = "文件内容包含非法代码";
+            return;
+        }
+
+        //安全加固：创建.htaccess防止上传目录执行PHP
+        $this->createHtaccess();
+
+        $this->stateInfo = $this->stateMap[0];
     }
 
     /**
@@ -160,10 +177,20 @@ class Uploader
         //移动文件
         if (!(file_put_contents($this->filePath, $img) && file_exists($this->filePath))) { //移动失败
             $this->stateInfo = $this->getStateInfo("ERROR_WRITE_CONTENT");
-        } else { //移动成功
-            $this->stateInfo = $this->stateMap[0];
+            return;
         }
 
+        //安全加固：检查文件内容
+        if (!$this->checkFileContent()) {
+            @unlink($this->filePath);
+            $this->stateInfo = "文件内容包含非法代码";
+            return;
+        }
+
+        //安全加固：创建.htaccess
+        $this->createHtaccess();
+
+        $this->stateInfo = $this->stateMap[0];
     }
 
     /**
@@ -252,10 +279,20 @@ class Uploader
         //移动文件
         if (!(file_put_contents($this->filePath, $img) && file_exists($this->filePath))) { //移动失败
             $this->stateInfo = $this->getStateInfo("ERROR_WRITE_CONTENT");
-        } else { //移动成功
-            $this->stateInfo = $this->stateMap[0];
+            return;
         }
 
+        //安全加固：检查文件内容
+        if (!$this->checkFileContent()) {
+            @unlink($this->filePath);
+            $this->stateInfo = "文件内容包含非法代码";
+            return;
+        }
+
+        //安全加固：创建.htaccess
+        $this->createHtaccess();
+
+        $this->stateInfo = $this->stateMap[0];
     }
 
     /**
@@ -342,6 +379,144 @@ class Uploader
     private function checkType()
     {
         return in_array($this->getFileExt(), $this->config["allowFiles"]);
+    }
+
+    /**
+     * MIME类型校验（安全加固）
+     * 验证文件的真实MIME类型与声明的扩展名是否匹配
+     * @return bool
+     */
+    private function checkMimeType()
+    {
+        $ext = $this->getFileExt();
+        // 扩展名到MIME类型的映射
+        $mimeMap = array(
+            '.jpg'    => array('image/jpeg', 'image/jpg', 'image/pjpeg'),
+            '.jpeg'   => array('image/jpeg', 'image/jpg', 'image/pjpeg'),
+            '.png'    => array('image/png', 'image/x-png'),
+            '.gif'    => array('image/gif'),
+            '.bmp'    => array('image/bmp', 'image/x-ms-bmp'),
+            '.ico'    => array('image/x-icon', 'image/vnd.microsoft.icon'),
+            '.svg'    => array('image/svg+xml'),
+            '.mp4'    => array('video/mp4'),
+            '.mp3'    => array('audio/mpeg'),
+            '.webm'   => array('video/webm'),
+            '.pdf'    => array('application/pdf'),
+            '.doc'    => array('application/msword'),
+            '.docx'   => array('application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+            '.xls'    => array('application/vnd.ms-excel'),
+            '.xlsx'   => array('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+            '.ppt'    => array('application/vnd.ms-powerpoint'),
+            '.pptx'   => array('application/vnd.openxmlformats-officedocument.presentationml.presentation'),
+            '.zip'    => array('application/zip', 'application/x-zip-compressed'),
+            '.rar'    => array('application/x-rar-compressed', 'application/vnd.rar'),
+            '.txt'    => array('text/plain'),
+            '.xml'    => array('text/xml', 'application/xml'),
+            '.flv'    => array('video/x-flv'),
+            '.avi'    => array('video/x-msvideo'),
+        );
+
+        // 对于图片类型，使用更严格的图像类型检测
+        if (in_array($ext, array('.jpg', '.jpeg', '.png', '.gif', '.bmp'))) {
+            if (function_exists('exif_imagetype')) {
+                $imgType = @exif_imagetype($this->file['tmp_name']);
+                $expectedTypes = array(
+                    '.jpg'  => array(IMAGETYPE_JPEG),
+                    '.jpeg' => array(IMAGETYPE_JPEG),
+                    '.png'  => array(IMAGETYPE_PNG),
+                    '.gif'  => array(IMAGETYPE_GIF),
+                    '.bmp'  => array(IMAGETYPE_BMP),
+                );
+                if (!isset($expectedTypes[$ext]) || !in_array($imgType, $expectedTypes[$ext])) {
+                    return false;
+                }
+            }
+        }
+
+        // 通用MIME类型检查
+        if (isset($mimeMap[$ext]) && function_exists('finfo_file')) {
+            $finfo = @finfo_open(FILEINFO_MIME_TYPE);
+            if ($finfo) {
+                $realMime = @finfo_file($finfo, $this->file['tmp_name']);
+                finfo_close($finfo);
+                if ($realMime && !in_array($realMime, $mimeMap[$ext])) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * 检查上传文件内容是否包含恶意代码（安全加固）
+     * @return bool
+     */
+    private function checkFileContent()
+    {
+        $ext = $this->getFileExt();
+        // 只检查可能被伪装的可执行文件类型（图片、文本等）
+        if (!in_array($ext, array('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg', '.txt', '.xml'))) {
+            return true; // 其他类型不检查内容
+        }
+
+        $content = @file_get_contents($this->filePath);
+        if ($content === false) {
+            return true;
+        }
+
+        // 检测PHP标签
+        $phpPatterns = array(
+            '/<\?php/i',
+            '/<\?\s+/i',
+            '/<\?=\s*/i',
+            '/<\?$/m',
+        );
+        foreach ($phpPatterns as $pattern) {
+            if (preg_match($pattern, $content)) {
+                return false;
+            }
+        }
+
+        // 检测常见的 webshell 函数调用
+        $dangerousPatterns = array(
+            '/eval\s*\(/i',
+            '/assert\s*\(/i',
+            '/system\s*\(/i',
+            '/exec\s*\(/i',
+            '/passthru\s*\(/i',
+            '/shell_exec\s*\(/i',
+            '/base64_decode\s*\(/i',
+            '/file_put_contents\s*\(/i',
+        );
+        foreach ($dangerousPatterns as $pattern) {
+            if (preg_match($pattern, $content)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * 创建 .htaccess 文件防止上传目录执行 PHP（安全加固）
+     */
+    private function createHtaccess()
+    {
+        $htaccessPath = dirname($this->filePath) . '/.htaccess';
+        if (file_exists($htaccessPath)) {
+            return;
+        }
+        $htaccessContent = "<FilesMatch \"\\.(?i:php)$\">\n";
+        $htaccessContent .= "    Order allow,deny\n";
+        $htaccessContent .= "    Deny from all\n";
+        $htaccessContent .= "</FilesMatch>\n";
+        $htaccessContent .= "<FilesMatch \"\\.(?i:php\\d*)$\">\n";
+        $htaccessContent .= "    Order allow,deny\n";
+        $htaccessContent .= "    Deny from all\n";
+        $htaccessContent .= "</FilesMatch>\n";
+        $htaccessContent .= "php_flag engine off\n";
+        @file_put_contents($htaccessPath, $htaccessContent);
     }
 
     /**
