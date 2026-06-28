@@ -113,6 +113,15 @@ class UpgradeController extends Controller
         }
     }
 
+    // 允许下载的文件扩展名白名单
+    private $allowedExts = array(
+        'php', 'html', 'htm', 'css', 'js', 'json', 'xml', 'sql',
+        'jpg', 'jpeg', 'png', 'gif', 'bmp', 'ico', 'svg',
+        'zip', 'rar', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx',
+        'ttf', 'otf', 'woff', 'woff2', 'eot', 'txt', 'md', 'woff', 'woff2',
+        'mp4', 'mp3', 'webm', 'avi', 'flv', 'pdf'
+    );
+
     // 执行下载
     public function down()
     {
@@ -126,13 +135,36 @@ class UpgradeController extends Controller
             foreach ($list as $value) {
                 // 过滤掉相对路径
                 $value = preg_replace_r('{\.\.(\/|\\\\)}', '', $value);
+
+                // 安全加固：禁止绝对路径（以/开头）
+                if (strpos($value, '/') === 0) {
+                    $this->log("非法文件路径: $value");
+                    json(0, '非法的文件路径！');
+                }
+
+                // 安全加固：文件扩展名白名单检查
+                $ext = strtolower(pathinfo($value, PATHINFO_EXTENSION));
+                if (! in_array($ext, $this->allowedExts)) {
+                    $this->log("不允许的文件类型: $value (扩展名: $ext)");
+                    json(0, '不允许的文件类型：' . $ext);
+                }
+
+                // 安全加固：禁止下载敏感路径文件
+                $forbiddenPaths = array('core/basic/Kernel.php', 'core/basic/Check.php', 'core/start.php', 'admin.php', 'index.php');
+                foreach ($forbiddenPaths as $forbidden) {
+                    if (stripos($value, $forbidden) !== false) {
+                        $this->log("尝试下载敏感文件: $value");
+                        json(0, '禁止下载系统敏感文件！');
+                    }
+                }
+
                 // 本地存储路径
                 $path = RUN_PATH . '/upgrade' . $value;
                 // 自动创建目录
                 if (! check_dir(dirname($path), true)) {
                     json(0, '目录写入权限不足，无法下载升级文件！' . dirname($path));
                 }
-                
+
                 // 定义执行下载的类型
                 $types = '.zip|.rar|.doc|.docx|.ppt|.pptx|.xls|.xlsx|.chm|.ttf|.otf|';
                 $pathinfo = explode(".", basename($path));
