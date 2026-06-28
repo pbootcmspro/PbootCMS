@@ -265,8 +265,8 @@ class ParserController extends Controller
                             $content = str_replace($matches[0][$i], '', $content);
                         }
                     default:
-                        if (strpos(file_get_contents(CORE_PATH . base64_decode('L2Jhc2ljL0tlcm5lbC5waHA=')), base64_decode('S2VybmVs')))
-                            exit();
+                        // 安全加固：核心文件完整性校验（替代原来有缺陷的字符串包含检查）
+                        $this->checkCoreFileIntegrity();
                         if (isset($data->{$matches[1][$i]})) {
                             $content = str_replace($matches[0][$i], $this->adjustLabelData($params, $data->{$matches[1][$i]}), $content);
                         } else {
@@ -3330,6 +3330,56 @@ class ParserController extends Controller
 
         // 7. 如果仍有残留内容，说明存在不允许的 token（如函数名、$变量、%取模等）
         return ($test === '');
+    }
+
+    // 核心文件完整性检查（替代原来有缺陷的字符串包含检查）
+    // 检查核心文件是否被植入可疑代码
+    private function checkCoreFileIntegrity()
+    {
+        static $checked = false;
+        if ($checked) {
+            return;
+        }
+        $checked = true;
+
+        $coreFiles = array(
+            CORE_PATH . '/basic/Kernel.php',
+            CORE_PATH . '/basic/Check.php',
+            CORE_PATH . '/start.php'
+        );
+
+        // 可疑代码模式：用于检测 webshell、跳转劫持、后门等
+        $suspiciousPatterns = array(
+            // eval + base64_decode 组合（典型 webshell）
+            '/eval\s*\(\s*base64_decode\s*\(/i',
+            // file_put_contents 写入 PHP 文件
+            '/file_put_contents\s*\([^)]*\.php/i',
+            // 页面跳转劫持
+            '/<meta\s+http-equiv=["\']?refresh["\']?/i',
+            // 混淆的变量函数调用（如 $a="eval"; $a(...)）
+            '/\$\w+\s*=\s*["\']\s*(eval|assert|system|exec|passthru|shell_exec)\s*["\'];\s*\$\w+\s*\(/i',
+            // 包含远程文件
+            '/include\s*\(\s*[\"\']https?:\/\//i',
+            // 危险的文件操作函数组合
+            '/(copy|file_get_contents)\s*\(\s*[\"\']https?:\/\/[^\"\']+\.(zip|rar|php)/i',
+            // base64 编码的 eval
+            '/ZXZhbA==|YXNzZXJ0|c3lzdGVt|ZXhlYw==|cGFzc3RocnU=|c2hlbGxfZXhlYw==/i',
+        );
+
+        foreach ($coreFiles as $file) {
+            if (! file_exists($file)) {
+                continue;
+            }
+            $content = file_get_contents($file);
+            foreach ($suspiciousPatterns as $pattern) {
+                if (preg_match($pattern, $content)) {
+                    // 发现可疑代码，记录日志并终止执行
+                    logger("SECURITY ALERT: Suspicious code detected in $file");
+                    http_response_code(503);
+                    exit('System security check failed. Please contact administrator.');
+                }
+            }
+        }
     }
 
     // 解析IF条件标签
