@@ -14,6 +14,98 @@ use core\basic\Config;
 class MemberModel extends Model
 {
 
+    // 用户名/邮箱/手机 OR 匹配条件（参数绑定）
+    private function accountOrCondition($account)
+    {
+        return array(
+            'username' => $account,
+            'useremail' => $account,
+            'usermobile' => $account
+        );
+    }
+
+    // 按用户名/邮箱/手机任一匹配查找会员
+    public function findByAccount($account)
+    {
+        return parent::table('ay_member')->where($this->accountOrCondition($account), 'OR')->find();
+    }
+
+    // 检查账号（用户名/邮箱/手机）是否已存在
+    public function existsByAccount($account)
+    {
+        return !!$this->findByAccount($account);
+    }
+
+    // 检查邮箱或用户名是否已存在
+    public function existsByEmail($email, $excludeId = null)
+    {
+        $query = parent::table('ay_member')->where(array(
+            'useremail' => $email,
+            'username' => $email
+        ), 'OR');
+        if ($excludeId) {
+            $query->where(array(
+                0 => 'id<>' . (int) $excludeId
+            ));
+        }
+        return !!$query->find();
+    }
+
+    // 检查手机或用户名是否已存在
+    public function existsByMobile($mobile, $excludeId = null)
+    {
+        $query = parent::table('ay_member')->where(array(
+            'usermobile' => $mobile,
+            'username' => $mobile
+        ), 'OR');
+        if ($excludeId) {
+            $query->where(array(
+                0 => 'id<>' . (int) $excludeId
+            ));
+        }
+        return !!$query->find();
+    }
+
+    // 验证会员密码
+    public function verifyMemberPassword($uid, $passwordHash)
+    {
+        return !!parent::table('ay_member')->where(array(
+            'password' => $passwordHash,
+            'id' => (int) $uid
+        ))->find();
+    }
+
+    // 会员登录（按账号 + 密码，参数绑定）
+    public function loginByAccount($account, $passwordHash)
+    {
+        $field = array(
+            'a.id',
+            'a.ucode',
+            'a.username',
+            'a.useremail',
+            'a.usermobile',
+            'a.gid',
+            'a.status',
+            'b.gcode',
+            'b.gname'
+        );
+        $join = array(
+            'ay_member_group b',
+            'a.gid=b.id',
+            'LEFT'
+        );
+        if (! ! $user = parent::table('ay_member a')->field($field)
+            ->join($join)
+            ->where($this->accountOrCondition($account), 'OR')
+            ->where(array(
+                'password' => $passwordHash
+            ))
+            ->find()) {
+            $this->updateLoginStats($user->id);
+        }
+        return $user;
+    }
+
     // 会员登录
     public function login($where)
     {
@@ -37,20 +129,26 @@ class MemberModel extends Model
             ->join($join)
             ->where($where)
             ->find()) {
-            $data = array(
-                'login_count' => '+=1',
-                'last_login_ip' => ip2long(get_user_ip()),
-                'last_login_time' => get_datetime()
-            );
-            // 登录积分
-            $score = Config::get('login_score') ?: 0;
-            if (is_numeric($score) && $score > 0) {
-                $data['score'] = '+=' . $score;
-            }
-            // 更新登录信息
-            parent::table('ay_member')->where('id=' . $user->id)->update($data);
+            $this->updateLoginStats($user->id);
         }
         return $user;
+    }
+
+    // 更新会员登录统计
+    private function updateLoginStats($uid)
+    {
+        $data = array(
+            'login_count' => '+=1',
+            'last_login_ip' => ip2long(get_user_ip()),
+            'last_login_time' => get_datetime()
+        );
+        $score = Config::get('login_score') ?: 0;
+        if (is_numeric($score) && $score > 0) {
+            $data['score'] = '+=' . $score;
+        }
+        parent::table('ay_member')->where(array(
+            'id' => (int) $uid
+        ))->update($data);
     }
 
     // 会员注册

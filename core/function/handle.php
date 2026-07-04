@@ -497,6 +497,200 @@ function filter_inline_style_attr($css)
     return trim($css, " \t\n\r\0\x0B;");
 }
 
+// 后台 UEditor <script type="text/plain"> 容器输出：解码 + iframe 白名单清洗 + 防止 </script> 破出页面
+function ueditor_holder_html($html)
+{
+    if (! $html || ! is_string($html)) {
+        return $html;
+    }
+    $html = decode_string($html);
+    $html = filter_html_iframes($html);
+    // HTML 解析器会无视 type=text/plain，字面量 </script> 会提前闭合容器
+    $html = preg_replace('/<\/script/i', '<\\/script', $html);
+    return $html;
+}
+
+// 处理富文本中的 iframe：仅放行 content_iframe_whitelist 配置的可信域名，
+// 命中后仅重建 src/width/height/title/loading/allowfullscreen 等安全属性，并强制
+// sandbox/referrerpolicy；未配置白名单或未命中的 iframe 整段移除（含闭标签与内部 fallback）
+function filter_html_iframes($html)
+{
+    if (stripos($html, '<iframe') === false && stripos($html, '</iframe') === false) {
+        return $html;
+    }
+
+    // 规范化白名单：仅保留主机名（去协议、路径、端口、末尾点），统一小写
+    $raw = Config::get('content_iframe_whitelist', true);
+    $whitelist = array();
+    if (is_array($raw)) {
+        foreach ($raw as $item) {
+            $host = filter_iframe_normalize_host($item);
+            if ($host !== '') {
+                $whitelist[$host] = true;
+            }
+        }
+    }
+
+    // 未配置白名单：保持原有行为，移除所有 iframe（开标签、闭标签及成对内容）
+    if (! $whitelist) {
+        $html = preg_replace('/<iframe\b[^>]*>.*?<\/iframe>/is', '', $html);
+        $html = preg_replace('/<\/?iframe\b[^>]*>/i', '', $html);
+        return $html;
+    }
+
+    // 命中白名单的 iframe 先重建为安全标签并存入占位符，避免后续清理误伤重建结果
+    $placeholders = array();
+    $html = preg_replace_callback('/<iframe\b([^>]*)>(.*?)<\/iframe>/is', function ($m) use ($whitelist, &$placeholders) {
+        $safe = filter_iframe_rebuild($m[1], $whitelist);
+        if ($safe === '') {
+            return '';
+        }
+        $token = "\x01IFRAME_" . count($placeholders) . "\x01";
+        $placeholders[$token] = $safe;
+        return $token;
+    }, $html);
+
+    // 处理未配对的残留开标签（无闭合的畸形 iframe）
+    $html = preg_replace_callback('/<iframe\b([^>]*)>/i', function ($m) use ($whitelist, &$placeholders) {
+        $safe = filter_iframe_rebuild($m[1], $whitelist);
+        if ($safe === '') {
+            return '';
+        }
+        $token = "\x01IFRAME_" . count($placeholders) . "\x01";
+        $placeholders[$token] = $safe;
+        return $token;
+    }, $html);
+
+    // 清理所有残留闭标签，再还原占位符
+    $html = preg_replace('/<\/iframe\s*>/i', '', $html);
+    if ($placeholders) {
+        $html = strtr($html, $placeholders);
+    }
+
+    return $html;
+}
+
+// 从任意用户输入中提取主机名：支持完整 URL、协议相对 URL、纯域名
+function filter_iframe_normalize_host($value)
+{
+    $value = trim((string) $value);
+    if ($value === '') {
+        return '';
+    }
+    // 纯域名（无协议、无斜杠）时补一个协议以便 parse_url 解析
+    if (strpos($value, '//') === false && strpos($value, '/') === false) {
+        $value = 'http://' . $value;
+    } elseif (strpos($value, '//') === 0) {
+        $value = 'http:' . $value;
+    }
+    $host = parse_url($value, PHP_URL_HOST);
+    if (! $host) {
+        return '';
+    }
+    return rtrim(strtolower($host), '.');
+}
+
+// 规范化并校验 iframe src，非法则返回空串
+function filter_iframe_sanitize_src($src)
+{
+    if (! is_string($src) || $src === '') {
+        return '';
+    }
+
+    // HTML 实体解码（防 &#106;avascript: 等绕过）
+    $src = html_entity_decode($src, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $decoded = html_entity_decode($src, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    if ($decoded !== $src) {
+        $src = $decoded;
+    }
+
+    $src = trim($src);
+    if ($src === '') {
+        return '';
+    }
+
+    // 拒绝控制字符、空字节、换行
+    if (preg_match('/[\x00-\x1F\x7F]/', $src)) {
+        return '';
+    }
+
+    // 拒绝反斜杠（部分环境对 https:\/\/ 解析不一致）
+    if (strpos($src, '\\') !== false) {
+        return '';
+    }
+
+    // 拒绝已知危险 scheme（解码后再判一次）
+    if (preg_match('/^\s*(javascript|vbscript|data)\s*:/i', $src)) {
+        return '';
+    }
+
+    // 协议相对 URL：补 http: 便于 parse_url
+    $parse_src = (strpos($src, '//') === 0) ? 'http:' . $src : $src;
+
+    $scheme = parse_url($parse_src, PHP_URL_SCHEME);
+    if ($scheme !== null && ! in_array(strtolower($scheme), array('http', 'https'), true)) {
+        return '';
+    }
+
+    $host = parse_url($parse_src, PHP_URL_HOST);
+    if (! $host || strpos($host, '@') !== false) {
+        return '';
+    }
+
+    // host 仅允许合法字符（字母数字.-，支持 punycode xn--）
+    if (! preg_match('/^[a-z0-9]([a-z0-9\-\.]*[a-z0-9])?$/i', $host)) {
+        return '';
+    }
+
+    return $src;
+}
+
+// 校验单个 iframe 的属性串，命中白名单则返回重建后的安全标签，否则返回空串
+function filter_iframe_rebuild($attr_str, $whitelist)
+{
+    // 提取 src：优先最后一个（HTML 重复属性时多数浏览器取最后一个）
+    $src = '';
+    if (preg_match_all('/\bsrc\s*=\s*(["\'])(.*?)\1/i', $attr_str, $quoted, PREG_SET_ORDER)) {
+        $src = trim(end($quoted)[2]);
+    } elseif (preg_match_all('/\bsrc\s*=\s*([^\s>]+)/i', $attr_str, $unquoted)) {
+        $src = trim(end($unquoted)[1]);
+    }
+    if ($src === '') {
+        return '';
+    }
+
+    $src = filter_iframe_sanitize_src($src);
+    if ($src === '') {
+        return '';
+    }
+
+    $parse_src = (strpos($src, '//') === 0) ? 'http:' . $src : $src;
+    $host = rtrim(strtolower(parse_url($parse_src, PHP_URL_HOST)), '.');
+    if (! isset($whitelist[$host])) {
+        return '';
+    }
+
+    // 重建：仅保留必要安全属性，其余属性（含 on* 事件）一律丢弃
+    $attrs = 'src="' . htmlspecialchars($src, ENT_QUOTES) . '"';
+
+    if (preg_match('/\bwidth\s*=\s*(["\']?)([\d.]+%?)\1/i', $attr_str, $w)) {
+        $attrs .= ' width="' . htmlspecialchars($w[2], ENT_QUOTES) . '"';
+    }
+    if (preg_match('/\bheight\s*=\s*(["\']?)([\d.]+%?)\1/i', $attr_str, $h)) {
+        $attrs .= ' height="' . htmlspecialchars($h[2], ENT_QUOTES) . '"';
+    }
+    if (preg_match('/\btitle\s*=\s*(["\'])(.*?)\1/i', $attr_str, $t)) {
+        $attrs .= ' title="' . htmlspecialchars($t[2], ENT_QUOTES) . '"';
+    }
+
+    // 强制安全属性；sandbox 下需显式声明 allow-fullscreen 才能全屏
+    $attrs .= ' frameborder="0" loading="lazy" referrerpolicy="no-referrer"';
+    $attrs .= ' sandbox="allow-scripts allow-same-origin allow-popups allow-presentation allow-forms allow-fullscreen"';
+    $attrs .= ' allowfullscreen';
+
+    return '<iframe ' . $attrs . '></iframe>';
+}
+
 // 过滤HTML内容中的危险标签和属性，保留安全的HTML标签
 // 用于富文本内容字段（如文章content），允许显示格式化内容但阻止XSS攻击
 function filter_html($html)
@@ -504,9 +698,13 @@ function filter_html($html)
     if (! $html || ! is_string($html))
         return $html;
 
-    // 1. 移除所有危险标签（script, iframe, object, embed, applet, form, base, meta, link, svg等）
+    // 0. 优先处理 iframe：命中白名单域名的重建为安全属性版本，其余整段移除
+    $html = filter_html_iframes($html);
+
+    // 1. 移除所有危险标签（script, object, embed, applet, form, base, meta, link, svg等）
+    // 注意：iframe 已在上一步单独处理，不再纳入黑名单，否则会误删白名单 iframe 的闭标签
     $dangerous_tags = array(
-        'script', 'iframe', 'object', 'embed', 'applet', 'form', 'input',
+        'script', 'object', 'embed', 'applet', 'form', 'input',
         'button', 'select', 'textarea', 'base', 'meta', 'link', 'svg',
         'math', 'noscript', 'template', 'frame', 'frameset', 'body', 'head'
     );

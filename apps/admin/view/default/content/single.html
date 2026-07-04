@@ -224,7 +224,7 @@
 			                			{php}
 			                				$name=@$value->name;
 			                			{/php}
-				                		<script type="text/plain" id="editor_[value->name]" name="[value->name]" style="width:100%;height:240px;">{fun=decode_string([$content->$name])}</script>
+				                		<script type="text/plain" id="editor_[value->name]" name="[value->name]" style="width:100%;height:240px;">{fun=ueditor_holder_html([$content->$name])}</script>
 				                		<script>
 											//初始化编辑器
 											$(document).ready(function (e) {
@@ -263,7 +263,7 @@
 			                <div class="layui-form-item">
 			                     <label class="layui-form-label">内容</label>
 			                     <div class="layui-input-block">
-			                     	<script type="text/plain" id="editor" name="content" style="width:100%;height:240px;">{fun=decode_string([$content->content])}</script>
+			                     	<script type="text/plain" id="editor" name="content" style="width:100%;height:240px;">{fun=ueditor_holder_html([$content->content])}</script>
 			                     </div>
 			                </div>
 			                

@@ -211,10 +211,11 @@ class ConfigController extends Controller
         }
         
         if ($key == 'home_upload_ext') {
-            // 不允许特殊扩展
-            if (preg_match('/(php|jsp|asp|exe|sh|cmd|vb|vbs|phtml)/i', $value)) {
+            $filtered = filter_upload_ext_allow(explode(',', $value));
+            if (! $filtered) {
                 return;
             }
+            $value = implode(',', $filtered);
         }
 
         // AI API Key：未填写或为脱敏占位（含****）则跳过本次更新；否则加密后入库
@@ -231,11 +232,24 @@ class ConfigController extends Controller
         $hander = array(
             'content_keyword_replace',
             'ip_deny',
-            'ip_allow'
+            'ip_allow',
+            'content_iframe_whitelist'
         );
         if (in_array($key, $hander) && $value) {
             $value = str_replace("\r\n", ",", $value); // 替换回车
             $value = str_replace("，", ",", $value); // 替换中文逗号分割符
+        }
+
+        // iframe 白名单：仅保留主机名（去协议、路径、端口、末尾点），小写去重
+        if ($key == 'content_iframe_whitelist' && $value) {
+            $hosts = array();
+            foreach (explode(',', $value) as $item) {
+                $host = filter_iframe_normalize_host($item);
+                if ($host !== '' && ! in_array($host, $hosts, true)) {
+                    $hosts[] = $host;
+                }
+            }
+            $value = implode(',', $hosts);
         }
         
         if ($this->model->checkConfig("name='$key'")) {

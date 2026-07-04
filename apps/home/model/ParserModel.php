@@ -299,7 +299,7 @@ class ParserModel extends Model
     }
 
     // 列表内容，分页以參數形式帶入，不区分语言，兼容跨语言
-    public function getList($scode, $num, $order, $filter = array(), $tags = array(), $select = array(), $fuzzy = true, $start = 1, $lfield = null, $lg = null, bool $page = false)
+    public function getList($scode, $num, $order, $filter = array(), $tags = array(), $select = array(), $fuzzy = false, $start = 1, $lfield = null, $lg = null, bool $page = false)
     {
         $scode = escape_string($scode);
         $ext_table = false;
@@ -335,6 +335,11 @@ class ParserModel extends Model
                 'a.subscode',
                 'a.title',
                 'a.filename',
+                'a.subtitle',
+                'a.author',
+                'a.visits',
+                'a.likes',
+                'a.oppose',
                 'a.outlink',
                 'a.date',
                 'a.ico',
@@ -518,8 +523,9 @@ class ParserModel extends Model
                 'LEFT'
             )
         );
+        $where = ctype_digit((string) $id) ? "a.id='$id' OR a.filename='$id'" : "a.filename='$id'";
         $result = parent::table('ay_content a')->field($field)
-            ->where("a.id='$id' OR a.filename='$id'")
+            ->where($where)
             ->where('a.status=1')
             ->where("a.date<'" . date('Y-m-d H:i:s') . "'")
             ->join($join)

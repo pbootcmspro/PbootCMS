@@ -61,7 +61,7 @@
 	                	<div class="layui-form-item">
 		                     <label class="layui-form-label">[value->description]<br><span class="layui-badge layui-bg-gray">{label:[value->name]}</span></label>
 		                     <div class="layui-input-block">
-		                     	<script type="text/plain" id="[value->name]" name="[value->name]" style="width:100%;height:240px;">{fun=decode_string($value->value)}</script>
+		                     	<script type="text/plain" id="[value->name]" name="[value->name]" style="width:100%;height:240px;">{fun=ueditor_holder_html($value->value)}</script>
 		                     </div>
 		                </div>
 		                <script>

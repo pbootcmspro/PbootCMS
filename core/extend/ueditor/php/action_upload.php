@@ -20,6 +20,7 @@ if (!isset($CONFIG)) {
         exit;
     }
     $CONFIG = json_decode(preg_replace("/\/\*[\s\S]+?\*\//", "", file_get_contents("config.json")), true);
+    $CONFIG = ueditor_merge_upload_config($CONFIG);
 }
 
 include "Uploader.class.php";
@@ -71,16 +72,24 @@ if (defined('STATIC_DIR')) {
 /* 生成上传实例对象并完成上传 */
 $up = new Uploader($fieldName, $config, $base64);
 
-// 图片打水印
+// 图片重编码、缩放与水印
 $rs = $up->getFileInfo();
-$ext = array(
+$image_ext = array(
     '.jpg',
+    '.jpeg',
     '.png',
     '.gif'
 );
-if (in_array($rs['type'], $ext)) {
-    resize_img(ROOT_PATH . $rs['url']); // 缩放大小
-    watermark_img(ROOT_PATH . $rs['url']); // 水印
+if ($rs['state'] === 'SUCCESS' && in_array($rs['type'], $image_ext, true)) {
+    $full_path = upload_resolve_public_path($rs['url']);
+    if (($re = reencode_image($full_path)) !== true) {
+        @unlink($full_path);
+        return json_encode(array(
+            'state' => $re
+        ));
+    }
+    resize_img($full_path);
+    watermark_img($full_path);
 }
 
 /**

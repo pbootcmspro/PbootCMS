@@ -29,6 +29,7 @@ if (!ueditor_check_auth()) {
 }
 
 $CONFIG = json_decode(preg_replace("/\/\*[\s\S]+?\*\//", "", file_get_contents("config.json")), true);
+$CONFIG = ueditor_merge_upload_config($CONFIG);
 $action = $_GET['action'];
 
 switch ($action) {

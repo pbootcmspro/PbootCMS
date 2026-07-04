@@ -204,7 +204,7 @@ class CmsModel extends Model
     }
 
     // 列表内容,带分页
-    public function getLists($acode, $scode, $num, $order, $filter = array(), $tags = array(), $select = array(), $fuzzy = true)
+    public function getLists($acode, $scode, $num, $order, $filter = array(), $tags = array(), $select = array(), $fuzzy = false)
     {
         $fields = array(
             'a.*',
@@ -276,7 +276,7 @@ class CmsModel extends Model
     }
 
     // 列表内容，不带分页
-    public function getList($acode, $scode, $num, $order, $filter = array(), $tags = array(), $select = array(), $fuzzy = true)
+    public function getList($acode, $scode, $num, $order, $filter = array(), $tags = array(), $select = array(), $fuzzy = false)
     {
         $fields = array(
             'a.*',

@@ -130,6 +130,10 @@ class ContentController extends Controller
                 alert_back('内容URL名称只允许字母、数字、横线、下划线组成!');
             }
 
+            if ($filename && $this->model->checkFilenameConflictId($filename)) {
+                alert_back('内容URL名称不能与已有内容ID重复!');
+            }
+
             // 自动提起前一百个字符为描述
             if (!$description && isset($_POST['content'])) {
                 $description = escape_string(clear_html_blank(substr_both(strip_tags($_POST['content']), 0, 150)));
@@ -450,6 +454,10 @@ class ContentController extends Controller
 
             if ($filename && !preg_match('/^[a-zA-Z0-9\-_\/]+$/', $filename)) {
                 alert_back('内容URL名称只允许字母、数字、横线、下划线组成!');
+            }
+
+            if ($filename && $this->model->checkFilenameConflictId($filename, $id)) {
+                alert_back('内容URL名称不能与已有内容ID重复!');
             }
 
             // 自动提起前一百个字符为描述

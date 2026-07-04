@@ -20,6 +20,7 @@ if (!isset($CONFIG)) {
         exit;
     }
     $CONFIG = json_decode(preg_replace("/\/\*[\s\S]+?\*\//", "", file_get_contents("config.json")), true);
+    $CONFIG = ueditor_merge_upload_config($CONFIG);
 }
 
 include "Uploader.class.php";

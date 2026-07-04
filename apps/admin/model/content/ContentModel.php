@@ -332,6 +332,19 @@ class ContentModel extends Model
             ->find();
     }
 
+    // 检查自定义URL名称是否与已有内容ID冲突
+    public function checkFilenameConflictId($filename, $excludeId = 0)
+    {
+        if (! ctype_digit((string) $filename)) {
+            return false;
+        }
+        $where = $excludeId ? "id<>$excludeId" : '';
+        return parent::table('ay_content')->field('id')
+            ->where("id='$filename'")
+            ->where($where)
+            ->find();
+    }
+
     public function getImage()
     {
         $list = parent::table('ay_content')->limit(2000)->column('ico,pics,content');

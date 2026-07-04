@@ -186,7 +186,7 @@ class CmsController extends Controller
         $num = request('num', 'int') ?: $this->config('pagesize');
         $rorder = request('order');
         $tags = request('tags', 'vars');
-        $fuzzy = request('fuzzy', 'int') ?: true;
+        $fuzzy = (bool) request('fuzzy', 'int', false, null, false);
         
         if (! preg_match('/^[\w\-,\s]+$/', $rorder)) {
             $order = 'a.istop DESC,a.isrecommend DESC,a.isheadline DESC,a.sorting ASC,a.date DESC,a.id DESC';

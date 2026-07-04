@@ -640,8 +640,9 @@ class ParserModel extends Model
                 'LEFT'
             )
         );
+        $where = ctype_digit((string) $id) ? "a.id='$id' OR a.filename='$id'" : "a.filename='$id'";
         $result = parent::table('ay_content a')->field($field)
-            ->where("a.id='$id' OR a.filename='$id'")
+            ->where($where)
             ->where('a.status=1')
             ->where("a.date<'" . date('Y-m-d H:i:s') . "'")
             ->join($join)

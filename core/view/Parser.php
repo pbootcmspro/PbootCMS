@@ -323,14 +323,10 @@ class Parser
                 // 解析首标签
                 self::$content = str_replace($matches[0][$i], "<?php \$" . $matches[5][$i] . " = 0;foreach (\$this->getVar('" . $matches[1][$i] . "') as \$" . $matches[2][$i] . " => \$" . $matches[3][$i] . ") { \$" . $matches[5][$i] . "++;?>", self::$content);
                 
-                // 解析序号
+                // 解析序号（运行时判断 PAGE，避免编译期常量污染 PHP8）
                 $pattern_num = '/\[(' . $matches[5][$i] . ')\]/';
                 if (preg_match($pattern_num, self::$content)) {
-                    if (defined('PAGE')) {
-                        self::$content = preg_replace($pattern_num, "<?php echo @(PAGE-1)*PAGESIZE+\$$1; ?>", self::$content);
-                    } else {
-                        self::$content = preg_replace($pattern_num, "<?php echo \$$1; ?>", self::$content);
-                    }
+                    self::$content = preg_replace($pattern_num, "<?php echo @(defined('PAGE')?(PAGE-1)*PAGESIZE:0)+\$$1; ?>", self::$content);
                 }
                 
                 // 解析key
@@ -364,14 +360,10 @@ class Parser
                 // 解析首标签
                 self::$content = str_replace($matches[0][$i], "<?php \$" . $matches[5][$i] . " = 0;foreach (\$" . $matches[1][$i] . " as \$" . $matches[2][$i] . " => \$" . $matches[3][$i] . ") { \$" . $matches[5][$i] . "++;?>", self::$content);
                 
-                // 解析序号
+                // 解析序号（运行时判断 PAGE，避免编译期常量污染 PHP8）
                 $pattern_num = '/\[(' . $matches[5][$i] . ')\]/';
                 if (preg_match($pattern_num, self::$content)) {
-                    if (defined('PAGE')) {
-                        self::$content = preg_replace($pattern_num, "<?php echo (PAGE-1)*PAGESIZE+\$$1; ?>", self::$content);
-                    } else {
-                        self::$content = preg_replace($pattern_num, "<?php echo \$$1; ?>", self::$content);
-                    }
+                    self::$content = preg_replace($pattern_num, "<?php echo @(defined('PAGE')?(PAGE-1)*PAGESIZE:0)+\$$1; ?>", self::$content);
                 }
                 
                 // 解析key
@@ -405,14 +397,10 @@ class Parser
                 // 解析首标签
                 self::$content = str_replace($matches[0][$i], "<?php \$" . $matches[6][$i] . " = 0;foreach (\$this->getVar('" . $matches[1][$i] . "')->" . $matches[2][$i] . " as \$" . $matches[3][$i] . " => \$" . $matches[4][$i] . ") { \$" . $matches[6][$i] . "++;?>", self::$content);
                 
-                // 解析序号
+                // 解析序号（运行时判断 PAGE，避免编译期常量污染 PHP8）
                 $pattern_num = '/\[(' . $matches[6][$i] . ')\]/';
                 if (preg_match($pattern_num, self::$content)) {
-                    if (defined('PAGE')) {
-                        self::$content = preg_replace($pattern_num, "<?php echo @(PAGE-1)*PAGESIZE+\$$1; ?>", self::$content);
-                    } else {
-                        self::$content = preg_replace($pattern_num, "<?php echo \$$1; ?>", self::$content);
-                    }
+                    self::$content = preg_replace($pattern_num, "<?php echo @(defined('PAGE')?(PAGE-1)*PAGESIZE:0)+\$$1; ?>", self::$content);
                 }
                 
                 // 解析key

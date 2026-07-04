@@ -252,13 +252,15 @@ class ParserController extends Controller
                         break;
                     case 'statistical':
                         if (isset($data->statistical)) {
-                            $content = str_replace($matches[0][$i], filter_html(decode_string($data->statistical)), $content);
+                            $statistical = filter_html(decode_string($data->statistical));
+                            $content = str_replace($matches[0][$i], $this->sanitizePhpOpenTag($statistical), $content);
                         } else {
                             $content = str_replace($matches[0][$i], '', $content);
                         }
                     case 'copyright':
                         if (isset($data->copyright)) {
-                            $content = str_replace($matches[0][$i], $this->adjustLabelData($params, decode_string($data->copyright)), $content);
+                            $copyright = $this->adjustLabelData($params, decode_string($data->copyright));
+                            $content = str_replace($matches[0][$i], $this->sanitizePhpOpenTag($copyright), $content);
                         } else {
                             $content = str_replace($matches[0][$i], '', $content);
                         }
@@ -274,6 +276,15 @@ class ParserController extends Controller
             }
         }
         return $content;
+    }
+
+    // 转义 PHP 开标签，防止站点信息被还原为可执行 PHP 代码
+    protected function sanitizePhpOpenTag($content)
+    {
+        if (! is_string($content) || $content === '') {
+            return $content;
+        }
+        return preg_replace('/<\?(?:php|=)?/i', '&lt;?', $content);
     }
 
     // 解析公司标签
@@ -1189,7 +1200,7 @@ class ParserController extends Controller
                 $order = 'a.istop DESC,a.isrecommend DESC,a.isheadline DESC,a.sorting ASC,a.date DESC,a.id DESC'; // 默认排序
                 $filter = ''; // 过滤
                 $tags = ''; // tag标签
-                $fuzzy = true; // 设置过滤、tag、筛选是否模糊匹配
+                $fuzzy = false; // 列表筛选默认精确匹配，可通过 fuzzy=1 开启模糊
                 $ispics = ''; // 是否多图
                 $isico = ''; // 是否缩略图
                 $istop = ''; // 是否置顶
@@ -1272,7 +1283,7 @@ class ParserController extends Controller
                             $filter = $value;
                             break;
                         case 'fuzzy':
-                            $fuzzy = $value;
+                            $fuzzy = $this->parseFuzzyParam($value);
                             break;
                         case 'tags':
                             $tags = $value;
@@ -2865,7 +2876,7 @@ class ParserController extends Controller
                 $order = 'a.istop DESC,a.isrecommend DESC,a.isheadline DESC,a.sorting ASC,a.date DESC,a.id DESC'; // 默认排序
                 $filter = ''; // 过滤
                 $tags = ''; // tag标签
-                $fuzzy = true; // 设置过滤、tag、筛选是否模糊匹配
+                $fuzzy = true; // 搜索默认模糊匹配，可通过 fuzzy=0 开启精确
                 $ispics = ''; // 是否多图
                 $isico = ''; // 是否缩略图
                 $istop = ''; // 是否置顶
@@ -2943,7 +2954,7 @@ class ParserController extends Controller
                             $filter = $value;
                             break;
                         case 'fuzzy':
-                            $fuzzy = $value;
+                            $fuzzy = $this->parseFuzzyParam($value);
                             break;
                         case 'tags':
                             $tags = $value;
@@ -3554,6 +3565,12 @@ class ParserController extends Controller
             $data = '#pre:' . key($this->pre) . '#';
         }
         return $data;
+    }
+
+    // 解析 fuzzy 参数（0/false/off 为精确匹配，其余为模糊匹配）
+    protected function parseFuzzyParam($value)
+    {
+        return !in_array(strtolower((string) $value), array('0', 'false', 'off', 'no'), true);
     }
 
     // 解析调节参数

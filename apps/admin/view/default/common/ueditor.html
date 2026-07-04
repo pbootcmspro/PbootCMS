@@ -3,11 +3,167 @@
 <script type="text/javascript" charset="utf-8" src="{CORE_DIR}/extend/ueditor/ueditor.all.js"> </script>
 <script type="text/javascript" charset="utf-8" src="{CORE_DIR}/extend/ueditor/lang/zh-cn/zh-cn.js"></script>
 <script>
-//初始化编辑器
+// iframe 白名单，与后台 content_iframe_whitelist 一致（逗号分隔域名）
+// JSON_HEX_* = 15，避免 < 破出 script；php 块内不用 | 以免模板误解析
+window.PBOOT_IFRAME_WHITELIST = {php}$__iframe_wl = (string) core\basic\Config::get('content_iframe_whitelist'); echo json_encode($__iframe_wl, 15);{/php};
+
+// HTML 实体解码（最多两轮，防 &#106;avascript: 等）
+function pbootDecodeEntities(str) {
+    if (!str) {
+        return '';
+    }
+    var t = document.createElement('textarea');
+    t.innerHTML = str;
+    var once = t.value;
+    t.innerHTML = once;
+    return t.value;
+}
+
+// 从配置项或 URL 中提取主机名
+function pbootNormalizeHost(value) {
+    value = String(value || '').replace(/^\s+|\s+$/g, '');
+    if (!value) {
+        return '';
+    }
+    if (value.indexOf('//') === -1 && value.indexOf('/') === -1) {
+        value = 'http://' + value;
+    } else if (value.indexOf('//') === 0) {
+        value = 'http:' + value;
+    } else if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(value)) {
+        value = 'http://' + value;
+    }
+    var a = document.createElement('a');
+    a.href = value;
+    return (a.hostname || '').toLowerCase().replace(/\.$/, '');
+}
+
+// 规范化并校验 iframe src，非法返回空串（与 filter_iframe_sanitize_src 对齐）
+function pbootSanitizeIframeSrc(src) {
+    src = pbootDecodeEntities(String(src || ''));
+    src = src.replace(/^\s+|\s+$/g, '');
+    if (!src) {
+        return '';
+    }
+    if (/[\x00-\x1F\x7F]/.test(src)) {
+        return '';
+    }
+    if (src.indexOf('\\') !== -1) {
+        return '';
+    }
+    if (/^\s*(javascript|vbscript|data)\s*:/i.test(src)) {
+        return '';
+    }
+
+    var parseSrc = src.indexOf('//') === 0 ? 'http:' + src : src;
+    var schemeMatch = parseSrc.match(/^([a-zA-Z][a-zA-Z0-9+.-]*):/);
+    if (schemeMatch && !/^(https?)$/i.test(schemeMatch[1])) {
+        return '';
+    }
+
+    var a = document.createElement('a');
+    a.href = parseSrc;
+    var host = (a.hostname || '').toLowerCase().replace(/\.$/, '');
+    if (!host || host.indexOf('@') !== -1) {
+        return '';
+    }
+    if (!/^[a-z0-9]([a-z0-9\-\.]*[a-z0-9])?$/i.test(host)) {
+        return '';
+    }
+    return src;
+}
+
+// 解析白名单为小写主机名数组
+function pbootGetIframeWhitelist() {
+    var raw = String(window.PBOOT_IFRAME_WHITELIST || '');
+    var list = [];
+    var parts = raw.split(',');
+    for (var i = 0; i < parts.length; i++) {
+        var host = pbootNormalizeHost(parts[i]);
+        if (host && list.indexOf(host) === -1) {
+            list.push(host);
+        }
+    }
+    return list;
+}
+
+// UEditor inputRule：清洗进入编辑区的 iframe（源码切回可视化 / 粘贴 / 初始化）
+function pbootFilterEditorIframes(root) {
+    if (!root || !root.getNodesByTagName) {
+        return;
+    }
+    var whitelist = pbootGetIframeWhitelist();
+    var nodes = root.getNodesByTagName('iframe');
+    for (var i = nodes.length - 1; i >= 0; i--) {
+        var node = nodes[i];
+        if (!node || !node.parentNode) {
+            continue;
+        }
+
+        var src = pbootSanitizeIframeSrc(node.getAttr('src') || '');
+        if (!src) {
+            node.parentNode.removeChild(node);
+            continue;
+        }
+
+        var host = pbootNormalizeHost(src);
+        // 未配置白名单或域名未命中：移除（与前台 filter_html_iframes 一致）
+        if (!whitelist.length || whitelist.indexOf(host) === -1) {
+            node.parentNode.removeChild(node);
+            continue;
+        }
+
+        var width = node.getAttr('width') || '';
+        var height = node.getAttr('height') || '';
+        var title = node.getAttr('title') || '';
+        var attrs = {
+            src: src,
+            frameborder: '0',
+            loading: 'lazy',
+            referrerpolicy: 'no-referrer',
+            sandbox: 'allow-scripts allow-same-origin allow-popups allow-presentation allow-forms allow-fullscreen',
+            allowfullscreen: 'allowfullscreen'
+        };
+        if (/^[\d.]+%?$/.test(width)) {
+            attrs.width = width;
+        }
+        if (/^[\d.]+%?$/.test(height)) {
+            attrs.height = height;
+        }
+        if (title) {
+            attrs.title = title;
+        }
+        // 清空原属性（含 onload 等）后写入安全属性
+        node.setAttr();
+        node.setAttr(attrs);
+    }
+}
+
+// 为任意 UE.getEditor 实例挂上 iframe 清洗（含 content.html 扩展字段 editor_*）
+(function () {
+    if (!window.UE || !UE.getEditor || UE.__pbootIframePatched) {
+        return;
+    }
+    UE.__pbootIframePatched = true;
+    var _getEditor = UE.getEditor;
+    UE.getEditor = function (id, opt) {
+        var ue = _getEditor.call(UE, id, opt);
+        if (ue && !ue.__pbootIframeRule) {
+            ue.__pbootIframeRule = true;
+            ue.addInputRule(function (root) {
+                pbootFilterEditorIframes(root);
+            });
+        }
+        return ue;
+    };
+})();
+
+//初始化主编辑器
 $(document).ready(function (e) {
-	var ue = UE.getEditor('editor',{
-		maximumWords:30000 
-	});
+	if (document.getElementById('editor')) {
+		UE.getEditor('editor', {
+			maximumWords: 30000
+		});
+	}
 })
 </script>
 
@@ -20,7 +176,7 @@ $(document).ready(function (e) {
           if(editor.queryCommandState('source')==1) editor.execCommand('source');
       })
   }
- 
+
   <!-- 点击后添加到编辑器 -->
   $(".addedit").on("click",'img',function(){
 	    editor=UE.getEditor('editor');
@@ -31,6 +187,3 @@ $(document).ready(function (e) {
 </script>
 
 <script type="text/javascript">editor_init();</script>
-
-
-

@@ -70,7 +70,7 @@ class Basic
         $info .= "<p><b>Desc:</b> $errstr;</p>\n";
         $info .= "<p><b>File:</b> $errfile;</p>\n";
         $info .= "<p><b>Line:</b> $errline;</p>\n";
-        
+
         if ($err_level == 'WARNING' || $err_level == 'NOTICE') {
             echo $info;
         } else {
@@ -104,20 +104,22 @@ class Basic
         if (ini_get('session.auto_start')) {
             return;
         }
-        
+
         // 配置会话安全参数
         session_name('PbootSystem');
         ini_set("session.use_trans_sid", 0);
         ini_set("session.use_cookies", 1);
         ini_set("session.use_only_cookies", 1);
         session_set_cookie_params(0, SITE_DIR . '/', null, null, false);
-        
+
         switch (Config::get('session.handler')) {
             case 'memcache':
                 if (! extension_loaded('memcache'))
                     error('PHP运行环境未安装memcache.dll扩展！');
-                ini_set("session.save_handler", "memcache");
-                ini_set("session.save_path", Config::get('seesion.path'));
+                $save_path = Config::get('session.path');
+                if (! $save_path)
+                    error('memcache 会话存储未配置 session.path！');
+                session_set_save_handler(new MemcacheSessionHandler($save_path), true);
                 break;
             default:
                 if (Config::get('session_in_sitepath')) {
@@ -141,7 +143,7 @@ class Basic
         // 自动同名模型控制器
         if (! $name)
             $name = C;
-        
+
         // 获取类名
         if (strpos($name, '.') !== false) {
             $path = explode('.', $name);
@@ -154,13 +156,13 @@ class Basic
         } else {
             $class_name = '\\app\\' . M . '\\model\\' . ucfirst($name) . 'Model';
         }
-        
+
         // 根据需要实例化
         $key = md5($class_name);
         if (! isset(self::$models[$key]) || $new) {
             self::$models[$key] = new $class_name();
         }
-        
+
         return self::$models[$key];
     }
 
@@ -171,17 +173,17 @@ class Basic
         if (! is_array($args)) {
             $args = func_get_args();
         }
-        
+
         // 分离参数
         $name = $args[0];
         unset($args[0]);
         $param = $args;
-        
+
         // 如果只是传递了方法，则自动完善模块及模型控制器
         if (strpos($name, '.') === false) {
             $name = M . '.' . C . '.' . $name;
         }
-        
+
         $path = explode('.', $name); // 第一个为模块 $path[0]，倒数第二个为模型$path[$i]，倒数第一个为方法$path[$i+1]
         $class_name = '\\app\\' . $path[0] . '\\model';
         $len = count($path);
@@ -190,14 +192,14 @@ class Basic
         }
         $class_name .= '\\' . ucfirst($path[$i]) . 'Model';
         $key = md5($class_name);
-        
+
         if (isset(self::$models[$key])) {
             $model = self::$models[$key];
         } else {
             $model = new $class_name();
             self::$models[$key] = $model;
         }
-        
+
         // 调取接口方法
         if (is_array($param)) {
             $rs = call_user_func_array(array(
@@ -205,7 +207,7 @@ class Basic
                 $path[$i + 1]
             ), $param);
         }
-        
+
         // 返回结果,如果不是json数据，则转换
         if (! ! $return = json_decode($rs)) {
             return $rs;
@@ -214,5 +216,3 @@ class Basic
         }
     }
 }
-
-
