@@ -497,14 +497,14 @@ function filter_inline_style_attr($css)
     return trim($css, " \t\n\r\0\x0B;");
 }
 
-// 后台 UEditor <script type="text/plain"> 容器输出：解码 + iframe 白名单清洗 + 防止 </script> 破出页面
+// 后台 UEditor <script type="text/plain"> 容器输出：解码 + 防止 </script> 破出页面
+// 不在此处过滤 iframe：编辑器内容会在保存时原样回写数据库，任何清洗都等于永久删除
 function ueditor_holder_html($html)
 {
     if (! $html || ! is_string($html)) {
         return $html;
     }
     $html = decode_string($html);
-    $html = filter_html_iframes($html);
     // HTML 解析器会无视 type=text/plain，字面量 </script> 会提前闭合容器
     $html = preg_replace('/<\/script/i', '<\\/script', $html);
     return $html;
