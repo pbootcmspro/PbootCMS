@@ -235,11 +235,7 @@ class ParserController extends Controller
                         break;
                     case 'logo':
                         if (isset($data->logo) && $data->logo) {
-                            if (!preg_match('/^http/', $data->logo)) {
-                                $content = str_replace($matches[0][$i], $this->adjustLabelData($params, SITE_DIR . $data->logo), $content);
-                            } else {
-                                $content = str_replace($matches[0][$i], $this->adjustLabelData($params, $data->logo), $content);
-                            }
+                            $content = str_replace($matches[0][$i], $this->parserAssetUrl($data->logo, $params), $content);
                         } else {
                             $content = str_replace($matches[0][$i], STATIC_DIR . '/images/logo.png', $content);
                         }
@@ -303,11 +299,7 @@ class ParserController extends Controller
                 switch ($matches[1][$i]) {
                     case 'weixin':
                         if (isset($data->weixin) && $data->weixin) {
-                            if (!preg_match('/^http/', $data->weixin)) {
-                                $content = str_replace($matches[0][$i], $this->adjustLabelData($params, SITE_DIR . $data->weixin), $content);
-                            } else {
-                                $content = str_replace($matches[0][$i], $this->adjustLabelData($params, $data->weixin), $content);
-                            }
+                            $content = str_replace($matches[0][$i], $this->parserAssetUrl($data->weixin, $params), $content);
                         } else {
                             $content = str_replace($matches[0][$i], '', $content);
                         }
@@ -338,14 +330,18 @@ class ParserController extends Controller
                 switch ($matches[1][$i]) {
                     default:
                         if (isset($data[$matches[1][$i]])) {
-                            if ($data[$matches[1][$i]]['type'] == 3 && $data[$matches[1][$i]]['value']) {
-                                if (!preg_match('/^http/', $data[$matches[1][$i]]['value'])) {
-                                    $data[$matches[1][$i]]['value'] = $this->adjustLabelData($params, SITE_DIR . $data[$matches[1][$i]]['value']);
-                                } else {
-                                    $data[$matches[1][$i]]['value'] = $this->adjustLabelData($params, $data[$matches[1][$i]]['value']);
-                                }
+                            $labelValue = $data[$matches[1][$i]]['value'];
+                            $labelType = $data[$matches[1][$i]]['type'];
+                            // 编辑器类型标签：与文章 content 一致，走 iframe 白名单清洗
+                            if ($labelType == 5) {
+                                $labelValue = filter_html($labelValue);
                             }
-                            $content = str_replace($matches[0][$i], $this->adjustLabelData($params, $data[$matches[1][$i]]['value']), $content);
+                            if ($labelType == 3 && $labelValue) {
+                                $labelOut = $this->parserAssetUrl($labelValue, $params);
+                            } else {
+                                $labelOut = $this->adjustLabelData($params, $labelValue);
+                            }
+                            $content = str_replace($matches[0][$i], $labelOut, $content);
                         }
                 }
             }
@@ -386,11 +382,7 @@ class ParserController extends Controller
                         break;
                     case 'headpic':
                         if ($data->headpic) {
-                            if (!preg_match('/^http/', $data->headpic)) {
-                                $content = str_replace($matches[0][$i], $this->adjustLabelData($params, SITE_DIR . $data->headpic), $content);
-                            } else {
-                                $content = str_replace($matches[0][$i], $this->adjustLabelData($params, $data->headpic), $content);
-                            }
+                            $content = str_replace($matches[0][$i], $this->parserAssetUrl($data->headpic, $params), $content);
                         } else {
                             $content = str_replace($matches[0][$i], SITE_DIR . '/apps/admin/view/default/images/logo.png', $content);
                         }
@@ -508,22 +500,14 @@ class ParserController extends Controller
                                     break;
                                 case 'ico':
                                     if ($value['ico']) {
-                                        if (!preg_match('/^http/', $value['ico'])) {
-                                            $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, SITE_DIR . $value['ico']), $one_html);
-                                        } else {
-                                            $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, $value['ico']), $one_html);
-                                        }
+                                        $one_html = str_replace($matches2[0][$j], $this->parserAssetUrl($value['ico'], $params), $one_html);
                                     } else {
                                         $one_html = str_replace($matches2[0][$j], '', $one_html);
                                     }
                                     break;
                                 case 'pic':
                                     if ($value['pic']) {
-                                        if (!preg_match('/^http/', $value['pic'])) {
-                                            $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, SITE_DIR . $value['pic']), $one_html);
-                                        } else {
-                                            $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, $value['pic']), $one_html);
-                                        }
+                                        $one_html = str_replace($matches2[0][$j], $this->parserAssetUrl($value['pic'], $params), $one_html);
                                     } else {
                                         $one_html = str_replace($matches2[0][$j], '', $one_html);
                                     }
@@ -693,22 +677,14 @@ class ParserController extends Controller
                         break;
                     case 'ico':
                         if ($sort->ico) {
-                            if (!preg_match('/^http/', $sort->ico)) {
-                                $content = str_replace($matches[0][$i], $this->adjustLabelData($params, SITE_DIR . $sort->ico), $content);
-                            } else {
-                                $content = str_replace($matches[0][$i], $this->adjustLabelData($params, $sort->ico), $content);
-                            }
+                            $content = str_replace($matches[0][$i], $this->parserAssetUrl($sort->ico, $params), $content);
                         } else {
                             $content = str_replace($matches[0][$i], '', $content);
                         }
                         break;
                     case 'pic':
                         if ($sort->pic) {
-                            if (!preg_match('/^http/', $sort->pic)) {
-                                $content = str_replace($matches[0][$i], $this->adjustLabelData($params, SITE_DIR . $sort->pic), $content);
-                            } else {
-                                $content = str_replace($matches[0][$i], $this->adjustLabelData($params, $sort->pic), $content);
-                            }
+                            $content = str_replace($matches[0][$i], $this->parserAssetUrl($sort->pic, $params), $content);
                         } else {
                             $content = str_replace($matches[0][$i], '', $content);
                         }
@@ -862,22 +838,14 @@ class ParserController extends Controller
                                 break;
                             case 'ico':
                                 if ($value->ico) {
-                                    if (!preg_match('/^http/', $value->ico)) {
-                                        $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, SITE_DIR . $value->ico), $one_html);
-                                    } else {
-                                        $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, $value->ico), $one_html);
-                                    }
+                                        $one_html = str_replace($matches2[0][$j], $this->parserAssetUrl($value->ico, $params), $one_html);
                                 } else {
                                     $one_html = str_replace($matches2[0][$j], '', $one_html);
                                 }
                                 break;
                             case 'pic':
                                 if ($value->pic) {
-                                    if (!preg_match('/^http/', $value->pic)) {
-                                        $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, SITE_DIR . $value->pic), $one_html);
-                                    } else {
-                                        $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, $value->pic), $one_html);
-                                    }
+                                        $one_html = str_replace($matches2[0][$j], $this->parserAssetUrl($value->pic, $params), $one_html);
                                 } else {
                                     $one_html = str_replace($matches2[0][$j], '', $one_html);
                                 }
@@ -1283,7 +1251,7 @@ class ParserController extends Controller
                             $filter = $value;
                             break;
                         case 'fuzzy':
-                            $fuzzy = $this->parseFuzzyParam($value);
+                            $fuzzy = parse_fuzzy_param($value, false);
                             break;
                         case 'tags':
                             $tags = $value;
@@ -1341,12 +1309,8 @@ class ParserController extends Controller
                 if ($tags) {
                     $tags_arr = explode(',', $tags);
                     foreach ($tags_arr as $value) {
-                        if ($value) {
-                            if ($fuzzy) {
-                                $where2[] = "a.tags like '%" . escape_string($value) . "%'";
-                            } else {
-                                $where2[] = "a.tags='" . escape_string($value) . "'";
-                            }
+                        if ($clause = build_tags_where($value, $fuzzy)) {
+                            $where2[] = $clause;
                         }
                     }
                 }
@@ -1365,10 +1329,8 @@ class ParserController extends Controller
 
                     // tags数据传值筛选
                     if (!!$get_tag = get('tag', 'vars')) {
-                        if ($fuzzy) {
-                            $where2[] = "a.tags like '%" . $get_tag . "%'";
-                        } else {
-                            $where2[] = "a.tags='" . $get_tag . "'";
+                        if ($clause = build_tags_where($get_tag, $fuzzy)) {
+                            $where2[] = $clause;
                         }
                     }
 
@@ -1627,11 +1589,7 @@ class ParserController extends Controller
                                 break;
                             case 'src':
                                 if ($value) {
-                                    if (!preg_match('/^http/', $value)) {
-                                        $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, SITE_DIR . $value), $one_html);
-                                    } else {
-                                        $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, $value), $one_html);
-                                    }
+                                        $one_html = str_replace($matches2[0][$j], $this->parserAssetUrl($value, $params), $one_html);
                                 } else {
                                     $one_html = str_replace($matches2[0][$j], '', $one_html);
                                 }
@@ -1967,11 +1925,7 @@ class ParserController extends Controller
                                 break;
                             case 'src':
                                 if ($value->pic) {
-                                    if (!preg_match('/^http/', $value->pic)) {
-                                        $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, SITE_DIR . $value->pic), $one_html);
-                                    } else {
-                                        $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, $value->pic), $one_html);
-                                    }
+                                        $one_html = str_replace($matches2[0][$j], $this->parserAssetUrl($value->pic, $params), $one_html);
                                 } else {
                                     $one_html = str_replace($matches2[0][$j], '', $one_html);
                                 }
@@ -2063,11 +2017,7 @@ class ParserController extends Controller
                                 break;
                             case 'logo':
                                 if ($value->logo) {
-                                    if (!preg_match('/^http/', $value->logo)) {
-                                        $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, SITE_DIR . $value->logo), $one_html);
-                                    } else {
-                                        $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, $value->logo), $one_html);
-                                    }
+                                        $one_html = str_replace($matches2[0][$j], $this->parserAssetUrl($value->logo, $params), $one_html);
                                 } else {
                                     $one_html = str_replace($matches2[0][$j], '', $one_html);
                                 }
@@ -2175,11 +2125,7 @@ class ParserController extends Controller
                                 break;
                             case 'headpic':
                                 if ($value->headpic) {
-                                    if (!preg_match('/^http/', $value->headpic)) {
-                                        $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, SITE_DIR . $value->headpic), $one_html);
-                                    } else {
-                                        $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, $value->headpic), $one_html);
-                                    }
+                                        $one_html = str_replace($matches2[0][$j], $this->parserAssetUrl($value->headpic, $params), $one_html);
                                 } else {
                                     $one_html = str_replace($matches2[0][$j], SITE_DIR . '/apps/admin/view/default/images/logo.png', $one_html);
                                 }
@@ -2554,22 +2500,14 @@ class ParserController extends Controller
                 break;
             case 'headpic':
                 if ($data->headpic) {
-                    if (!preg_match('/^http/', $data->headpic)) {
-                        $content = str_replace($search, $this->adjustLabelData($params, SITE_DIR . $data->headpic), $content);
-                    } else {
-                        $content = str_replace($search, $this->adjustLabelData($params, $data->headpic), $content);
-                    }
+                    $content = str_replace($search, $this->parserAssetUrl($data->headpic, $params), $content);
                 } else {
                     $content = str_replace($search, SITE_DIR . '/apps/admin/view/default/images/logo.png', $content);
                 }
                 break;
             case 'pheadpic':
                 if ($data->pheadpic) {
-                    if (!preg_match('/^http/', $data->pheadpic)) {
-                        $content = str_replace($search, $this->adjustLabelData($params, SITE_DIR . $data->pheadpic), $content);
-                    } else {
-                        $content = str_replace($search, $this->adjustLabelData($params, $data->pheadpic), $content);
-                    }
+                    $content = str_replace($search, $this->parserAssetUrl($data->pheadpic, $params), $content);
                 } else {
                     $content = str_replace($search, SITE_DIR . '/apps/admin/view/default/images/logo.png', $content);
                 }
@@ -2703,22 +2641,14 @@ class ParserController extends Controller
                                 break;
                             case 'headpic':
                                 if ($value->headpic) {
-                                    if (!preg_match('/^http/', $value->headpic)) {
-                                        $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, SITE_DIR . $value->headpic), $one_html);
-                                    } else {
-                                        $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, $value->headpic), $one_html);
-                                    }
+                                        $one_html = str_replace($matches2[0][$j], $this->parserAssetUrl($value->headpic, $params), $one_html);
                                 } else {
                                     $one_html = str_replace($matches2[0][$j], SITE_DIR . '/apps/admin/view/default/images/logo.png', $one_html);
                                 }
                                 break;
                             case 'pheadpic':
                                 if ($value->pheadpic) {
-                                    if (!preg_match('/^http/', $value->pheadpic)) {
-                                        $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, SITE_DIR . $value->pheadpic), $one_html);
-                                    } else {
-                                        $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, $value->pheadpic), $one_html);
-                                    }
+                                        $one_html = str_replace($matches2[0][$j], $this->parserAssetUrl($value->pheadpic, $params), $one_html);
                                 } else {
                                     $one_html = str_replace($matches2[0][$j], SITE_DIR . '/apps/admin/view/default/images/logo.png', $one_html);
                                 }
@@ -2954,7 +2884,7 @@ class ParserController extends Controller
                             $filter = $value;
                             break;
                         case 'fuzzy':
-                            $fuzzy = $this->parseFuzzyParam($value);
+                            $fuzzy = parse_fuzzy_param($value, true);
                             break;
                         case 'tags':
                             $tags = $value;
@@ -3019,12 +2949,8 @@ class ParserController extends Controller
                 if ($tags) {
                     $tags_arr = explode(',', $tags);
                     foreach ($tags_arr as $value) {
-                        if ($value) {
-                            if ($fuzzy) {
-                                $where2[] = "a.tags like '%" . escape_string($value) . "%'";
-                            } else {
-                                $where2[] = "a.tags='" . escape_string($value) . "'";
-                            }
+                        if ($clause = build_tags_where($value, $fuzzy)) {
+                            $where2[] = $clause;
                         }
                     }
                 }
@@ -3392,6 +3318,34 @@ class ParserController extends Controller
         return $content;
     }
 
+    // 将站内资源相对路径转为前台 URL（含 CDN 前缀；缩放仍走本地文件）
+    protected function parserAssetUrl($path, $params = array())
+    {
+        if (! $path) {
+            return '';
+        }
+        if (preg_match('#^https?://#i', $path)) {
+            return $this->adjustLabelData($params, $path);
+        }
+        $localPath = (defined('SITE_DIR') ? SITE_DIR : '') . upload_local_path($path);
+        $processed = $this->adjustLabelData($params, $localPath);
+        if (preg_match('#^https?://#i', $processed)) {
+            return $processed;
+        }
+        if (defined('SITE_DIR') && SITE_DIR && strpos($processed, SITE_DIR) === 0) {
+            $relative = substr($processed, strlen(SITE_DIR));
+        } elseif (defined('ROOT_PATH') && strpos($processed, ROOT_PATH) === 0) {
+            $relative = str_replace(ROOT_PATH, '', $processed);
+        } else {
+            $relative = $processed;
+        }
+        $relative = upload_local_path($relative);
+        if ($relative === null) {
+            return $processed;
+        }
+        return upload_public_url($relative);
+    }
+
     // 调整标签数据
     protected function adjustLabelData($params, $data, $label = null, $savelabel = false)
     {
@@ -3405,7 +3359,7 @@ class ParserController extends Controller
             $max_src_file = ROOT_PATH . $data;
             $max_out_file = RUN_PATH . '/image/mw' . $maxwidth . '_mh' . $maxheight . '_' . basename($data);
             if (!file_exists($max_out_file) && file_exists($max_src_file)) {
-                if (resize_img($max_src_file, $max_out_file, $maxwidth, $maxheight)) {
+                if (resize_img($max_src_file, $max_out_file, $maxwidth, $maxheight) === true) {
                     $data = str_replace(ROOT_PATH, '', $max_out_file);
                 }
             } elseif (file_exists($max_out_file) && file_exists($max_src_file)) {
@@ -3567,12 +3521,6 @@ class ParserController extends Controller
         return $data;
     }
 
-    // 解析 fuzzy 参数（0/false/off 为精确匹配，其余为模糊匹配）
-    protected function parseFuzzyParam($value)
-    {
-        return !in_array(strtolower((string) $value), array('0', 'false', 'off', 'no'), true);
-    }
-
     // 解析调节参数
     protected function parserParam($string, $striptags = true)
     {
@@ -3639,13 +3587,9 @@ class ParserController extends Controller
                 break;
             case 'ico':
                 if ($data->ico) {
-                    if (!preg_match('/^http/', $data->ico)) {
-                        $content = str_replace($search, $this->adjustLabelData($params, SITE_DIR . $data->ico), $content);
-                    } else {
-                        $content = str_replace($search, $this->adjustLabelData($params, $data->ico), $content);
-                    }
-                } elseif (preg_match('/<img\s+.*?src=\s?[\'|\"](.*?(\.gif|\.jpg|\.png|\.jpeg))[\'|\"].*?[\/]?>/i', $data->content, $srcs) && isset($srcs[1])) {
-                    $content = str_replace($search, $this->adjustLabelData($params, $srcs[1]), $content);
+                    $content = str_replace($search, $this->parserAssetUrl($data->ico, $params), $content);
+                } elseif (preg_match('/<img\s+.*?src=\s?[\'|\"](.*?(\.gif|\.jpg|\.jpeg|\.png|\.webp))[\'|\"].*?[\/]?>/i', $data->content, $srcs) && isset($srcs[1])) {
+                    $content = str_replace($search, $this->parserAssetUrl($srcs[1], $params), $content);
                 } else {
                     $content = str_replace($search, $this->adjustLabelData($params, STATIC_DIR . '/images/nopic.png'), $content);
                 }
@@ -3666,21 +3610,19 @@ class ParserController extends Controller
                 break;
             case 'enclosure':
                 if ($data->enclosure) {
-                    if (!preg_match('/^http/', $data->enclosure)) {
-                        $content = str_replace($search, $this->adjustLabelData($params, SITE_DIR . $data->enclosure), $content);
-                    } else {
-                        $content = str_replace($search, $this->adjustLabelData($params, $data->enclosure), $content);
-                    }
+                    $content = str_replace($search, $this->parserAssetUrl($data->enclosure, $params), $content);
                 } else {
                     $content = str_replace($search, '', $content);
                 }
                 break;
             case 'enclosuresize':
-                if ($data->enclosure && file_exists(ROOT_PATH . $data->enclosure)) {
-                    $content = str_replace($search, $this->adjustLabelData($params, filesize(ROOT_PATH . $data->enclosure)), $content);
+                $enclosureLocal = upload_local_path($data->enclosure);
+                if ($enclosureLocal && file_exists(ROOT_PATH . $enclosureLocal)) {
+                    $content = str_replace($search, $this->adjustLabelData($params, filesize(ROOT_PATH . $enclosureLocal)), $content);
                 } else {
                     $content = str_replace($search, 0, $content);
                 }
+                break;
             case 'likeslink':
                 $content = str_replace($search, Url::get('home/Do/likes/id/' . $data->id), $content);
                 break;
@@ -3690,6 +3632,7 @@ class ParserController extends Controller
             case 'content':
                 // 对列表中的富文本内容进行安全过滤
                 $data->content = filter_html($data->content);
+                $data->content = rewrite_static_urls_in_html($data->content);
                 $content = str_replace($search, $this->adjustLabelData($params, $data->content, $label, true), $content); // 占位替换
                 break;
             case 'keywords':
@@ -3700,7 +3643,12 @@ class ParserController extends Controller
                 break;
             default:
                 if (isset($data->$label)) {
-                    $content = str_replace($search, $this->adjustLabelData($params, $data->$label, $label), $content);
+                    $fieldVal = $data->$label;
+                    // 仅编辑器类扩展字段（ay_extfield.type=8）走 iframe/XSS 清洗
+                    if (strpos($label, 'ext_') === 0 && is_string($fieldVal) && is_extfield_editor($label)) {
+                        $fieldVal = filter_html($fieldVal);
+                    }
+                    $content = str_replace($search, $this->adjustLabelData($params, $fieldVal, $label), $content);
                 } elseif (strpos($label, 'ext_') === 0) {
                     $content = str_replace($search, '', $content);
                 }
@@ -3753,13 +3701,9 @@ class ParserController extends Controller
                 break;
             case 'ico':
                 if ($data->ico) {
-                    if (!preg_match('/^http/', $data->ico)) {
-                        $content = str_replace($search, $this->adjustLabelData($params, SITE_DIR . $data->ico), $content);
-                    } else {
-                        $content = str_replace($search, $this->adjustLabelData($params, $data->ico), $content);
-                    }
-                } elseif (preg_match('/<img\s+.*?src=\s?[\'|\"](.*?(\.gif|\.jpg|\.png|\.jpeg))[\'|\"].*?[\/]?>/i', $data->content, $srcs) && isset($srcs[1])) {
-                    $content = str_replace($search, $this->adjustLabelData($params, $srcs[1]), $content);
+                    $content = str_replace($search, $this->parserAssetUrl($data->ico, $params), $content);
+                } elseif (preg_match('/<img\s+.*?src=\s?[\'|\"](.*?(\.gif|\.jpg|\.jpeg|\.png|\.webp))[\'|\"].*?[\/]?>/i', $data->content, $srcs) && isset($srcs[1])) {
+                    $content = str_replace($search, $this->parserAssetUrl($srcs[1], $params), $content);
                 } else {
                     $content = str_replace($search, $this->adjustLabelData($params, STATIC_DIR . '/images/nopic.png'), $content);
                 }
@@ -3780,18 +3724,15 @@ class ParserController extends Controller
                 break;
             case 'enclosure':
                 if ($data->enclosure) {
-                    if (!preg_match('/^http/', $data->enclosure)) {
-                        $content = str_replace($search, $this->adjustLabelData($params, SITE_DIR . $data->enclosure), $content);
-                    } else {
-                        $content = str_replace($search, $this->adjustLabelData($params, $data->enclosure), $content);
-                    }
+                    $content = str_replace($search, $this->parserAssetUrl($data->enclosure, $params), $content);
                 } else {
                     $content = str_replace($search, '', $content);
                 }
                 break;
             case 'enclosuresize':
-                if ($data->enclosure && file_exists(ROOT_PATH . $data->enclosure)) {
-                    $content = str_replace($search, $this->adjustLabelData($params, filesize(ROOT_PATH . $data->enclosure)), $content);
+                $enclosureLocal = upload_local_path($data->enclosure);
+                if ($enclosureLocal && file_exists(ROOT_PATH . $enclosureLocal)) {
+                    $content = str_replace($search, $this->adjustLabelData($params, filesize(ROOT_PATH . $enclosureLocal)), $content);
                 } else {
                     $content = str_replace($search, 0, $content);
                 }
@@ -3841,11 +3782,7 @@ class ParserController extends Controller
                 if ($data->type != 2) // 非列表内容页不解析
                     break;
                 if (!!$pre = $this->model->getContentPre($sort->scode, $data->id)) {
-                    if (!preg_match('/^http/', $pre->ico)) {
-                        $content = str_replace($search, $this->adjustLabelData($params, SITE_DIR . $pre->ico), $content);
-                    } else {
-                        $content = str_replace($search, $this->adjustLabelData($params, $pre->ico), $content);
-                    }
+                    $content = str_replace($search, $this->parserAssetUrl($pre->ico, $params), $content);
                 } else {
                     $content = str_replace($search, $this->adjustLabelData($params, STATIC_DIR . '/images/nopic.png'), $content);
                 }
@@ -3889,11 +3826,7 @@ class ParserController extends Controller
                 if ($data->type != 2) // 非列表内容页不解析
                     break;
                 if (!!$next = $this->model->getContentNext($sort->scode, $data->id)) {
-                    if (!preg_match('/^http/', $next->ico)) {
-                        $content = str_replace($search, $this->adjustLabelData($params, SITE_DIR . $next->ico), $content);
-                    } else {
-                        $content = str_replace($search, $this->adjustLabelData($params, $next->ico), $content);
-                    }
+                    $content = str_replace($search, $this->parserAssetUrl($next->ico, $params), $content);
                 } else {
                     $content = str_replace($search, $this->adjustLabelData($params, STATIC_DIR . '/images/nopic.png'), $content);
                 }
@@ -3933,6 +3866,7 @@ class ParserController extends Controller
                 }
                 // 对富文本内容进行安全过滤，移除危险标签和事件属性，保留安全的HTML
                 $data->content = filter_html($data->content);
+                $data->content = rewrite_static_urls_in_html($data->content);
                 $content = str_replace($search, $this->adjustLabelData($params, $data->content, null, true), $content);
                 break;
             case 'keywords': // 如果内容关键字为空，则自动使用全局关键字
@@ -3951,7 +3885,12 @@ class ParserController extends Controller
                 break;
             default:
                 if (isset($data->$label)) {
-                    $content = str_replace($search, $this->adjustLabelData($params, $data->$label), $content);
+                    $fieldVal = $data->$label;
+                    // 仅编辑器类扩展字段（ay_extfield.type=8）走 iframe/XSS 清洗
+                    if (strpos($label, 'ext_') === 0 && is_string($fieldVal) && is_extfield_editor($label)) {
+                        $fieldVal = filter_html($fieldVal);
+                    }
+                    $content = str_replace($search, $this->adjustLabelData($params, $fieldVal), $content);
                 } elseif (strpos($label, 'ext_') === 0) {
                     $content = str_replace($search, '', $content);
                 }

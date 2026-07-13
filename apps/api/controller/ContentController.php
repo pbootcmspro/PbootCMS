@@ -42,7 +42,8 @@ class ContentController extends Controller
                 // 返回网页链接地址
                 $Parser = new ParserController();
                 $data->contentlink = $Parser->parserLink(2, $data->urlname, 'content', $data->scode, $data->sortfilename, $data->id, $data->filename);
-                $data->content = str_replace(STATIC_DIR . '/upload/', get_http_url() . STATIC_DIR . '/upload/', $data->content);
+                $data->content = upload_output_html($data->content);
+                upload_output_content_assets($data);
                 json(1, $data);
             } else {
                 json(0, 'id为' . $id . '的内容已经不存在了！');

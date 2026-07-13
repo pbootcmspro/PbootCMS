@@ -24,9 +24,11 @@ return array(
         'deny_bs' => 'MJ12bot,IE6,IE7'
     ),
     
-    // 上传配置
+    // 上传配置 允许上传的扩展名 (英文逗号分隔)
+    // 仅可配置 `core/function/file.php`中`upload_catalog_extensions()`母集内的扩展；母集外或危险扩展会被自动忽略
+    // 缩小范围示例：'format' => 'jpg,jpeg,png,gif'
     'upload' => array(
-        'format' => 'jpg,jpeg,png,gif,xls,xlsx,doc,docx,ppt,pptx,rar,zip,pdf,txt,mp4,avi,flv,rmvb,mp3,otf,ttf',
+        'format' => 'jpg,jpeg,png,gif,webp,xls,xlsx,doc,docx,ppt,pptx,rar,zip,pdf,txt,mp4,avi,flv,rmvb,mp3,otf,ttf',
         'max_width' => '1920',
         'max_height' => ''
     ),

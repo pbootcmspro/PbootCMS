@@ -99,7 +99,7 @@ class MenuModel extends Model
     // 修改子菜单的父菜单
     private function modSubMenu($mcode, $mcodeNew)
     {
-        return parent::table('ay_menu')->where("pcode='$mcode'")->update("mcode='$mcodeNew'");
+        return parent::table('ay_menu')->where("pcode='$mcode'")->update(['mcode' => $mcodeNew]);
     }
 
     // 获取指定菜单的功能数据

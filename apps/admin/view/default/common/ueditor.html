@@ -5,12 +5,95 @@
 <script>
 // iframe 白名单清洗仅在前台渲染（filter_html）执行；后台编辑器不清洗，否则保存时会永久删除历史 iframe
 
+// UEditor htmlparser 无引号 src 会在 / 处截断；与 PHP normalize_iframe_unquoted_src 一致，补全全部无引号 src
+function normalizeUnquotedIframeSrc(html) {
+	if (!html || html.indexOf('<iframe') === -1) return html;
+	return html.replace(/<iframe\b([^>]*)>/gi, function(full, attrs) {
+		if (!/\bsrc\s*=\s*(?![\"'])[^\s>]/.test(attrs)) return full;
+		var newAttrs = attrs.replace(/\bsrc\s*=\s*(?![\"'])([^\s>]+)/gi, function(_, src) {
+			return 'src="' + src.replace(/"/g, '&quot;') + '"';
+		});
+		return '<iframe' + newAttrs + '>';
+	});
+}
+
+// source 命令 notNeedUndo，不触发 beforeExecCommand；切回可视化前必须先补引号
+function wrapSourceCommandNormalize(editor) {
+	if (!editor || !editor.commands) return;
+	var cmd = editor.commands['source'];
+	if (!cmd || !cmd.execCommand || cmd.__iframeSrcNormWrapped) return;
+	var orig = cmd.execCommand;
+	cmd.__iframeSrcNormWrapped = true;
+	cmd.execCommand = function () {
+		if (this.queryCommandState('source') == 1) {
+			var raw = this.getContent();
+			var fixed = normalizeUnquotedIframeSrc(raw);
+			if (fixed !== raw) {
+				this.setContent(fixed);
+			}
+		}
+		return orig.apply(this, arguments);
+	};
+}
+
+function hookEditorIframeNormalize(editor) {
+	if (!editor || editor.__iframeSrcNormBound) return;
+	editor.__iframeSrcNormBound = true;
+	var doWrap = function () {
+		wrapSourceCommandNormalize(editor);
+	};
+	if (editor.commands && editor.commands['source']) {
+		doWrap();
+	} else if (editor.ready) {
+		editor.ready(doWrap);
+	}
+}
+
+function exitSourceModeWithNormalize(editor) {
+	if (!editor || typeof editor.queryCommandState !== 'function') return;
+	if (editor.queryCommandState('source') != 1) return;
+	editor.setContent(normalizeUnquotedIframeSrc(editor.getContent()));
+	editor.execCommand('source');
+}
+
+function normalizeAllEditorsBeforeSubmit() {
+	if (typeof UE === 'undefined' || !UE.instants) return;
+	for (var key in UE.instants) {
+		if (Object.prototype.hasOwnProperty.call(UE.instants, key)) {
+			var ed = UE.instants[key];
+			if (ed && typeof ed.queryCommandState === 'function') {
+				exitSourceModeWithNormalize(ed);
+			}
+		}
+	}
+}
+
+// 拦截所有 getEditor，确保动态创建的编辑器也包装 source 命令
+(function () {
+	if (typeof UE === 'undefined' || !UE.getEditor || UE.getEditor.__iframeSrcNormPatched) return;
+	var origGetEditor = UE.getEditor;
+	UE.getEditor = function () {
+		var ed = origGetEditor.apply(this, arguments);
+		hookEditorIframeNormalize(ed);
+		return ed;
+	};
+	UE.getEditor.__iframeSrcNormPatched = true;
+})();
+
 //初始化主编辑器
 $(document).ready(function (e) {
 	if (document.getElementById('editor')) {
 		UE.getEditor('editor', {
 			maximumWords: 30000
 		});
+	}
+	// 兜底：页面内先创建的实例
+	if (typeof UE !== 'undefined' && UE.instants) {
+		for (var key in UE.instants) {
+			if (Object.prototype.hasOwnProperty.call(UE.instants, key)) {
+				hookEditorIframeNormalize(UE.instants[key]);
+			}
+		}
 	}
 })
 </script>
@@ -19,10 +102,9 @@ $(document).ready(function (e) {
 <script type="text/javascript">
    <!-- 解决源码模式无法保存 -->
   function editor_init() {
-      $('#edit').submit(function () {
-          editor=UE.getEditor('editor');
-          if(editor.queryCommandState('source')==1) editor.execCommand('source');
-      })
+      $('form.layui-form').on('submit', function () {
+          normalizeAllEditorsBeforeSubmit();
+      });
   }
 
   <!-- 点击后添加到编辑器 -->

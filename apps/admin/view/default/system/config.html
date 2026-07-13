@@ -152,14 +152,6 @@
 
 		                </div>
 
-		                <div class="layui-form-item">
-		                     <label class="layui-form-label">iframe白名单</label>
-		                     <div class="layui-input-inline">
-		                     	<textarea name="content_iframe_whitelist" placeholder="允许在富文本/统计代码中嵌入的iframe域名，多个之间逗号或换行隔开，如：player.bilibili.com,map.baidu.com,www.youtube.com" class="layui-textarea">{$configs.content_iframe_whitelist.value}</textarea>
-		                     	<div class="layui-form-mid layui-word-aux">注：仅填写域名（不含协议和路径）；留空则移除全部iframe（默认行为）！</div>
-		                     </div>
-		                </div>
-
 		                {if(LICENSE<2)}
 
 		                <div class="layui-form-item">
@@ -512,7 +504,14 @@
 		                      <span class="layui-icon layui-icon-about tips" data-content="请输入需要允许访问的IP，多个之间逗号隔开，IP地址支持使用/掩码位数模式，如：192.168.1.0/24,192.168.2.100"></span>
 		                </div>
 
-		                <hr>
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">iframe白名单</label>
+		                     <div class="layui-input-inline">
+		                      <textarea name="content_iframe_whitelist" placeholder="允许在富文本/统计代码中嵌入的iframe域名，多个之间逗号或换行隔开，如：player.bilibili.com,*.bilibili.com,map.baidu.com" class="layui-textarea">{$configs.content_iframe_whitelist.value}</textarea>
+		                      <div class="layui-form-mid layui-word-aux">注：仅填写域名（不含协议和路径）；支持精确域名与手工填写 *.example.com 子域通配（不含裸域本身）；保存含 iframe 的内容时会自动追加精确域名；留空则移除全部 iframe！</div>
+		                     </div>
+		                     <span class="layui-icon layui-icon-about tips" data-content="保存文章/单页时系统会自动追加 content 中 iframe 的精确域名；手工通配规则需在此明确填写。"></span>
+		                </div>
 
 		                <div class="layui-form-item">
 		                     <label class="layui-form-label">后台验证码</label>
@@ -821,7 +820,7 @@
 		                   <div class="layui-input-inline">
 		                  		<input type="text" name="home_upload_ext" value="{$configs.home_upload_ext.value}" placeholder="以英文逗号隔开！" class="layui-input">
 		                   </div>
-		                   <span class="layui-icon layui-icon-about tips" data-content="以英文逗号隔开，默认：jpg, jpeg, png, gif, xls, xlsx, doc, docx, ppt, pptx, rar, zip, pdf, txt！"></span>
+		                   <span class="layui-icon layui-icon-about tips" data-content="以英文逗号隔开，默认：jpg, jpeg, png, gif, xls, xlsx, doc, docx, ppt, pptx, rar, zip, pdf, txt！仅支持系统内置安全格式"></span>
 			            </div>
 
 		                <div class="layui-form-item">
@@ -836,10 +835,26 @@
 		  	   	   <form action="{url./admin/Config/index}" method="post" class="layui-form">
 		  	   	   	   <input type="hidden" name="formcheck" value="{$formcheck}" >
 		                <div class="layui-form-item">
-		                     <div class="layui-input-block" style="line-height:32px;padding:16px 0;color:#666;">
-		                     	<p>待开发。</p>
+		                     <label class="layui-form-label">Public URL</label>
+		                     <div class="layui-input-block">
+								<input type="radio" name="upload_public_url_enable" value="1" {if([$configs.upload_public_url_enable.value]==1)} checked="checked" {/if} title="启用">
+								<input type="radio" name="upload_public_url_enable" value="0" {if([$configs.upload_public_url_enable.value]!=1)} checked="checked" {/if} title="禁用">
+								<span class="layui-icon layui-icon-about tips" data-content="启用后，前台输出 /static/upload/ 下资源时使用下方 CDN 域名前缀；关闭则与原来一致使用本站路径。本地仍写入 static/upload，数据库仍存相对路径。"></span>
 		                     </div>
 		                </div>
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">CDN 前缀</label>
+		                     <div class="layui-input-inline" style="width:480px;">
+								<input type="text" name="upload_public_url" value="{$configs.upload_public_url.value}" placeholder="如 https://cdn.example.com （不含具体文件路径）" class="layui-input">
+		                     </div>
+		                     <span class="layui-icon layui-icon-about tips" data-content="拼接规则：前缀 + /static/upload/...。CDN 需回源到源站 /static/ 目录；子目录安装时一般无需包含 SITE_DIR。"></span>
+		                </div>
+		                <div class="layui-form-item">
+							 <div class="layui-input-block">
+							    <button class="layui-btn" lay-submit name="submit" value="remoteattach">立即提交</button>
+							    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+							 </div>
+						</div>
 	              </form>
 		  	   </div>
 		  	   <div class="layui-tab-item">

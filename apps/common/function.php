@@ -253,6 +253,71 @@ function post_baidu($api, $urls)
     return $result;
 }
 
+// 保存富文本后：从 content 提取 iframe 域名并追加到全局白名单（精确 host）
+// $model 可选，便于测试注入；生产默认 model('admin.system.Config')
+function sync_iframe_whitelist_from_content($html, $model = null)
+{
+    if (is_string($html) && $html !== '') {
+        $html = decode_string($html);
+    }
+    $hosts = filter_html_extract_iframe_hosts($html);
+    if (! $hosts) {
+        return array(
+            'ok' => true,
+            'added' => false,
+            'added_hosts' => array(),
+            'msg' => '',
+        );
+    }
+    if ($model === null) {
+        $model = model('admin.system.Config');
+    }
+    return $model->appendIframeWhitelistHosts($hosts);
+}
 
+// 白名单同步失败时的提示文案；成功或无需追加时返回空串
+function iframe_whitelist_sync_notice($html, $success_prefix = '保存成功！', $model = null)
+{
+    $sync = sync_iframe_whitelist_from_content($html, $model);
+    if ($sync['ok']) {
+        return '';
+    }
+    $hosts = ! empty($sync['added_hosts']) ? implode('、', $sync['added_hosts']) : '';
+    $suffix = $hosts ? '（' . $hosts . '）' : '';
+    return $success_prefix . '，但 iframe 域名未能自动加入白名单' . $suffix . '，请前往「全局配置 → 配置参数 → 安全配置 → iframe白名单」手动添加，否则前台可能无法显示 iframe。';
+}
+
+// 合并多段富文本后同步 iframe 白名单（主内容 + 扩展字段 / 多标签）
+function iframe_whitelist_sync_notice_many(array $htmls, $success_prefix = '保存成功！', $model = null)
+{
+    $merged = '';
+    foreach ($htmls as $html) {
+        if (is_string($html) && $html !== '') {
+            $merged .= $html . "\n";
+        }
+    }
+    return iframe_whitelist_sync_notice($merged, $success_prefix, $model);
+}
+
+// 扩展字段是否为编辑器类型（ay_extfield.type=8）；请求内缓存 type map
+function is_extfield_editor($name)
+{
+    static $map = null;
+    if (! is_string($name) || $name === '' || strpos($name, 'ext_') !== 0) {
+        return false;
+    }
+    if ($map === null) {
+        $map = array();
+        try {
+            $loaded = model('admin.content.ExtField')->getTypeMap();
+            if (is_array($loaded)) {
+                $map = $loaded;
+            }
+        } catch (\Throwable $e) {
+            $map = array();
+        }
+    }
+    return isset($map[$name]) && (int) $map[$name] === 8;
+}
 
 

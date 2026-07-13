@@ -1,1 +1,2 @@
 *.js linguist-language=PHP
+tests export-ignore

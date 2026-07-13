@@ -499,6 +499,7 @@ UE.I18N['en'] = {
             'lang_input_alignMode':'Alignment：',
             'align':{title:"Alignment", options:["Default", "Left", "Right", "Center"]}
         },
+        'addressHelp':'When you save content, the system will automatically allow this address domain to display on the site. To change it, go to Settings → Config → Security → iframe whitelist.',
         'enterAddress':'Please enter an address!'
     },
     link:{

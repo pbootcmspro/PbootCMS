@@ -194,7 +194,7 @@ class FormModel extends Model
         if (! ! $menu = parent::table('ay_menu')->like('url', '/Form/index/fcode/' . $form->fcode . '/action/showdata')->find()) {
             if ($form->form_name != $menu->name) {
                 // 更新缓存菜单
-                parent::table('ay_menu')->where('mcode="' . $menu->mcode . '"')->update('name="' . $form->form_name . '"');
+                parent::table('ay_menu')->where('mcode="' . $menu->mcode . '"')->update(['name' => $form->form_name]);
                 foreach ($menus as $key => $value) {
                     if ($value->mcode == 'M157') {
                         if (($skey = result_value_search($menu->mcode, $menus[$key]->son, 'mcode')) !== false) {

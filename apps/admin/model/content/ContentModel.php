@@ -349,7 +349,7 @@ class ContentModel extends Model
     {
         $list = parent::table('ay_content')->limit(2000)->column('ico,pics,content');
         foreach ($list as &$value){
-            preg_match_all('/<img\s+.*?src=\s?[\'|\"](.*?(\.gif|\.jpg|\.png|\.jpeg))[\'|\"].*?[\/]?>/i', decode_string($value['content']), $match);
+            preg_match_all('/<img\s+.*?src=\s?[\'|\"](.*?(\.gif|\.jpg|\.jpeg|\.png|\.webp))[\'|\"].*?[\/]?>/i', decode_string($value['content']), $match);
             $value['content_img'] = $match[1];
             $value['pics'] = explode(',',$value['pics']);
             unset($value['content']);

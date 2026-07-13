@@ -99,6 +99,9 @@ class ConfigController extends Controller
                 case 'member':
                     success('修改成功！', url('/admin/Config/index' . get_tab('t9'), false));
                     break;
+                case 'remoteattach':
+                    success('修改成功！', url('/admin/Config/index' . get_tab('t10'), false));
+                    break;
                 case 'upgrade':
                     success('修改成功！', url('/admin/Upgrade/index' . get_tab('t2'), false));
                     break;
@@ -256,12 +259,16 @@ class ConfigController extends Controller
             $this->model->modValue($key, $value);
         } elseif ($key != 'submit' && $key != 'formcheck') {
             // 自动新增配置项
+            $description = '';
+            if ($key == 'content_iframe_whitelist') {
+                $description = 'iframe域名级白名单';
+            }
             $data = array(
                 'name' => $key,
                 'value' => $value,
                 'type' => 2,
                 'sorting' => 255,
-                'description' => ''
+                'description' => $description
             );
             return $this->model->addConfig($data);
         }

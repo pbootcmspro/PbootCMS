@@ -93,7 +93,8 @@ class ListController extends Controller
             }
             $data[$key]->likeslink = url('/home/Do/likes/id/' . $value->id, false);
             $data[$key]->opposelink = url('/home/Do/oppose/id/' . $value->id, false);
-            $data[$key]->content = str_replace(STATIC_DIR . '/upload/', get_http_url() . STATIC_DIR . '/upload/', $value->content);
+            $data[$key]->content = upload_output_html($value->content);
+            upload_output_content_assets($data[$key]);
             
             // 返回网页链接地址，便于AJAX调用内容
             $data[$key]->contentlink = $Parser->parserLink(2, $value->urlname, 'content', $value->scode, $value->sortfilename, $value->id, $value->filename);

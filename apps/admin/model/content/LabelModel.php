@@ -20,6 +20,12 @@ class LabelModel extends Model
         return parent::table('ay_label')->select();
     }
 
+    // 标签名 => 类型（1文本…5编辑器…）
+    public function getTypeMap()
+    {
+        return parent::table('ay_label')->column('type', 'name');
+    }
+
     // 检查自定义标签
     public function checkLabel($where)
     {
@@ -57,9 +63,10 @@ class LabelModel extends Model
     // 修改自定义标签值
     public function modValue($name, $value)
     {
+        // 必须用数组更新：字符串 "value='$value'" 若含 ?，会被 autoTime 的 update_time=? 占位符误替换
         return parent::table('ay_label')->where("name='$name'")
             ->autoTime()
-            ->update("value='$value'");
+            ->update(['value' => $value]);
     }
 
     // 获取配置参数
@@ -86,4 +93,3 @@ class LabelModel extends Model
 
     }
 }
-

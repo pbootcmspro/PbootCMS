@@ -26,14 +26,31 @@ class LabelController extends Controller
     {
         // 修改参数配置
         if ($_POST) {
+            $typeMap = $this->model->getTypeMap();
+            if (! is_array($typeMap)) {
+                $typeMap = array();
+            }
+            $labelHtmlForSync = '';
             foreach ($_POST as $key => $value) {
                 if (preg_match('/^[\w\-]+$/', $key)) { // 带有违规字符时不带入查询
                     $data = post($key);
+                    $type = isset($typeMap[$key]) ? (int) $typeMap[$key] : 0;
+                    // 仅编辑器标签（type=5）做无引号 src 规范化；其它类型保持 post() 结果
+                    if ($type === 5) {
+                        $data = normalize_richtext_for_storage($data);
+                        if (stripos((string) $data, 'iframe') !== false) {
+                            $labelHtmlForSync .= decode_string($data) . "\n";
+                        }
+                    }
                     $data = str_replace("\r\n", "<br>", $data); // 多行文本时替换回车
                     $this->model->modValue($key, $data);
                 }
             }
-            success('修改成功！', url('admin/Label/index'));
+            $msg = '修改成功！';
+            if ($labelHtmlForSync !== '' && ($notice = iframe_whitelist_sync_notice($labelHtmlForSync, '修改成功！'))) {
+                $msg = $notice;
+            }
+            success($msg, url('admin/Label/index'));
         }
         $this->assign('list', true);
         $this->assign('labels', $this->model->getList());

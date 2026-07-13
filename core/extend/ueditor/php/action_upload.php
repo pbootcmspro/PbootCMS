@@ -72,24 +72,28 @@ if (defined('STATIC_DIR')) {
 /* 生成上传实例对象并完成上传 */
 $up = new Uploader($fieldName, $config, $base64);
 
-// 图片重编码、缩放与水印
 $rs = $up->getFileInfo();
-$image_ext = array(
-    '.jpg',
-    '.jpeg',
-    '.png',
-    '.gif'
-);
-if ($rs['state'] === 'SUCCESS' && in_array($rs['type'], $image_ext, true)) {
+if ($rs['state'] === 'SUCCESS') {
     $full_path = upload_resolve_public_path($rs['url']);
-    if (($re = reencode_image($full_path)) !== true) {
-        @unlink($full_path);
-        return json_encode(array(
-            'state' => $re
-        ));
+    if (is_image($full_path)) {
+        $re = upload_post_process_image($full_path, null, true);
+        if ($re !== true) {
+            @unlink($full_path);
+            return json_encode(array(
+                'state' => $re,
+                'url' => $rs['url'],
+                'title' => $rs['title'],
+                'original' => $rs['original'],
+                'type' => $rs['type'],
+                'size' => $rs['size']
+            ));
+        }
+        $notice = upload_post_process_last_notice();
+        if ($notice !== '') {
+            $rs['warning'] = $notice;
+            return json_encode($rs);
+        }
     }
-    resize_img($full_path);
-    watermark_img($full_path);
 }
 
 /**

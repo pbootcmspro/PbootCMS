@@ -392,6 +392,28 @@ function escape_string($string)
     return $string;
 }
 
+// 解析 fuzzy 参数（0/false/off/no 为精确匹配，其余为模糊匹配；未传时返回 $default）
+function parse_fuzzy_param($value, $default = null)
+{
+    if ($value === null || $value === '') {
+        return $default;
+    }
+    return ! in_array(strtolower((string) $value), array('0', 'false', 'off', 'no'), true);
+}
+
+// 构建单标签 SQL 条件（逗号分隔标签集合语义）
+function build_tags_where($value, $fuzzy = false)
+{
+    $value = escape_string(trim($value));
+    if (! $value) {
+        return '';
+    }
+    if ($fuzzy) {
+        return "a.tags like '%" . $value . "%'";
+    }
+    return "(a.tags='" . $value . "' OR a.tags like '" . $value . ",%' OR a.tags like '%," . $value . "' OR a.tags like '%," . $value . ",%')";
+}
+
 // 字符反转义html实体及斜杠，支持字符串、数组、对象
 function decode_string($string)
 {
@@ -499,12 +521,44 @@ function filter_inline_style_attr($css)
 
 // 后台 UEditor <script type="text/plain"> 容器输出：解码 + 防止 </script> 破出页面
 // 不在此处过滤 iframe：编辑器内容会在保存时原样回写数据库，任何清洗都等于永久删除
+// 为 iframe 无引号 src 补双引号，避免 UEditor htmlparser 在 / 处截断（如仅剩 https:）
+function normalize_iframe_unquoted_src($html)
+{
+    if (! is_string($html) || $html === '' || stripos($html, '<iframe') === false) {
+        return $html;
+    }
+    return preg_replace_callback('/<iframe\b([^>]*)>/i', function ($m) {
+        $attrs = $m[1];
+        if (! preg_match('/\bsrc\s*=\s*(?![\'"])[^\s>]/i', $attrs)) {
+            return $m[0];
+        }
+        $newAttrs = preg_replace_callback(
+            '/\bsrc\s*=\s*(?![\'"])([^\s>]+)/i',
+            function ($srcMatch) {
+                return 'src="' . htmlspecialchars($srcMatch[1], ENT_QUOTES, 'UTF-8') . '"';
+            },
+            $attrs
+        );
+        return '<iframe' . $newAttrs . '>';
+    }, $html);
+}
+
+// 后台富文本入库前规范化：解码 → iframe 无引号 src 补引号 → 再转义
+function normalize_richtext_for_storage($content)
+{
+    if (! is_string($content) || $content === '') {
+        return $content;
+    }
+    return escape_string(normalize_iframe_unquoted_src(decode_string($content)));
+}
+
 function ueditor_holder_html($html)
 {
     if (! $html || ! is_string($html)) {
         return $html;
     }
     $html = decode_string($html);
+    $html = normalize_iframe_unquoted_src($html);
     // HTML 解析器会无视 type=text/plain，字面量 </script> 会提前闭合容器
     $html = preg_replace('/<\/script/i', '<\\/script', $html);
     return $html;
@@ -570,8 +624,8 @@ function filter_html_iframes($html)
     return $html;
 }
 
-// 从任意用户输入中提取主机名：支持完整 URL、协议相对 URL、纯域名
-function filter_iframe_normalize_host($value)
+// 从任意用户输入中提取字面量主机名：支持完整 URL、协议相对 URL、纯域名
+function filter_iframe_normalize_host_literal($value)
 {
     $value = trim((string) $value);
     if ($value === '') {
@@ -587,7 +641,185 @@ function filter_iframe_normalize_host($value)
     if (! $host) {
         return '';
     }
-    return rtrim(strtolower($host), '.');
+    $host = rtrim(strtolower($host), '.');
+    // host 仅允许合法字符（与 filter_iframe_sanitize_src 一致）
+    if (! preg_match('/^[a-z0-9]([a-z0-9\-\.]*[a-z0-9])?$/', $host)) {
+        return '';
+    }
+    return $host;
+}
+
+// 从白名单配置项中提取主机名或通配 pattern（支持 *.example.com、.example.com）
+function filter_iframe_normalize_host($value)
+{
+    $value = trim((string) $value);
+    if ($value === '') {
+        return '';
+    }
+
+    // Cookie 域写法 .example.com → *.example.com
+    if ($value[0] === '.' && strpos($value, '*') === false) {
+        $value = '*' . $value;
+    }
+
+    // 通配子域 *.example.com（base 须含至少一个点，拒绝 *.com 等单段域误配）
+    if (strpos($value, '*.') === 0) {
+        $base = filter_iframe_normalize_host_literal(substr($value, 2));
+        if ($base === '' || strpos($base, '.') === false) {
+            return '';
+        }
+        return '*.' . $base;
+    }
+
+    // 含 * 但非 *. 前缀：非法
+    if (strpos($value, '*') !== false) {
+        return '';
+    }
+
+    return filter_iframe_normalize_host_literal($value);
+}
+
+// 将白名单配置串解析为有序 host 列表与命中 map
+function filter_iframe_whitelist_parse_hosts($value)
+{
+    $hosts = array();
+    $map = array();
+    if (is_string($value) && $value !== '') {
+        $value = str_replace("\r\n", ',', $value);
+        $value = str_replace('，', ',', $value);
+        foreach (explode(',', $value) as $item) {
+            $host = filter_iframe_normalize_host($item);
+            if ($host !== '' && ! in_array($host, $hosts, true)) {
+                $hosts[] = $host;
+                $map[$host] = true;
+            }
+        }
+    }
+    return array('hosts' => $hosts, 'map' => $map);
+}
+
+// 从 iframe 属性串提取最后一个 src（双引号 / 单引号 / 无引号统一规则）
+// 自动加白与前台重建共用，避免解析规则漂移；重复 src 时取最后一个
+function filter_iframe_extract_src($attr_str)
+{
+    if (! is_string($attr_str) || $attr_str === '') {
+        return '';
+    }
+
+    // 无引号用 [^\s>]+：兼容含 ?a=1 的 URL（HTML5 无引号本不含 =，但 CMS/浏览器常见）
+    $pattern = '/\bsrc\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s>]+))/i';
+    if (! preg_match_all($pattern, $attr_str, $matches, PREG_SET_ORDER)) {
+        return '';
+    }
+
+    $match = end($matches);
+    if (isset($match[1]) && $match[1] !== '') {
+        return trim($match[1]);
+    }
+    if (isset($match[2]) && $match[2] !== '') {
+        return trim($match[2]);
+    }
+    if (isset($match[3])) {
+        return trim($match[3]);
+    }
+
+    return '';
+}
+
+// 从富文本 HTML 中提取所有 iframe src 的精确 host（去重、小写、不含端口）
+function filter_html_extract_iframe_hosts($html)
+{
+    if (! is_string($html) || $html === '' || stripos($html, '<iframe') === false) {
+        return array();
+    }
+    if (! preg_match_all('/<iframe\b[^>]*>/i', $html, $tags)) {
+        return array();
+    }
+    $found = array();
+    foreach ($tags[0] as $tag) {
+        $src = filter_iframe_extract_src($tag);
+        if ($src === '') {
+            continue;
+        }
+        $src = filter_iframe_sanitize_src($src);
+        if ($src === '') {
+            continue;
+        }
+        $parse_src = (strpos($src, '//') === 0) ? 'http:' . $src : $src;
+        $host = filter_iframe_normalize_host_literal(parse_url($parse_src, PHP_URL_HOST));
+        if ($host !== '' && ! in_array($host, $found, true)) {
+            $found[] = $host;
+        }
+    }
+    return $found;
+}
+
+// 返回当前白名单（精确或手工通配）尚未覆盖、需要追加的 host 列表
+function filter_iframe_whitelist_filter_new_hosts(array $hosts, $current_csv)
+{
+    $map = filter_iframe_whitelist_parse_hosts($current_csv)['map'];
+    $new = array();
+    foreach ($hosts as $host) {
+        $host = filter_iframe_normalize_host_literal($host);
+        if ($host === '' || filter_iframe_host_in_whitelist($host, $map)) {
+            continue;
+        }
+        if (! in_array($host, $new, true)) {
+            $new[] = $host;
+        }
+    }
+    return $new;
+}
+
+// 将精确 host 幂等合并进白名单逗号串（不推导 *.example.com）
+function filter_iframe_whitelist_merge_exact_hosts($current_csv, array $hosts)
+{
+    $parsed = filter_iframe_whitelist_parse_hosts($current_csv);
+    $existing = $parsed['hosts'];
+    $map = $parsed['map'];
+    $added_hosts = array();
+
+    foreach ($hosts as $host) {
+        $host = filter_iframe_normalize_host_literal($host);
+        if ($host === '' || filter_iframe_host_in_whitelist($host, $map)) {
+            continue;
+        }
+        $existing[] = $host;
+        $map[$host] = true;
+        $added_hosts[] = $host;
+    }
+
+    return array(
+        'ok' => true,
+        'added' => count($added_hosts) > 0,
+        'added_hosts' => $added_hosts,
+        'value' => implode(',', $existing),
+    );
+}
+
+// 判断 host 是否命中 iframe 白名单（精确 + *.example.com 子域通配，不匹配裸域）
+function filter_iframe_host_in_whitelist($host, $whitelist)
+{
+    if (! is_string($host) || $host === '' || ! is_array($whitelist)) {
+        return false;
+    }
+    if (isset($whitelist[$host])) {
+        return true;
+    }
+    foreach ($whitelist as $pattern => $_) {
+        if (strpos($pattern, '*.') !== 0) {
+            continue;
+        }
+        $suffix = substr($pattern, 1);
+        $len = strlen($suffix);
+        if ($len < 2 || $suffix[0] !== '.') {
+            continue;
+        }
+        if (strlen($host) > $len && substr($host, - $len) === $suffix) {
+            return true;
+        }
+    }
+    return false;
 }
 
 // 规范化并校验 iframe src，非法则返回空串
@@ -649,12 +881,7 @@ function filter_iframe_sanitize_src($src)
 function filter_iframe_rebuild($attr_str, $whitelist)
 {
     // 提取 src：优先最后一个（HTML 重复属性时多数浏览器取最后一个）
-    $src = '';
-    if (preg_match_all('/\bsrc\s*=\s*(["\'])(.*?)\1/i', $attr_str, $quoted, PREG_SET_ORDER)) {
-        $src = trim(end($quoted)[2]);
-    } elseif (preg_match_all('/\bsrc\s*=\s*([^\s>]+)/i', $attr_str, $unquoted)) {
-        $src = trim(end($unquoted)[1]);
-    }
+    $src = filter_iframe_extract_src($attr_str);
     if ($src === '') {
         return '';
     }
@@ -666,7 +893,7 @@ function filter_iframe_rebuild($attr_str, $whitelist)
 
     $parse_src = (strpos($src, '//') === 0) ? 'http:' . $src : $src;
     $host = rtrim(strtolower(parse_url($parse_src, PHP_URL_HOST)), '.');
-    if (! isset($whitelist[$host])) {
+    if (! filter_iframe_host_in_whitelist($host, $whitelist)) {
         return '';
     }
 

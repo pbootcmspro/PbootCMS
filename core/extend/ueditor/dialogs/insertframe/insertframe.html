@@ -5,12 +5,19 @@
     <title></title>
     <script type="text/javascript" src="../internal.js?20220503"></script>
     <style type="text/css">
-        .warp {width: 320px;height: 200px;margin-left:5px;padding: 20px 0 0 15px;position: relative;}
-        #url {width: 290px; margin-bottom: 2px; margin-left: -6px; margin-left: -2px\9;*margin-left:0;_margin-left:0; }
-        .format span{display: inline-block; width: 58px;text-align:left; zoom:1;}
-        table td{padding:5px 0;}
+        .warp {width: 320px;min-height: 200px;height: auto;margin-left:5px;padding: 20px 0 15px 15px;position: relative;overflow: visible;}
+        #url {width: 200px; margin-bottom: 2px; margin-left: -6px; margin-left: -2px\9;*margin-left:0;_margin-left:0; }
+        .format > span{display: inline-block; width: 58px;text-align:left; zoom:1;}
+        table td{padding:5px 0;overflow: visible;}
         input[type="text"]{height:30px;border:1px solid #EEE;border-radius:3px;padding:0 5px;line-height:2px;outline:none;}
         #align{width: 65px;height: 23px;line-height: 22px;}
+        .iframe-url-row{display:inline-block;vertical-align:middle;white-space:nowrap;position:relative;}
+        .iframe-url-row #url{vertical-align:middle;margin-left:-2px\9;*margin-left:0;_margin-left:0;}
+        .iframe-help-wrap{display:inline-block;vertical-align:middle;margin-left:4px;}
+        .iframe-help{display:inline-block;width:16px;height:16px;line-height:16px;text-align:center;border-radius:50%;border:1px solid #999;color:#666;font-size:12px;vertical-align:middle;cursor:help;}
+        .iframe-help-tip{display:none;position:absolute;left:0;top:26px;z-index:99;width:240px;padding:8px 10px;font-size:12px;line-height:1.6;color:#333;background:#fff;border:1px solid #ddd;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.12);white-space:normal;word-wrap:break-word;box-sizing:border-box;}
+        .iframe-help-wrap:hover + .iframe-help-tip,
+        .iframe-help-tip:hover{display:block;}
     </style>
 </head>
 <body>
@@ -19,7 +26,13 @@
             <tr>
                 <td colspan="2" class="format">
                     <span><var id="lang_input_address"></var></span>
-                    <input style="width:200px" id="url" type="text" value=""/>
+                    <span class="iframe-url-row">
+                        <input style="width:200px" id="url" type="text" value=""/>
+                        <span class="iframe-help-wrap">
+                            <span class="iframe-help" id="iframeAddressHelp">?</span>
+                        </span>
+                        <div class="iframe-help-tip" id="iframeAddressHelpTip"></div>
+                    </span>
                 </td>
             </tr>
             <tr>
@@ -55,6 +68,11 @@
         $G("frameborder").checked = (iframe.getAttribute("frameborder") == "1") ? true : false;
         $G("align").value = iframe.align ? iframe.align : "";
     }
+    domUtils.on(window, 'load', function () {
+        if (lang && lang.addressHelp) {
+            $G('iframeAddressHelpTip').innerHTML = lang.addressHelp;
+        }
+    });
     function queding(){
         var  url = $G("url").value.replace(/^\s*|\s*$/ig,""),
                 width = $G("width").value,

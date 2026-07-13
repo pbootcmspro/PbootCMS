@@ -46,6 +46,73 @@ class ConfigModel extends Model
         return $row ? $row->value : null;
     }
 
+    /**
+     * 追加 iframe 白名单精确域名（保存内容时自动加白）
+     * @param array $hosts 精确 host 列表
+     * @return array ok, added, added_hosts, msg
+     */
+    public function appendIframeWhitelistHosts(array $hosts)
+    {
+        if (! $hosts) {
+            return array(
+                'ok' => true,
+                'added' => false,
+                'added_hosts' => array(),
+                'msg' => '',
+            );
+        }
+
+        $current = $this->getValue('content_iframe_whitelist');
+        $new_hosts = filter_iframe_whitelist_filter_new_hosts($hosts, $current);
+        if (! $new_hosts) {
+            return array(
+                'ok' => true,
+                'added' => false,
+                'added_hosts' => array(),
+                'msg' => '',
+            );
+        }
+
+        $rs = filter_iframe_whitelist_merge_exact_hosts($current, $new_hosts);
+        if (! $rs['added']) {
+            return array(
+                'ok' => true,
+                'added' => false,
+                'added_hosts' => array(),
+                'msg' => '',
+            );
+        }
+
+        if ($this->checkConfig("name='content_iframe_whitelist'")) {
+            $saved = $this->modValue('content_iframe_whitelist', $rs['value']);
+        } else {
+            $saved = $this->addConfig(array(
+                'name' => 'content_iframe_whitelist',
+                'value' => $rs['value'],
+                'type' => 2,
+                'sorting' => 255,
+                'description' => 'iframe域名级白名单',
+            ));
+        }
+
+        if (! $saved) {
+            return array(
+                'ok' => false,
+                'added' => false,
+                'added_hosts' => $new_hosts,
+                'msg' => '白名单写入失败',
+            );
+        }
+
+        path_delete(RUN_PATH . '/config');
+        return array(
+            'ok' => true,
+            'added' => true,
+            'added_hosts' => $rs['added_hosts'],
+            'msg' => '',
+        );
+    }
+
 
     // 获取区域及主题
     public function getAreaTheme()

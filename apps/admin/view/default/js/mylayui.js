@@ -76,6 +76,7 @@ layui.use(['element','upload','laydate','form'], function(){
   
   var sitedir=$('#sitedir').data('sitedir');
   var uploadurl = $("#preurl").data('preurl')+'/index/upload';
+  var imageExts = 'jpg|jpeg|png|gif|bmp|webp';
   
   //执行单图片实例
   var uploadInst = upload.render({
@@ -85,6 +86,7 @@ layui.use(['element','upload','laydate','form'], function(){
 	,multiple: false //多文件上传
 	,accept: 'images' //接收文件类型 images（图片）、file（所有文件）、video（视频）、audio（音频）
 	,acceptMime: 'image/*'
+	,exts: imageExts
     ,before: function(obj){ 
        //判断是否需要加水印
        if($(this.item).hasClass('watermark')){
@@ -121,6 +123,7 @@ layui.use(['element','upload','laydate','form'], function(){
 	,multiple: true//多文件上传
 	,accept: 'images' //接收文件类型 images（图片）、file（所有文件）、video（视频）、audio（音频）
 	,acceptMime: 'image/*'
+	,exts: imageExts
 	,before: function(obj){ 
 	   //判断是否需要加水印
        if($(this.item).hasClass('watermark')){

@@ -50,15 +50,20 @@ foreach ($source as $imgUrl) {
     $item = new Uploader($imgUrl, $config, "remote");
     $info = $item->getFileInfo();
     
-    // 图片打水印
-    $ext = array(
-        '.jpg',
-        '.png',
-        '.gif'
-    );
-    if (in_array($info['type'], $ext)) {
-        resize_img(ROOT_PATH . $info['url']); // 缩放大小
-        watermark_img(ROOT_PATH . $info['url']); // 水印
+    if ($info['state'] === 'SUCCESS') {
+        $full_path = upload_resolve_public_path($info['url']);
+        if (is_image($full_path)) {
+            $re = upload_post_process_image($full_path, null, true);
+            if ($re !== true) {
+                @unlink($full_path);
+                $info['state'] = $re;
+            } else {
+                $notice = upload_post_process_last_notice();
+                if ($notice !== '') {
+                    $info['warning'] = $notice;
+                }
+            }
+        }
     }
     
     array_push($list, array(

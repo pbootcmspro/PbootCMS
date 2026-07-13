@@ -501,6 +501,7 @@ UE.I18N['zh-cn'] = {
             'lang_input_alignMode':'对齐方式：',
             'align':{title:"对齐方式", options:["默认", "左对齐", "右对齐", "居中"]}
         },
+        'addressHelp':'保存内容时，系统会自动允许该地址的域名在网站中显示。如需修改，请前往「全局配置 → 配置参数 → 安全配置 → iframe白名单」。',
         'enterAddress':'请输入地址!'
     },
     'link':{

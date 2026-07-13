@@ -90,12 +90,12 @@ class AreaModel extends Model
     {
         return parent::table('ay_area')->where("pcode='$pcode'")
             ->autoTime()
-            ->update("pcode='$pcodeNew'");
+            ->update(['pcode' => $pcodeNew]);
     }
 
     // 去除$acode以外的默认区域
     private function unsetDefault($acode)
     {
-        parent::table('ay_area')->where("acode<>'$acode'")->update('is_default=0');
+        parent::table('ay_area')->where("acode<>'$acode'")->update(['is_default' => 0]);
     }
 }
