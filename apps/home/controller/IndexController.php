@@ -394,6 +394,8 @@ class IndexController extends Controller
      * */
     private function urlJump($type, $isSecSiteDir)
     {
+        $requestPath = $this->getRequestPath();
+
         //首页开启了分页直接跳转
         if (strpos($_SERVER['REQUEST_URI'], '/?page=') === 0) {
             $this->getIndexPage();
@@ -405,43 +407,43 @@ class IndexController extends Controller
             case 1:
                 $preg1 = '';
                 if ($isSecSiteDir === true) {
-                    if ($_SERVER['REQUEST_URI'] == SITE_DIR . '/index.php') {
+                    if ($requestPath == SITE_DIR . '/index.php') {
                         $preg1 = '/^\/.*?\/index.php/';
-                    } elseif ($_SERVER['REQUEST_URI'] == '/index.php') {
+                    } elseif ($requestPath == '/index.php') {
                         $preg1 = '/^\/index.php/';
                     }
                 } else {
                     $preg1 = '/^\/index.php/';
                 }
-                preg_match($preg1, $_SERVER['REQUEST_URI'], $matches1);
+                preg_match($preg1, $requestPath, $matches1);
                 break;
             //伪静态
             case 2:
                 $preg2 = '';
                 if ($isSecSiteDir === true) {
-                    if ($_SERVER['REQUEST_URI'] == SITE_DIR . '/') {
+                    if ($requestPath == SITE_DIR . '/') {
                         $preg2 = '/^\/.*/';
-                    } elseif ($_SERVER['REQUEST_URI'] == '/') {
+                    } elseif ($requestPath == '/') {
                         $preg2 = '/^\/$/';
                     }
                 } else {
                     $preg2 = '/^\//';
                 }
-                preg_match($preg2, $_SERVER['REQUEST_URI'], $matches1);
+                preg_match($preg2, $requestPath, $matches1);
                 break;
             //兼容模式
             case 3:
                 $preg3 = '';
                 if ($isSecSiteDir === true) {
-                    if (strpos($_SERVER['REQUEST_URI'], SITE_DIR) === 0) {
+                    if (strpos($requestPath, SITE_DIR) === 0) {
                         $preg3 = '/(^\/.*?\/index.php)|(^\/.*)/';
-                    } elseif (strpos($_SERVER['REQUEST_URI'], '/') === 0) {
+                    } elseif (strpos($requestPath, '/') === 0) {
                         $preg3 = '/(^\/index.php)|(^\/)/';
                     }
                 } else {
                     $preg3 = '/(^\/index.php)|(^\/)/';
                 }
-                preg_match($preg3, $_SERVER['REQUEST_URI'], $matches1);
+                preg_match($preg3, $requestPath, $matches1);
                 break;
         }
 //        if(strpos($matches1[0],'/?page=') !== 0 || $matches1[0]){
@@ -451,7 +453,7 @@ class IndexController extends Controller
 //            $this->getIndexPage();
 //        }
         if ($matches1[0]) {
-            if ($_SERVER['REQUEST_URI'] == $matches1[0]) {
+            if ($requestPath == $matches1[0]) {
                 $this->getIndexPage();
             } elseif (strpos($matches1[0], '/?page=') !== false) {
                 $this->getIndexPage();
@@ -460,10 +462,23 @@ class IndexController extends Controller
                 if ($this->config('url_index_404') == 1) {
                     _404('您访问的页面不存在，请核对后重试！');
                 }
-                header("Location: " . $http . $_SERVER['HTTP_HOST'] . $matches1[0], true, 301);
+                header("Location: " . $this->getRedirectUrl($http, $matches1[0]), true, 301);
             }
         } else {
             _404('您访问的页面不存在，请核对后重试！');
         }
+    }
+
+    private function getRequestPath()
+    {
+        $requestPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+        return $requestPath === false || $requestPath === null ? '' : $requestPath;
+    }
+
+    private function getRedirectUrl($http, $path)
+    {
+        $query = parse_url($_SERVER['REQUEST_URI'], PHP_URL_QUERY);
+        $query = $query === false || $query === null || $query === '' ? '' : '?' . $query;
+        return $http . $_SERVER['HTTP_HOST'] . $path . $query;
     }
 }

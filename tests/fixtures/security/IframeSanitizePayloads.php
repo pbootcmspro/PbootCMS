@@ -96,4 +96,20 @@ final class IframeSanitizePayloads
     {
         return '<iframe src="https://example.com/x" onload="x()"></iframe><script>alert(1)</script>';
     }
+
+    /** YouTube 官方嵌入样例（含 allow / strict-origin referrerpolicy） */
+    public static function youtubeEmbed()
+    {
+        return '<iframe src="https://www.youtube.com/embed/-Nwk2wKCu7Q?si=DclTfZx6HqSk-3xc"'
+            . ' allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"'
+            . ' referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>';
+    }
+
+    /** allow 含未知 token / 带 origin 的扩展写法，应被剥除 */
+    public static function allowWithUnknownTokens()
+    {
+        return '<iframe src="https://example.com/embed"'
+            . ' allow="autoplay; evil-feature; fullscreen https://evil.com; encrypted-media"'
+            . ' onload="x()"></iframe>';
+    }
 }

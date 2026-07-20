@@ -30,8 +30,8 @@ class DoController extends Controller
             if (isset($lgs[$lg])) {
                 cookie('lg', $lg);
             }
-            location(SITE_INDEX_DIR . '/');
         }
+        location(SITE_INDEX_DIR . '/');
     }
 
     // 文章访问量累计

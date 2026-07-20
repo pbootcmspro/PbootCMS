@@ -91,13 +91,17 @@ class MessageModel extends Model
         return $rs->count ?: 0;
     }
 
-    // 删除留言
-    public function clearMessage($where)
+    // 按ID集合批量删除留言（限定当前区域，防止越权删除）
+    public function delMessageByIds($ids)
     {
-        if(!$where){
-            return parent::table('ay_message')->delete();
-        } else {
-            return parent::table('ay_message')->delete($where);
-        }
+        return parent::table('ay_message')->where("acode='" . session('acode') . "'")
+            ->delete($ids, 'id');
+    }
+
+    // 清空当前区域全部留言
+    public function clearMessage()
+    {
+        return parent::table('ay_message')->where("acode='" . session('acode') . "'")
+            ->delete();
     }
 }

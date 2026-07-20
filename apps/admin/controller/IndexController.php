@@ -333,13 +333,60 @@ class IndexController extends Controller
         }
     }
 
+    // 黑名单文件路径
+    private function getLoginBlackFile()
+    {
+        return RUN_PATH . '/data/' . md5('login_black') . '.php';
+    }
+
+    // 安全读取黑名单，文件损坏时降级为空数组以便重建
+    private function loadLoginBlack($ip_black)
+    {
+        if (! file_exists($ip_black)) {
+            return array();
+        }
+        try {
+            $data = @include $ip_black; // 数据文件被截断时会抛出 ParseError
+        } catch (\Throwable $e) {
+            $data = false;
+        }
+        if (! is_array($data)) {
+            return array();
+        }
+        foreach ($data as $ip => $item) {
+            if (! is_array($item) || ! isset($item['time']) || ! isset($item['count']) || ! is_numeric($item['time']) || ! is_numeric($item['count'])) {
+                unset($data[$ip]);
+            }
+        }
+        return $data;
+    }
+
+    // 原子写入黑名单：临时文件 + rename 替换，避免并发截断
+    private function writeLoginBlack($ip_black, array $data)
+    {
+        check_dir(dirname($ip_black), true);
+        $content = "<?php\nreturn " . var_export($data, true) . ";";
+        $tmp = $ip_black . '.' . getmypid() . '.' . mt_rand() . '.tmp';
+        if (file_put_contents($tmp, $content, LOCK_EX) === false) {
+            return false;
+        }
+        if (! @rename($tmp, $ip_black)) { // 同目录 rename 为原子替换
+            @unlink($tmp);
+            return false;
+        }
+        if (function_exists('opcache_invalidate')) {
+            opcache_invalidate($ip_black, true); // 防止 opcache 读到旧内容
+        }
+        return true;
+    }
+
     // 检查是否在黑名单
     private function checkLoginBlack()
     {
         // 读取黑名单
-        $ip_black = RUN_PATH . '/data/' . md5('login_black') . '.php';
-        if (file_exists($ip_black)) {
-            $data = require $ip_black;
+        $ip_black = $this->getLoginBlackFile();
+        $data = $this->loadLoginBlack($ip_black);
+        if ($data) {
             $user_ip = get_user_ip();
             $lock_time = $this->config('lock_time') ?: 900;
             $lock_count = $this->config('lock_count') ?: 5;
@@ -353,33 +400,75 @@ class IndexController extends Controller
     // 添加登录黑名单
     private function setLoginBlack()
     {
-        // 读取黑名单
-        $ip_black = RUN_PATH . '/data/' . md5('login_black') . '.php';
-        if (file_exists($ip_black)) {
-            $data = require $ip_black;
-        } else {
-            $data = array();
-        }
-
-        // 添加IP
-        $user_ip = get_user_ip();
+        $ip_black = $this->getLoginBlackFile();
+        check_dir(dirname($ip_black), true);
         $lock_time = $this->config('lock_time') ?: 900;
-        $lock_count = $this->config('lock_count') ?: 5;
-        if (isset($data[$user_ip]) && $data[$user_ip]['count'] < $lock_count && time() - $data[$user_ip]['time'] < $lock_time) {
-            $data[$user_ip] = array(
-                'time' => time(),
-                'count' => $data[get_user_ip()]['count'] + 1
-            );
-        } else {
-            $data[$user_ip] = array(
-                'time' => time(),
-                'count' => 1
-            );
+        $lock_max = $this->config('lock_max') ?: 1000;
+        $user_ip = get_user_ip();
+
+        // 通过锁文件串行化整个「读-改-写」过程，防止并发丢失有效记录
+        $fp = @fopen($ip_black . '.lock', 'c');
+        if ($fp === false || ! flock($fp, LOCK_EX)) {
+            if ($fp) {
+                fclose($fp);
+            }
+            return false;
         }
 
-        // 写入黑名单
-        check_file($ip_black, true);
-        return file_put_contents($ip_black, "<?php\nreturn " . var_export($data, true) . ";");
+        $ok = false;
+        $evictedIps = array();
+        try {
+            $data = $this->loadLoginBlack($ip_black);
+            $now = time();
+
+            // 写入前清理过期记录
+            foreach ($data as $ip => $item) {
+                if (! isset($item['time']) || ! isset($item['count']) || $now - $item['time'] >= $lock_time) {
+                    unset($data[$ip]);
+                }
+            }
+
+            if (isset($data[$user_ip])) {
+                $data[$user_ip] = array(
+                    'time' => $now,
+                    'count' => $data[$user_ip]['count'] + 1
+                );
+            } else {
+                // 满员时按 time 淘汰最旧条目（近似 LRU），为新 IP 腾出空位
+                while (count($data) >= $lock_max) {
+                    $oldestIp = null;
+                    $oldestTime = null;
+                    foreach ($data as $ip => $item) {
+                        if ($oldestTime === null || $item['time'] < $oldestTime) {
+                            $oldestTime = $item['time'];
+                            $oldestIp = $ip;
+                        }
+                    }
+                    if ($oldestIp === null) {
+                        break;
+                    }
+                    unset($data[$oldestIp]);
+                    $evictedIps[] = $oldestIp;
+                }
+                $data[$user_ip] = array(
+                    'time' => $now,
+                    'count' => 1
+                );
+            }
+
+            $ok = $this->writeLoginBlack($ip_black, $data);
+        } finally {
+            flock($fp, LOCK_UN);
+            fclose($fp);
+        }
+
+        if ($ok) {
+            foreach ($evictedIps as $oldestIp) {
+                $this->log('登录黑名单已满，淘汰最旧IP：' . $oldestIp . '，腾出给：' . $user_ip, 'warning');
+            }
+        }
+
+        return $ok;
     }
 
     // 修改数据库名称

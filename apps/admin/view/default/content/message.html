@@ -63,11 +63,11 @@
 	            </table>
 	            {/foreach}
 	            
-	            {if(session('ucode')==10001 && [$messages])}
-			     	<a href="{url./admin/Message/clear}"  onclick='return confirm("您确定要全部清空么？")' class="layui-btn layui-btn-sm">清空全部记录</a>
-			   		<a href="javascript:" onclick="selectall('checkbox')" class="layui-btn layui-btn-sm">全选</a>
-			   		<a href="javascript:" onclick="delselect(this);return false" class="layui-btn layui-btn-sm">清空选中记录</a>
-			    {/if}
+			{if(session('ucode')==10001 && [$messages])}
+		     	<a href="javascript:" onclick="clearall();return false" class="layui-btn layui-btn-sm">清空全部记录</a>
+		   		<a href="javascript:" onclick="selectall('checkbox')" class="layui-btn layui-btn-sm">全选</a>
+		   		<a href="javascript:" onclick="delselect(this);return false" class="layui-btn layui-btn-sm">清空选中记录</a>
+		    {/if}
 			    
 			    {if([$messages])}
 			    <a href="{url./admin/Message/index/export/1}" class="layui-btn layui-btn-sm">导出记录</a>
@@ -132,16 +132,47 @@
 		}
 	}
 
+	function clearall(){
+		if(confirm("您确定要全部清空么？")){
+			var form = document.createElement("form");
+			form.method = "post";
+			form.action = "{url./admin/Message/clearAll}";
+			var input = document.createElement("input");
+			input.type = "hidden";
+			input.name = "formcheck";
+			input.value = "{$formcheck}";
+			form.appendChild(input);
+			document.body.appendChild(form);
+			form.submit();
+		}
+	}
+
 	function delselect(obj){
 		if(confirm("您确定要删除选中的内容么？")){
 			var check_list = [];
 			$('input[name="checkbox"]:checked').each(function (){
 				check_list.push($(this).val());
 			});
-			var url = $(obj).attr("href");
-			var str = check_list.join("and");
-			// $(obj).attr("href", url + "" + str);
-			location.href = "{url./admin/Message/clear}/ids/" + str;
+			if(check_list.length == 0){
+				alert("请先选择要删除的记录！");
+				return;
+			}
+			var form = document.createElement("form");
+			form.method = "post";
+			form.action = "{url./admin/Message/clear}";
+			var fields = {
+				formcheck: "{$formcheck}",
+				ids: check_list.join(",")
+			};
+			for (var name in fields) {
+				var input = document.createElement("input");
+				input.type = "hidden";
+				input.name = name;
+				input.value = fields[name];
+				form.appendChild(input);
+			}
+			document.body.appendChild(form);
+			form.submit();
 		}
 	}
 </script>

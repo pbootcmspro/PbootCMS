@@ -45,4 +45,15 @@ final class ConfigStub
     {
         self::setIframeWhitelist(array());
     }
+
+    /** @param array<string, mixed> $configs */
+    public static function set(array $configs)
+    {
+        $prop = self::configProperty();
+        $current = $prop->getValue(null);
+        if (! is_array($current)) {
+            $current = array();
+        }
+        $prop->setValue(null, array_merge($current, $configs));
+    }
 }

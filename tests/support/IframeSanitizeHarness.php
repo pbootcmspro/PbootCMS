@@ -46,7 +46,7 @@ final class IframeSanitizeHarness
     }
 
     /**
-     * 白名单重建契约：允许的安全属性集，禁止 on* / 危险 scheme
+     * 白名单重建契约：允许的安全属性集，禁止 on* / 危险 scheme / no-referrer
      *
      * @param bool $expectIframe 是否期望输出中仍含 iframe
      */
@@ -55,7 +55,8 @@ final class IframeSanitizeHarness
         if ($expectIframe) {
             TestAssert::contains($html, '<iframe', "$label: has iframe");
             TestAssert::contains($html, 'sandbox=', "$label: has sandbox");
-            TestAssert::contains($html, 'referrerpolicy=', "$label: has referrerpolicy");
+            TestAssert::contains($html, 'referrerpolicy="strict-origin-when-cross-origin"', "$label: has safe referrerpolicy");
+            TestAssert::notContains($html, 'referrerpolicy="no-referrer"', "$label: no no-referrer");
             TestAssert::contains($html, 'frameborder="0"', "$label: has frameborder");
         }
         TestAssert::false(self::hasEventHandlerAttr($html), "$label: no on* attrs");

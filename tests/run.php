@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 /**
  * 测试入口：php tests/run.php [--suite=unit|integration|contract] [--filter=Name]
+ *
+ * 每个 *Test.php 在独立 PHP 进程中执行，避免 SITE_DIR 等常量与静态状态跨文件污染。
  */
 
 require __DIR__ . '/bootstrap.php';
@@ -28,6 +30,7 @@ $suites = array(
 $totalFailed = 0;
 $totalFiles = 0;
 $totalPassed = 0;
+$phpBin = defined('PHP_BINARY') && PHP_BINARY !== '' ? PHP_BINARY : 'php';
 
 foreach ($suites as $suiteName => $dir) {
     if ($suiteFilter !== null && $suiteFilter !== $suiteName) {
@@ -53,9 +56,11 @@ foreach ($suites as $suiteName => $dir) {
         echo "\n[$suiteName] $basename\n";
         echo str_repeat('-', 40) . "\n";
 
-        ConfigStub::reset();
-        $code = include $file;
-        ConfigStub::reset();
+        $cmd = escapeshellarg($phpBin) . ' ' . escapeshellarg($file);
+        $code = 1;
+        passthru($cmd, $code);
+        $code = (int) $code;
+
         if ($code === 0) {
             $totalPassed++;
             echo "=> PASSED\n";

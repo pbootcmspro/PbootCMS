@@ -27,11 +27,11 @@ class LogText implements Builder
     }
 
     // 写入文本日志
-    public function write($content, $level = "info")
+    public function write($content, $level = "info", $username = null)
     {
         $logfile = ROOT_PATH . '/log/' . date('Ymd') . '.log';
-        check_file($logfile, true);
-        $username = session('username') ?: 'system';
+        check_file($logfile, true, '');
+        $username = $username ?: session('username') ?: 'system';
         $string = $level . ' ' . $content . ' ' . get_user_ip() . ' ' . get_user_os() . ' ' . get_user_bs() . ' ' . $username . ' ' . get_datetime() . PHP_EOL;
         return file_put_contents($logfile, $string, FILE_APPEND);
     }
