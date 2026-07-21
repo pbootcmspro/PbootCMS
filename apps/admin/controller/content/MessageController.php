@@ -107,22 +107,42 @@ class MessageController extends Controller
         }
     }
 
-    // 清空
+    // 删除选中留言（仅允许POST，仅接受严格整数ID集合，如1,2,3）
     public function clear()
     {
-        if($_GET['ids']){
-            $idList = implode("," , explode("and",$_GET['ids']));
-        } else {
-            $idList = null;
+        // 非POST请求直接拒绝，避免通过GET链接触发批量删除
+        if (! $_POST) {
+            error('非法请求！', - 1);
         }
-        if ($this->model->clearMessage($idList)){
+        
+        $ids = post('ids');
+        if (($idList = parse_strict_id_list($ids)) === false) {
+            error('传递的参数值错误！', - 1);
+        }
+        
+        if ($this->model->delMessageByIds($idList)) {
+            $this->log('删除留言' . implode(',', $idList) . '成功！');
             alert_location('删除成功！', url('/admin/Message/index'));
         } else {
+            $this->log('删除留言' . implode(',', $idList) . '失败！');
             alert_location('删除失败！', url('/admin/Message/index'));
         }
+    }
 
-
-
-
+    // 清空全部留言（独立显式操作，仅允许POST）
+    public function clearAll()
+    {
+        // 非POST请求直接拒绝，避免通过GET链接触发全表清空
+        if (! $_POST) {
+            error('非法请求！', - 1);
+        }
+        
+        if ($this->model->clearMessage()) {
+            $this->log('清空全部留言成功！');
+            alert_location('清空成功！', url('/admin/Message/index'));
+        } else {
+            $this->log('清空全部留言失败！');
+            alert_location('清空失败！', url('/admin/Message/index'));
+        }
     }
 }

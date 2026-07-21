@@ -91,8 +91,8 @@ class AreaController extends Controller
             $domain = post('domain');
             $is_default = post('is_default');
             
-            if (! $acode) {
-                alert_back('编码不能为空！');
+            if (! $acode || filter_area_acode($acode) === false) {
+                alert_back('编码不能为空或格式不正确（仅字母、数字、横线、点）！');
             }
             
             if (! $pcode) { // 父编码默认为0
@@ -104,10 +104,8 @@ class AreaController extends Controller
             }
             
             if ($domain) {
-                $reg = '{^(https://|http://)?([\w\-.]+)([\/]+)?$}';
-                if (preg_match($reg, $domain)) {
-                    $domain = preg_replace($reg, '$2', $domain);
-                } else {
+                $domain = filter_area_domain($domain);
+                if ($domain === false) {
                     alert_back('要绑定的域名输入有错！');
                 }
                 
@@ -221,8 +219,8 @@ class AreaController extends Controller
             $domain = post('domain');
             $is_default = post('is_default');
             
-            if (! $acode_new) {
-                alert_back('编码不能为空！');
+            if (! $acode_new || filter_area_acode($acode_new) === false) {
+                alert_back('编码不能为空或格式不正确（仅字母、数字、横线、点）！');
             }
             
             if (! $pcode) { // 父编码默认为0
@@ -234,10 +232,8 @@ class AreaController extends Controller
             }
             
             if ($domain) {
-                $reg = '{^(https://|http://)?([\w\-.]+)([\/]+)?$}';
-                if (preg_match($reg, $domain)) {
-                    $domain = preg_replace($reg, '$2', $domain);
-                } else {
+                $domain = filter_area_domain($domain);
+                if ($domain === false) {
                     alert_back('要绑定的域名输入有错！');
                 }
                 

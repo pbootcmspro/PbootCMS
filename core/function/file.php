@@ -425,7 +425,8 @@ function gd_save_image($img, $path, $type, $quality = 90)
 {
     switch ($type) {
         case IMAGETYPE_GIF:
-            return @imagegif($img, $path, $quality);
+            // imagegif 仅接受 (image, filename)，多传参数在 PHP7 会告警失败、PHP8 抛异常
+            return @imagegif($img, $path);
         case IMAGETYPE_JPEG:
             return @imagejpeg($img, $path, $quality);
         case IMAGETYPE_PNG:
@@ -512,7 +513,8 @@ function image_save_to_file($img, $path, $type, $img_quality = 90)
 {
     switch ($type) {
         case IMAGETYPE_GIF:
-            return imagegif($img, $path, $img_quality);
+            // imagegif 仅接受 (image, filename)
+            return imagegif($img, $path);
         case IMAGETYPE_JPEG:
             return imagejpeg($img, $path, $img_quality);
         case IMAGETYPE_PNG:
@@ -524,6 +526,30 @@ function image_save_to_file($img, $path, $type, $img_quality = 90)
                 return gd_supports_webp() ? imagewebp($img, $path, $img_quality) : false;
             }
             return imagejpeg($img, $path, $img_quality);
+    }
+}
+
+// 为缩放/裁剪画布按类型正确设置透明通道（PNG/WebP 保留完整 Alpha，GIF 沿用调色板透明色）
+function gd_prepare_canvas_transparency($canvas, $type, $src_img = null)
+{
+    if ($type == IMAGETYPE_PNG || $type == image_type_webp()) {
+        // 关闭混合、开启存储 Alpha，用带 Alpha 的全透明色填充，保留半透明边缘
+        imagealphablending($canvas, false);
+        imagesavealpha($canvas, true);
+        $transparent = imagecolorallocatealpha($canvas, 0, 0, 0, 127);
+        imagefill($canvas, 0, 0, $transparent);
+    } elseif ($type == IMAGETYPE_GIF) {
+        // GIF 无 Alpha 通道，只有单一透明色索引；重采样到真彩画布时调色板透明语义会丢失，
+        // 因此把源图透明色作为画布透明色填充，源图透明区域重采样后仍等于该颜色即保持透明。
+        $trans_index = ($src_img !== null) ? imagecolortransparent($src_img) : -1;
+        if ($trans_index >= 0) {
+            $tc = imagecolorsforindex($src_img, $trans_index);
+            $bg = imagecolorallocate($canvas, $tc['red'], $tc['green'], $tc['blue']);
+        } else {
+            $bg = imagecolorallocate($canvas, 255, 255, 255);
+        }
+        imagefill($canvas, 0, 0, $bg);
+        imagecolortransparent($canvas, $bg);
     }
 }
 
@@ -568,6 +594,11 @@ function reencode_image($path, $img_quality = 90)
     list($img, $err) = gd_load_image($path, $type);
     if ($img === false) {
         return $err;
+    }
+    // PNG/WebP 保存前显式保留 Alpha，避免透明区域被写成黑底
+    if ($type == IMAGETYPE_PNG || $type == image_type_webp()) {
+        imagealphablending($img, false);
+        imagesavealpha($img, true);
     }
     $ok = gd_save_image($img, $path, $type, $img_quality);
     if (PHP_VERSION_ID < 80000) {
@@ -864,11 +895,9 @@ function resize_img($src_image, $out_image = null, $max_width = null, $max_heigh
         }
         
         if ($type == IMAGETYPE_GIF || $type == IMAGETYPE_PNG || $type == image_type_webp()) {
-            $color = imagecolorallocate($new_img, 255, 255, 255);
-            imagefill($new_img, 0, 0, $color);
-            imagecolortransparent($new_img, $color);
+            gd_prepare_canvas_transparency($new_img, $type, $img);
         }
-        if (! @imagecopyresized($new_img, $img, 0, 0, 0, 0, $new_width, $new_height, $width, $height)) {
+        if (! @imagecopyresampled($new_img, $img, 0, 0, 0, 0, $new_width, $new_height, $width, $height)) {
             imagedestroy($img);
             imagedestroy($new_img);
             return '缩放图片失败！';
@@ -884,62 +913,84 @@ function resize_img($src_image, $out_image = null, $max_width = null, $max_heigh
     return true;
 }
 
-// 剪切图片
+// 剪切图片（成功 true，失败返回错误描述；无宽高时 return null 保持兼容）
 function cut_img($src_image, $out_image = null, $new_width = null, $new_height = null, $img_quality = 90)
 {
-    // 输出地址
-    if (! $out_image)
+    if (! $out_image) {
         $out_image = $src_image;
-
-    // 读取配置文件设置
-    if (! $new_width && ! $new_height)
+    }
+    if (! $new_width && ! $new_height) {
         return;
-
-    // 获取图片属性
-    list ($width, $height, $type, $attr) = getimagesize($src_image);
-    $img = image_create_from_file($src_image, $type);
-    if (! $img) {
-        return true;
     }
 
-    // 不限定是等比例缩放
+    $size_info = @getimagesize($src_image);
+    if (! $size_info || empty($size_info[2])) {
+        return '上传文件不是有效的图片！';
+    }
+    list ($width, $height, $type) = $size_info;
+    if ($width < 1 || $height < 1) {
+        return '上传文件不是有效的图片！';
+    }
+
+    // 不限定则按另一边等比例缩放
     if (! $new_width) {
         $new_width = floor($width * ($new_height / $height));
     }
     if (! $new_height) {
         $new_height = floor($height * ($new_width / $width));
     }
+    $new_width = max(1, (int) $new_width);
+    $new_height = max(1, (int) $new_height);
 
-    // 计算裁剪是变大缩小方式
-    if ($width >= $new_width && $height >= $new_height) { // 长宽均满足
-        $cut_width = $new_width;
-        $cut_height = $new_height;
-    } else { // 有一边不满足
-        $scale1 = $width / $new_width;
-        $scale2 = $height / $new_height;
-        if ($scale1 < $scale2) { // 变化越多的一边取全值，其余一边等比例缩放
-            $cut_width = $width;
-            $cut_height = floor($height * ($width / $new_width));
-        } else {
-            $cut_width = floor($new_width * ($height / $new_height));
-            $cut_height = $height;
-        }
+    // 按目标宽高比在原图中计算最大可用源区域，并居中取样，避免拉伸与主体偏移
+    $dst_ratio = $new_width / $new_height;
+    $src_ratio = $width / $height;
+    if ($src_ratio > $dst_ratio) { // 源图偏宽：取全高，宽度按目标比例居中截取
+        $cut_height = $height;
+        $cut_width = (int) round($height * $dst_ratio);
+    } else { // 源图偏高或等比：取全宽，高度按目标比例居中截取
+        $cut_width = $width;
+        $cut_height = (int) round($width / $dst_ratio);
+    }
+    $cut_width = max(1, min($cut_width, $width));
+    $cut_height = max(1, min($cut_height, $height));
+    $src_x = (int) floor(($width - $cut_width) / 2);
+    $src_y = (int) floor(($height - $cut_height) / 2);
+
+    $need = gd_estimate_image_memory($width, $height, 2) + gd_estimate_image_memory($new_width, $new_height, 2);
+    if (! gd_has_enough_memory($need)) {
+        return '图片尺寸过大，服务器内存不足，无法裁剪图片！';
     }
 
-    // 创建画布
-    $new_img = imagecreatetruecolor($new_width, $new_height);
+    list($img, $err) = gd_load_image($src_image, $type);
+    if ($img === false) {
+        return $err;
+    }
 
-    // 创建透明画布,避免黑色
+    $new_img = @imagecreatetruecolor($new_width, $new_height);
+    if (! $new_img) {
+        imagedestroy($img);
+        return '创建裁剪画布失败！';
+    }
+
+    // 按类型正确处理透明通道，避免黑底/白边/透明失真
     if ($type == IMAGETYPE_GIF || $type == IMAGETYPE_PNG || $type == image_type_webp()) {
-        $color = imagecolorallocate($new_img, 255, 255, 255);
-        imagefill($new_img, 0, 0, $color);
-        imagecolortransparent($new_img, $color);
+        gd_prepare_canvas_transparency($new_img, $type, $img);
     }
-    
-    imagecopyresized($new_img, $img, 0, 0, 0, 0, $new_width, $new_height, $cut_width, $cut_height);
-    check_dir(dirname($out_image), true); // 检查输出目录
-    
-    image_save_to_file($new_img, $out_image, $type, $img_quality);
+
+    // 高质量重采样 + 居中源区域取样
+    if (! @imagecopyresampled($new_img, $img, 0, 0, $src_x, $src_y, $new_width, $new_height, $cut_width, $cut_height)) {
+        imagedestroy($img);
+        imagedestroy($new_img);
+        return '裁剪图片失败！';
+    }
+
+    check_dir(dirname($out_image), true);
+    if (! gd_save_image($new_img, $out_image, $type, $img_quality)) {
+        imagedestroy($new_img);
+        imagedestroy($img);
+        return '裁剪图片保存失败！';
+    }
     imagedestroy($new_img);
     imagedestroy($img);
     return true;
@@ -1092,7 +1143,11 @@ function watermark_img($src_image, $out_image = null, $position = null, $waterma
         imagedestroy($img2);
         return '创建输出画布失败！';
     }
-    if ($type1 == IMAGETYPE_GIF || $type1 == IMAGETYPE_PNG || $type1 == image_type_webp()) {
+    if ($type1 == IMAGETYPE_GIF) {
+        // GIF：按源透明色铺底，开启混合以便透明像素透出底色；勿用 Alpha 白底（imagegif 会压成不透明浅色）
+        gd_prepare_canvas_transparency($out, $type1, $img1);
+        imagealphablending($out, true);
+    } elseif ($type1 == IMAGETYPE_PNG || $type1 == image_type_webp()) {
         imagealphablending($out, false);
         imagesavealpha($out, true);
         $transparent = imagecolorallocatealpha($out, 255, 255, 255, 127);
@@ -1104,11 +1159,24 @@ function watermark_img($src_image, $out_image = null, $position = null, $waterma
         imagedestroy($out);
         return '合成原图失败！';
     }
+    if ($type1 == IMAGETYPE_PNG || $type1 == image_type_webp()) {
+        imagealphablending($out, true);
+    }
     if (! @imagecopyresized($out, $img2, $x, max(0, $y - 10), 0, 0, $new_width, $new_height, $width2, $height2)) {
         imagedestroy($img1);
         imagedestroy($img2);
         imagedestroy($out);
         return '叠加水印失败！';
+    }
+
+    // GIF 保存前重新标记透明色，避免真彩→调色板丢失透明索引
+    if ($type1 == IMAGETYPE_GIF) {
+        $trans_index = imagecolortransparent($img1);
+        if ($trans_index >= 0) {
+            $tc = imagecolorsforindex($img1, $trans_index);
+            $bg = imagecolorallocate($out, $tc['red'], $tc['green'], $tc['blue']);
+            imagecolortransparent($out, $bg);
+        }
     }
 
     check_dir(dirname($out_image), true);

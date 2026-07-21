@@ -513,6 +513,46 @@ function post($name, $type = null, $require = false, $vartext = null, $default =
 }
 
 /**
+ * 解析严格正整数 ID 集合；任一 token 非法则整次拒绝（全有或全无）
+ *
+ * @param mixed $ids 如 "1,2,3"
+ * @return array|false
+ */
+function parse_strict_id_list($ids)
+{
+    if (! is_string($ids) || $ids === '') {
+        return false;
+    }
+    // 整体格式：非空、无前导零、无 0、无空段
+    if (! preg_match('/^[1-9]\d*(,[1-9]\d*)*$/', $ids)) {
+        return false;
+    }
+    
+    $tokens = explode(',', $ids);
+    $idList = array();
+    $maxStr = (string) PHP_INT_MAX;
+    
+    foreach ($tokens as $token) {
+        // 拒绝超过 PHP_INT_MAX 的数字（字符串比较，避免 intval 溢出）
+        if (strlen($token) > strlen($maxStr) || (strlen($token) === strlen($maxStr) && strcmp($token, $maxStr) > 0)) {
+            return false;
+        }
+        $intVal = (int) $token;
+        // 规范形式：拒绝 01、溢出归一化等
+        if ($intVal < 1 || (string) $intVal !== $token) {
+            return false;
+        }
+        $idList[] = $intVal;
+    }
+    
+    if (! $idList) {
+        return false;
+    }
+    
+    return array_values(array_unique($idList));
+}
+
+/**
  * * 获取参数，post或get
  *
  * @param string $name

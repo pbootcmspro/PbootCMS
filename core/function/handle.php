@@ -370,6 +370,51 @@ function parse_info_tpl($info_tpl, $string, $jump_url = null, $time = 0)
     }
 }
 
+/**
+ * 区域编码校验：仅允许字母、数字、横线、点（不含下划线）
+ * 合法返回原字符串，非法返回 false
+ *
+ * @param mixed $acode
+ * @return string|false
+ */
+function filter_area_acode($acode)
+{
+    $acode = trim((string) $acode);
+    if ($acode === '' || ! preg_match('/^[a-zA-Z0-9\-\.]+$/', $acode)) {
+        return false;
+    }
+    return $acode;
+}
+
+/**
+ * 区域绑定域名校验：允许可选 http(s):// 与尾部斜杠，返回规范化主机名；
+ * 空输入返回 ''；非法返回 false
+ *
+ * @param mixed $domain
+ * @return string|false
+ */
+function filter_area_domain($domain)
+{
+    $domain = trim((string) $domain);
+    if ($domain === '') {
+        return '';
+    }
+    // 去掉协议前缀
+    $domain = preg_replace('{^https?://}i', '', $domain);
+    // 仅允许尾部斜杠，拒绝带 path/query 的输入
+    if (strpos($domain, '/') !== false) {
+        if (! preg_match('{^[^/?#]+/+$}', $domain)) {
+            return false;
+        }
+        $domain = rtrim($domain, '/');
+    }
+    if ($domain === '' || strpos($domain, '?') !== false || strpos($domain, '#') !== false) {
+        return false;
+    }
+    $host = filter_iframe_normalize_host_literal($domain);
+    return $host === '' ? false : $host;
+}
+
 // 获取转义数据，支持字符串、数组、对象
 function escape_string($string)
 {
@@ -565,8 +610,8 @@ function ueditor_holder_html($html)
 }
 
 // 处理富文本中的 iframe：仅放行 content_iframe_whitelist 配置的可信域名，
-// 命中后仅重建 src/width/height/title/loading/allowfullscreen 等安全属性，并强制
-// sandbox/referrerpolicy；未配置白名单或未命中的 iframe 整段移除（含闭标签与内部 fallback）
+// 命中后仅重建 src/width/height/title/allow(白名单 token)/loading/allowfullscreen 等安全属性，并强制
+// sandbox 与非抑制 Referer 的 referrerpolicy；未配置白名单或未命中的 iframe 整段移除（含闭标签与内部 fallback）
 function filter_html_iframes($html)
 {
     if (stripos($html, '<iframe') === false && stripos($html, '</iframe') === false) {
@@ -877,6 +922,47 @@ function filter_iframe_sanitize_src($src)
     return $src;
 }
 
+// 从属性串提取 allow，仅保留 Permissions Policy 白名单 token（不透传任意值）
+function filter_iframe_rebuild_allow($attr_str)
+{
+    static $allowed = array(
+        'accelerometer' => true,
+        'autoplay' => true,
+        'clipboard-write' => true,
+        'encrypted-media' => true,
+        'gyroscope' => true,
+        'picture-in-picture' => true,
+        'web-share' => true,
+        'fullscreen' => true
+    );
+
+    if (preg_match('/\ballow\s*=\s*(["\'])(.*?)\1/i', $attr_str, $m)) {
+        $raw = $m[2];
+    } elseif (preg_match('/\ballow\s*=\s*([^\s>]+)/i', $attr_str, $m)) {
+        $raw = $m[1];
+    } else {
+        return '';
+    }
+
+    $kept = array();
+    $parts = preg_split('/\s*;\s*/', $raw);
+    if (! is_array($parts)) {
+        return '';
+    }
+    foreach ($parts as $part) {
+        $token = strtolower(trim($part));
+        // 仅接受裸 feature 名，拒绝带 allowlist origin 的扩展写法
+        if ($token !== '' && isset($allowed[$token])) {
+            $kept[$token] = true;
+        }
+    }
+    if (! $kept) {
+        return '';
+    }
+
+    return 'allow="' . implode('; ', array_keys($kept)) . '"';
+}
+
 // 校验单个 iframe 的属性串，命中白名单则返回重建后的安全标签，否则返回空串
 function filter_iframe_rebuild($attr_str, $whitelist)
 {
@@ -910,8 +996,14 @@ function filter_iframe_rebuild($attr_str, $whitelist)
         $attrs .= ' title="' . htmlspecialchars($t[2], ENT_QUOTES) . '"';
     }
 
-    // 强制安全属性；sandbox 下需显式声明 allow-fullscreen 才能全屏
-    $attrs .= ' frameborder="0" loading="lazy" referrerpolicy="no-referrer"';
+    $allow = filter_iframe_rebuild_allow($attr_str);
+    if ($allow !== '') {
+        $attrs .= ' ' . $allow;
+    }
+
+    // 强制安全属性；YouTube 等嵌入需 Referer，不得使用 no-referrer
+    // sandbox 下需显式声明 allow-fullscreen 才能全屏
+    $attrs .= ' frameborder="0" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"';
     $attrs .= ' sandbox="allow-scripts allow-same-origin allow-popups allow-presentation allow-forms allow-fullscreen"';
     $attrs .= ' allowfullscreen';
 

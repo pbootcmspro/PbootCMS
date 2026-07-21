@@ -171,7 +171,14 @@ class ParserController extends Controller
         $content = str_replace('{pboot:formcodestatus}', $this->config('form_check_code') === '0' ? 0 : 1, $content); // 是否开启表单验证码
 
         $content = str_replace('{pboot:checkcode}', CORE_DIR . '/code.php', $content); // 验证码路径
-        $content = str_replace('{pboot:lgpath}', Url::get('home/Do/area'), $content); // 多语言切换前置路径,如{pboot:lgpath}?lg=cn
+        $content = preg_replace_callback(
+            '/\{pboot:lgpath\}[?&]lg=([\w\-\.]+)/i',
+            function ($matches) {
+                return Url::lgArea($matches[1]);
+            },
+            $content
+        );
+        $content = str_replace('{pboot:lgpath}', Url::lgArea(), $content); // 多语言切换前置路径,如{pboot:lgpath}?lg=cn
 
         $content = str_replace('{pboot:appid}', $this->config('api_appid'), $content); // API认证用户
         $content = str_replace('{pboot:timestamp}', time(), $content); // 认证时间戳
@@ -3374,7 +3381,7 @@ class ParserController extends Controller
             $src_file = ROOT_PATH . $data;
             $out_file = RUN_PATH . '/image/w' . $width . '_h' . $height . '_' . basename($data);
             if (!file_exists($out_file) && file_exists($src_file)) {
-                if (cut_img($src_file, $out_file, $width, $height)) {
+                if (cut_img($src_file, $out_file, $width, $height) === true) {
                     $data = str_replace(ROOT_PATH, '', $out_file);
                 }
             } elseif (file_exists($out_file) && file_exists($src_file)) {

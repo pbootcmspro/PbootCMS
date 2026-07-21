@@ -5,6 +5,7 @@ declare(strict_types=1);
 /**
  * @suite unit
  * @covers core/function/handle.php filter_iframe_sanitize_src()
+ * @covers core/function/handle.php filter_iframe_rebuild_allow()
  * @covers core/function/handle.php filter_iframe_rebuild()
  * @covers core/function/handle.php filter_html_iframes()
  * @covers core/function/handle.php filter_html()
@@ -148,6 +149,48 @@ return TestAssert::runSuite(function () {
     IframeSanitizeHarness::assertSafeIframeContract($filtered, true, 'filter_html iframe');
     TestAssert::notContains($filtered, '<script', 'filter_html: script tag removed');
     TestAssert::notContains($filtered, 'onload', 'filter_html: no onload');
+
+    echo "=== filter_html() YouTube embed referrer + allow whitelist ===\n";
+
+    ConfigStub::setIframeWhitelist(array('www.youtube.com'));
+    $yt = filter_html(IframeSanitizePayloads::youtubeEmbed());
+    IframeSanitizeHarness::assertSafeIframeContract($yt, true, 'filter_html youtube');
+    TestAssert::contains($yt, 'www.youtube.com/embed/-Nwk2wKCu7Q', 'youtube: src kept');
+    TestAssert::contains($yt, 'referrerpolicy="strict-origin-when-cross-origin"', 'youtube: safe referrerpolicy');
+    TestAssert::notContains($yt, 'no-referrer', 'youtube: no no-referrer');
+    TestAssert::contains($yt, 'allow="', 'youtube: allow rebuilt');
+    TestAssert::contains($yt, 'encrypted-media', 'youtube: allow encrypted-media');
+    TestAssert::contains($yt, 'picture-in-picture', 'youtube: allow picture-in-picture');
+    TestAssert::contains($yt, 'autoplay', 'youtube: allow autoplay');
+    TestAssert::contains($yt, 'sandbox=', 'youtube: sandbox kept');
+
+    echo "=== filter_iframe_rebuild_allow() token whitelist ===\n";
+
+    $allowFiltered = filter_iframe_rebuild(
+        'src="https://example.com/embed" allow="autoplay; evil-feature; fullscreen https://evil.com; encrypted-media" onload="x()"',
+        $exactWl
+    );
+    IframeSanitizeHarness::assertSafeIframeContract($allowFiltered, true, 'rebuild allow filter');
+    TestAssert::contains($allowFiltered, 'allow="autoplay; encrypted-media"', 'allow: only safe bare tokens');
+    TestAssert::notContains($allowFiltered, 'evil-feature', 'allow: unknown token dropped');
+    TestAssert::notContains($allowFiltered, 'fullscreen https', 'allow: origin form dropped');
+    TestAssert::notContains($allowFiltered, 'onload', 'allow: onload dropped');
+
+    $allowEmpty = filter_iframe_rebuild(
+        'src="https://example.com/embed" allow="evil-feature; fullscreen https://evil.com"',
+        $exactWl
+    );
+    IframeSanitizeHarness::assertSafeIframeContract($allowEmpty, true, 'rebuild allow all bad');
+    TestAssert::notContains($allowEmpty, 'allow=', 'allow: omitted when no safe tokens');
+
+    ConfigStub::setIframeWhitelist(array('example.com'));
+    $allowHtml = filter_html(IframeSanitizePayloads::allowWithUnknownTokens());
+    IframeSanitizeHarness::assertSafeIframeContract($allowHtml, true, 'filter_html allow filter');
+    TestAssert::contains($allowHtml, 'allow="autoplay; encrypted-media"', 'filter_html allow: safe tokens');
+
+    ConfigStub::setIframeWhitelist(array('example.com'));
+    $nonYtHost = filter_html('<iframe src="https://evil.com/embed" allow="autoplay"></iframe>');
+    TestAssert::false(IframeSanitizeHarness::hasIframeTag($nonYtHost), 'non-whitelist: iframe removed');
 
     ConfigStub::reset();
 });

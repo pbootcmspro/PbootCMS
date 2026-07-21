@@ -66,6 +66,7 @@ class Url
             }
             
             // 域名绑定处理匹配
+            $host = '';
             $cut_str = '';
             if (! ! $domains = Config::get('app_domain_bind')) {
                 foreach ($domains as $key => $value) {
@@ -152,5 +153,34 @@ class Url
             self::$urls[md5($path . $suffix . $qs)] = $link;
         }
         return self::$urls[md5($path . $suffix . $qs)];
+    }
+
+    // 向 URL 安全追加查询参数（自动选择 ? 或 &）
+    public static function addQuery($url, $query)
+    {
+        if (! $query) {
+            return $url;
+        }
+
+        $fragment = '';
+        if (($pos = strpos($url, '#')) !== false) {
+            $fragment = substr($url, $pos);
+            $url = substr($url, 0, $pos);
+        }
+
+        $sep = (strpos($url, '?') === false) ? '?' : '&';
+        return $url . $sep . $query . $fragment;
+    }
+
+    /**
+     * 多语言切换地址（基于 Url::get，自动追加 lg 查询参数）
+     */
+    public static function lgArea($lg = null)
+    {
+        $url = self::get('home/Do/area');
+        if ($lg !== null && $lg !== '') {
+            $url = self::addQuery($url, 'lg=' . $lg);
+        }
+        return $url;
     }
 }

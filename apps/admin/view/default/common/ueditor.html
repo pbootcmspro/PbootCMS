@@ -52,18 +52,19 @@ function hookEditorIframeNormalize(editor) {
 function exitSourceModeWithNormalize(editor) {
 	if (!editor || typeof editor.queryCommandState !== 'function') return;
 	if (editor.queryCommandState('source') != 1) return;
-	editor.setContent(normalizeUnquotedIframeSrc(editor.getContent()));
+	var raw = editor.getContent();
+	var normalized = normalizeUnquotedIframeSrc(raw);
+	editor.setContent(normalized);
 	editor.execCommand('source');
 }
 
 function normalizeAllEditorsBeforeSubmit() {
-	if (typeof UE === 'undefined' || !UE.instants) return;
-	for (var key in UE.instants) {
-		if (Object.prototype.hasOwnProperty.call(UE.instants, key)) {
-			var ed = UE.instants[key];
-			if (ed && typeof ed.queryCommandState === 'function') {
-				exitSourceModeWithNormalize(ed);
-			}
+	if (typeof UE === 'undefined') return;
+	var editors = UE.__pbootEditors || [];
+	for (var i = 0; i < editors.length; i++) {
+		var ed = editors[i];
+		if (ed && typeof ed.queryCommandState === 'function') {
+			exitSourceModeWithNormalize(ed);
 		}
 	}
 }
@@ -74,6 +75,10 @@ function normalizeAllEditorsBeforeSubmit() {
 	var origGetEditor = UE.getEditor;
 	UE.getEditor = function () {
 		var ed = origGetEditor.apply(this, arguments);
+		UE.__pbootEditors = UE.__pbootEditors || [];
+		if (UE.__pbootEditors.indexOf(ed) === -1) {
+			UE.__pbootEditors.push(ed);
+		}
 		hookEditorIframeNormalize(ed);
 		return ed;
 	};

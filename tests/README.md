@@ -12,6 +12,8 @@ php tests/run.php --filter=ValidateIf
 php tests/unit/ValidateIfConditionTest.php
 ```
 
+`run.php` 会为每个 `*Test.php` 启动独立 PHP 进程，避免 `SITE_DIR` 等常量与静态状态跨文件互相污染。
+
 ## 目录
 
 | 路径 | 说明 |
@@ -31,3 +33,5 @@ php tests/unit/ValidateIfConditionTest.php
 ## 关联
 
 - [Issue #28](https://github.com/pbootcmspro/PbootCMS/issues/28) — `{pboot:if}` 编码绕过
+- 审计 #6 — `AreaController` 区域编码与域名输入过滤（`AreaInputFilterTest` / `AreaControllerFilterContractTest`）
+- 审计 #8 — 内容/栏目/站点标题与描述输入清洗（`TitleDescInputFilterTest` / `TitleDescControllerFilterContractTest`）
