@@ -110,7 +110,16 @@ class Basic
         ini_set("session.use_trans_sid", 0);
         ini_set("session.use_cookies", 1);
         ini_set("session.use_only_cookies", 1);
-        session_set_cookie_params(0, SITE_DIR . '/', null, null, false);
+        // 安全加固：会话 Cookie 增加 HttpOnly / SameSite，HTTPS 环境自动启用 Secure
+        // （修复：会话 Cookie 此前无 HttpOnly/SameSite，存在 XSS 会话劫持与 CSRF 放大风险）
+        session_set_cookie_params(array(
+            'lifetime' => 0,
+            'path'     => SITE_DIR . '/',
+            'domain'   => null,
+            'secure'   => (! empty($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off'),
+            'httponly' => true,
+            'samesite' => 'Lax'
+        ));
 
         switch (Config::get('session.handler')) {
             case 'memcache':
