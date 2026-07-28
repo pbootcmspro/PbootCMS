@@ -90,7 +90,7 @@ class Code
     {
         header('Content-type:image/png');
         imagepng($this->img);
-        imagedestroy($this->img);
+        gd_free_image($this->img);
     }
 
     // 对外生成

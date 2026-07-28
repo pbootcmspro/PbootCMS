@@ -152,6 +152,8 @@ class AdminController extends Controller
             '/admin/Index/area', // 区域选择
             '/admin/Index/clearCache', // 清理缓存
 			'/admin/Index/clearOnlySysCache', // 清理系统缓存
+            '/admin/DeleCache', // 精细化缓存页（头部入口，登录用户均可访问）
+            '/admin/DeleCache/index', // 精细化缓存页及更新操作
             '/admin/Index/upload', // 上传文件
             '/admin/Ai', // AI 接口（登录用户均可调用：ping/generate/rewrite/tdk/alt）
         );

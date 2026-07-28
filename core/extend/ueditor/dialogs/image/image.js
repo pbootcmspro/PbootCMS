@@ -11,6 +11,25 @@
         onlineImage;
     var editorOpt = {};
 
+    function getImageAltFromSrc(src) {
+        if (!src) {
+            return '';
+        }
+        var name = src.substr(src.lastIndexOf('/') + 1),
+            q = name.indexOf('?'),
+            h = name.indexOf('#');
+        if (q !== -1) {
+            name = name.substring(0, q);
+        }
+        if (h !== -1) {
+            name = name.substring(0, h);
+        }
+        try {
+            name = decodeURIComponent(name);
+        } catch (e) {}
+        return name;
+    }
+
     window.onload = function () {
         editorOpt = editor.getOpt('imageConfig');
         initTabs();
@@ -1009,7 +1028,7 @@
                     list.push({
                         src: src,
                         _src: src,
-                        alt: src.substr(src.lastIndexOf('/') + 1),
+                        alt: getImageAltFromSrc(src),
                         floatStyle: align
                     });
                 }

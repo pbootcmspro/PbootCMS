@@ -255,6 +255,13 @@ class ConfigController extends Controller
             $value = implode(',', $hosts);
         }
         
+        if ($key == 'image_backend') {
+            $value = strtolower(trim((string) $value));
+            if (! in_array($value, array('auto', 'gd_only', 'prefer_imagick'), true)) {
+                $value = 'auto';
+            }
+        }
+
         if ($this->model->checkConfig("name='$key'")) {
             $this->model->modValue($key, $value);
         } elseif ($key != 'submit' && $key != 'formcheck') {
@@ -262,6 +269,8 @@ class ConfigController extends Controller
             $description = '';
             if ($key == 'content_iframe_whitelist') {
                 $description = 'iframe域名级白名单';
+            } elseif ($key == 'image_backend') {
+                $description = '图像处理后端：auto/gd_only/prefer_imagick';
             }
             $data = array(
                 'name' => $key,

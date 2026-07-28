@@ -2,6 +2,7 @@
 #    folder   #
 ###############
 /runtime
+tests/tmp_*
 
 ###############
 #  fixed file #

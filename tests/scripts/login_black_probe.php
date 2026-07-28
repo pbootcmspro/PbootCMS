@@ -12,6 +12,9 @@ declare(strict_types=1);
  * 输出 JSON: {"ok":bool,"result":mixed}
  */
 
+ini_set('display_errors', '0');
+error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
+
 $ip = $argv[1];
 $runPath = $argv[2];
 $lockTime = (int) $argv[3];

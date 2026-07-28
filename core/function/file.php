@@ -163,6 +163,42 @@ function path_delete($path, $delDir = false, $exFile = array())
     }
 }
 
+/**
+ * 清理运行时缓存目录。
+ * 常规模式仅删除白名单子目录，保留 runtime/image 缩略图等；
+ * 仅当 $delall 为真时才清空整个运行目录。
+ *
+ * @param string $runPath
+ *            运行目录（如 RUN_PATH）
+ * @param string $mode
+ *            all=含 cache；sys=仅系统缓存（complile/config/upgrade）
+ * @param mixed $delall
+ *            为真时 path_delete 整个 $runPath（含 image）
+ * @return bool
+ */
+function purge_runtime_cache($runPath, $mode = 'all', $delall = false)
+{
+    if ($delall) {
+        return path_delete($runPath);
+    }
+    // 白名单：明确不包含 image / session / data，避免误删缩略图与会话
+    $dirs = array(
+        'complile',
+        'config',
+        'upgrade'
+    );
+    if ($mode === 'all') {
+        array_unshift($dirs, 'cache');
+    }
+    $rs = true;
+    foreach ($dirs as $dir) {
+        if (! path_delete($runPath . '/' . $dir)) {
+            $rs = false; // 继续清理其余目录，避免短路导致残留
+        }
+    }
+    return $rs;
+}
+
 // 拷贝文件夹
 function dir_copy($src, $des, $son = 1)
 {
@@ -378,6 +414,14 @@ function gd_has_enough_memory($need_bytes)
     return $available > $need_bytes * 1.2;
 }
 
+// 释放 GD 图像资源（PHP 7.x resource）；PHP 8.0+ 由 GC 回收，无需 imagedestroy
+function gd_free_image($img)
+{
+    if (PHP_VERSION_ID < 80000 && is_resource($img)) {
+        imagedestroy($img);
+    }
+}
+
 // 统一加载图片资源，成功返回 array($img, true)，失败返回 array(false, $message)
 function gd_load_image($path, $type)
 {
@@ -466,6 +510,357 @@ function gd_webp_gd_available()
     return gd_supports_webp();
 }
 
+/**
+ * 清除图像后端能力探测缓存（测试或配置变更后可调用）
+ */
+function image_backend_clear_probe_cache()
+{
+    unset($GLOBALS['__imagick_probe_cache'], $GLOBALS['__image_capability_matrix_cache']);
+}
+
+/**
+ * Imagick 能力探测（请求内缓存；测试可通过 $GLOBALS['__test_imagick_probe'] 覆盖）
+ *
+ * @return array loaded, version, formats, delegates, animated_gif
+ */
+function imagick_probe()
+{
+    if (array_key_exists('__test_imagick_probe', $GLOBALS)) {
+        return $GLOBALS['__test_imagick_probe'];
+    }
+    if (isset($GLOBALS['__imagick_probe_cache']) && is_array($GLOBALS['__imagick_probe_cache'])) {
+        return $GLOBALS['__imagick_probe_cache'];
+    }
+
+    $result = array(
+        'loaded' => false,
+        'version' => '',
+        'formats' => array(
+            'AVIF' => false,
+            'HEIC' => false,
+            'GIF' => false,
+            'WEBP' => false,
+            'JPEG' => false,
+            'PNG' => false
+        ),
+        'delegates' => array(
+            'avif' => false,
+            'heic' => false,
+            'webp' => false
+        ),
+        'animated_gif' => false
+    );
+
+    if (! extension_loaded('imagick') || ! class_exists('Imagick', false)) {
+        $GLOBALS['__imagick_probe_cache'] = $result;
+        return $result;
+    }
+
+    $result['loaded'] = true;
+    try {
+        if (method_exists('Imagick', 'getVersion')) {
+            $ver = \Imagick::getVersion();
+            if (is_array($ver) && ! empty($ver['versionString'])) {
+                $result['version'] = (string) $ver['versionString'];
+            } elseif (is_string($ver)) {
+                $result['version'] = $ver;
+            }
+        }
+
+        $formats = array();
+        if (method_exists('Imagick', 'queryFormats')) {
+            $list = @\Imagick::queryFormats();
+            if (is_array($list)) {
+                foreach ($list as $f) {
+                    $formats[strtoupper((string) $f)] = true;
+                }
+            }
+        }
+        foreach (array_keys($result['formats']) as $name) {
+            $result['formats'][$name] = ! empty($formats[$name]);
+        }
+        // HEIC 在部分 ImageMagick 中登记为 HEIF
+        if (! $result['formats']['HEIC'] && ! empty($formats['HEIF'])) {
+            $result['formats']['HEIC'] = true;
+        }
+
+        $delegatesRaw = '';
+        if (method_exists('Imagick', 'queryConfigureOption')) {
+            $delegatesRaw = (string) @\Imagick::queryConfigureOption('DELEGATES');
+        }
+        $delegatesLower = strtolower($delegatesRaw);
+        $result['delegates']['avif'] = (strpos($delegatesLower, 'avif') !== false) || ! empty($result['formats']['AVIF']);
+        $result['delegates']['heic'] = (strpos($delegatesLower, 'heic') !== false)
+            || (strpos($delegatesLower, 'heif') !== false)
+            || ! empty($result['formats']['HEIC']);
+        $result['delegates']['webp'] = (strpos($delegatesLower, 'webp') !== false) || ! empty($result['formats']['WEBP']);
+
+        // 动图：具备 GIF 格式且支持多帧合并接口（本阶段仅探测，不接管处理）
+        $result['animated_gif'] = ! empty($result['formats']['GIF']) && method_exists('Imagick', 'coalesceImages');
+    } catch (\Throwable $e) {
+        // 探测失败时保留 loaded=true、其余能力为 false，避免中断后台页
+    }
+
+    $GLOBALS['__imagick_probe_cache'] = $result;
+    return $result;
+}
+
+/**
+ * GD + Imagick 能力矩阵（请求内缓存；测试可通过 $GLOBALS['__test_image_capability_matrix'] 覆盖）
+ *
+ * @return array
+ */
+function image_capability_matrix()
+{
+    if (array_key_exists('__test_image_capability_matrix', $GLOBALS)) {
+        return $GLOBALS['__test_image_capability_matrix'];
+    }
+    if (isset($GLOBALS['__image_capability_matrix_cache']) && is_array($GLOBALS['__image_capability_matrix_cache'])) {
+        return $GLOBALS['__image_capability_matrix_cache'];
+    }
+
+    $im = imagick_probe();
+    $gdAvif = function_exists('imagecreatefromavif') && function_exists('imageavif');
+    $matrix = array(
+        'gd' => array(
+            'loaded' => extension_loaded('gd'),
+            'jpeg' => gd_supports_jpeg(),
+            'webp' => gd_supports_webp(),
+            'freetype' => gd_supports_freetype(),
+            'gif' => function_exists('imagecreatefromgif'),
+            'avif' => $gdAvif,
+            'heic' => false,
+            'animated_gif' => false
+        ),
+        'imagick' => $im,
+        'avif' => array(
+            'gd' => $gdAvif,
+            'imagick' => ! empty($im['formats']['AVIF'])
+        ),
+        'heic' => array(
+            'gd' => false,
+            'imagick' => ! empty($im['formats']['HEIC'])
+        ),
+        'animated_gif' => array(
+            'gd' => false,
+            'imagick' => ! empty($im['animated_gif'])
+        ),
+        'webp' => array(
+            'gd' => gd_supports_webp(),
+            'imagick' => ! empty($im['formats']['WEBP'])
+        )
+    );
+
+    $GLOBALS['__image_capability_matrix_cache'] = $matrix;
+    return $matrix;
+}
+
+/**
+ * 读取 image_backend 配置，缺省 / 非法值视为 auto
+ *
+ * @return string auto|gd_only|prefer_imagick
+ */
+function image_backend_config()
+{
+    $mode = '';
+    if (class_exists('core\\basic\\Config', false)) {
+        $mode = (string) \core\basic\Config::get('image_backend');
+    }
+    $mode = strtolower(trim($mode));
+    if ($mode === '' || ! in_array($mode, array('auto', 'gd_only', 'prefer_imagick'), true)) {
+        return 'auto';
+    }
+    return $mode;
+}
+
+/**
+ * 高层窄分派意图：返回 gd|imagick（不改 gd_load_image 语义、不做多态）
+ *
+ * 本阶段 Imagick 仅探测不接管：auto 恒为 gd；prefer_imagick 在扩展可用时返回 imagick（供后续接缝），
+ * 现有缩放/水印/重编码路径仍只走 GD，零行为变化。gd_only 为逃生阀强制 GD。
+ * 注意：系统信息「实际处理」请用 image_backend_effective()，勿把本函数返回值当成已接管。
+ *
+ * @param string $op 操作名（resize/watermark/reencode/info 等，本阶段预留）
+ * @param mixed $type 图片类型（本阶段预留）
+ * @return string gd|imagick
+ */
+function image_backend_for($op, $type = null)
+{
+    if (array_key_exists('__test_image_backend_for', $GLOBALS)) {
+        return (string) $GLOBALS['__test_image_backend_for'];
+    }
+    // $op / $type 预留：后续按操作与格式能力矩阵择优 Imagick
+    unset($op, $type);
+
+    $mode = image_backend_config();
+    if ($mode === 'gd_only') {
+        return 'gd';
+    }
+    if ($mode === 'prefer_imagick') {
+        $probe = imagick_probe();
+        if (! empty($probe['loaded'])) {
+            return 'imagick';
+        }
+        return 'gd';
+    }
+    // auto：本阶段仍默认 GD（Imagick 不接管）
+    return 'gd';
+}
+
+/**
+ * 当前实际处理路径（供系统信息页展示）
+ *
+ * 与 image_backend_for() 的「分派意图」区分：本阶段缩放/水印/重编码仍只走 GD，
+ * 即便配置为 prefer_imagick 且扩展可用，此处仍返回 gd，避免「生效=imagick」误导。
+ * 后续某条路径真正接管后再按实际实现返回 imagick。
+ *
+ * @return string gd|imagick
+ */
+function image_backend_effective()
+{
+    // 本阶段无 Imagick 接管实现；gd_only / auto / prefer_imagick 的实际处理均为 GD
+    return 'gd';
+}
+
+/**
+ * 按 GIF 块边界扫描（不依赖 GD）
+ * 成功返回 array(frames, gce, trailer_pos, safe)，失败返回 false
+ */
+function gif_scan_bytes($data)
+{
+    $len = strlen($data);
+    if ($len < 14) {
+        return false;
+    }
+    $sig = substr($data, 0, 6);
+    if ($sig !== 'GIF87a' && $sig !== 'GIF89a') {
+        return false;
+    }
+
+    // Logical Screen Descriptor：签名后 7 字节；packed 决定是否有全局调色板
+    $packed = ord($data[10]);
+    $pos = 13;
+    if ($packed & 0x80) {
+        $gctSize = 3 * (1 << (($packed & 0x07) + 1));
+        $pos += $gctSize;
+        if ($pos > $len) {
+            return false;
+        }
+    }
+
+    $frames = 0;
+    $gce = 0;
+    $trailerPos = null;
+
+    while ($pos < $len) {
+        $block = ord($data[$pos]);
+        if ($block === 0x3B) {
+            // 块边界上的第一个 Trailer，其后即为附加数据（GIFAR 检测以此为准）
+            $trailerPos = $pos;
+            break;
+        }
+        if ($block === 0x21) {
+            // Extension：label + 若干 data sub-block，以 0 长度块结束
+            if ($pos + 2 > $len) {
+                return false;
+            }
+            $label = ord($data[$pos + 1]);
+            if ($label === 0xF9) {
+                $gce++;
+            }
+            $pos += 2;
+            while ($pos < $len) {
+                $subLen = ord($data[$pos]);
+                $pos++;
+                if ($subLen === 0) {
+                    break;
+                }
+                $pos += $subLen;
+                if ($pos > $len) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        if ($block === 0x2C) {
+            // Image Descriptor(10) + 可选局部调色板 + LZW 最小码长 + image data sub-blocks
+            if ($pos + 10 > $len) {
+                return false;
+            }
+            $frames++;
+            $localPacked = ord($data[$pos + 9]);
+            $pos += 10;
+            if ($localPacked & 0x80) {
+                $lctSize = 3 * (1 << (($localPacked & 0x07) + 1));
+                $pos += $lctSize;
+                if ($pos > $len) {
+                    return false;
+                }
+            }
+            if ($pos >= $len) {
+                return false;
+            }
+            $pos++; // LZW minimum code size
+            while ($pos < $len) {
+                $subLen = ord($data[$pos]);
+                $pos++;
+                if ($subLen === 0) {
+                    break;
+                }
+                $pos += $subLen;
+                if ($pos > $len) {
+                    return false;
+                }
+            }
+            continue;
+        }
+        return false;
+    }
+
+    if ($trailerPos === null || $frames < 1) {
+        return false;
+    }
+    // 允许极少填充；拒绝 trailer 后大块附加数据
+    $after = $len - $trailerPos - 1;
+    return array(
+        'frames' => $frames,
+        'gce' => $gce,
+        'trailer_pos' => $trailerPos,
+        'safe' => ($after <= 16)
+    );
+}
+
+// 读取并扫描 GIF；非 GIF / 无法解析时返回 false
+function gif_scan_file($path)
+{
+    if (! is_file($path) || ! is_readable($path)) {
+        return false;
+    }
+    $info = @getimagesize($path);
+    if (! $info || (int) $info[2] !== IMAGETYPE_GIF) {
+        return false;
+    }
+    $data = @file_get_contents($path);
+    if ($data === false) {
+        return false;
+    }
+    return gif_scan_bytes($data);
+}
+
+// 是否为动画 GIF：块边界上 Image Descriptor 数 > 1（避免 LZW/注释里的伪 GCE 误判）
+function is_animated_gif($path)
+{
+    $scan = gif_scan_file($path);
+    return $scan !== false && $scan['frames'] > 1;
+}
+
+// 轻量校验 GIF 结构（块遍历定位真正 trailer，补偿跳过重编码时的剥离能力）
+function gif_structure_is_safe($path)
+{
+    $scan = gif_scan_file($path);
+    return $scan !== false && ! empty($scan['safe']);
+}
+
 // 当前环境是否可用 GD 对该图片做重编码/缩放/水印
 function gd_can_post_process_image($path)
 {
@@ -478,6 +873,10 @@ function gd_can_post_process_image($path)
     }
     if ($info[2] == image_type_webp() && ! gd_webp_gd_available()) {
         return array(false, '当前环境不支持 WebP 缩放/水印，已保留原图');
+    }
+    // GD 不支持多帧 GIF，动画必须跳过重编码/缩放/水印以免压成静态图
+    if ((int) $info[2] === IMAGETYPE_GIF && is_animated_gif($path)) {
+        return array(false, '动画GIF已保留原图（跳过缩放/水印）');
     }
     return array(true, '');
 }
@@ -587,6 +986,10 @@ function reencode_image($path, $img_quality = 90)
     if ($type == image_type_webp() && ! gd_webp_gd_available()) {
         return true;
     }
+    // 动画 GIF：GD 只能读写首帧，跳过重编码以保留动图；结构不合法则拒绝
+    if ((int) $type === IMAGETYPE_GIF && is_animated_gif($path)) {
+        return gif_structure_is_safe($path) ? true : 'GIF文件结构不合法！';
+    }
     $need = gd_estimate_image_memory($width, $height, 2);
     if (! gd_has_enough_memory($need)) {
         return '图片尺寸过大，服务器内存不足，无法处理图片！';
@@ -601,9 +1004,7 @@ function reencode_image($path, $img_quality = 90)
         imagesavealpha($img, true);
     }
     $ok = gd_save_image($img, $path, $type, $img_quality);
-    if (PHP_VERSION_ID < 80000) {
-        imagedestroy($img);
-    }
+    gd_free_image($img);
     return $ok ? true : '图片重编码保存失败！';
 }
 
@@ -613,6 +1014,10 @@ function upload_post_process_image($abs_path, $watermark = null, $graceful = fal
     unset($GLOBALS['_upload_post_process_notice']);
     if (! is_file($abs_path) || ! is_image($abs_path)) {
         return true;
+    }
+    // 动画 GIF 跳过 GD 前先做结构校验（跳过重编码会失去剥离附加数据能力）
+    if (is_animated_gif($abs_path) && ! gif_structure_is_safe($abs_path)) {
+        return 'GIF文件结构不合法！';
     }
     list($can_process, $skip_msg) = gd_can_post_process_image($abs_path);
     if (! $can_process) {
@@ -802,6 +1207,11 @@ function handle_upload($file, $temp, $array_ext_allow, $max_width, $max_height, 
     
     // 图片：重编码剥离伪装内容，再缩放/水印
     if (in_array($file_ext, $image, true)) {
+        // 动画 GIF：校验结构后跳过 GD，避免压平为静态图
+        if ($file_ext === 'gif' && is_animated_gif($file_path) && ! gif_structure_is_safe($file_path)) {
+            @unlink($file_path);
+            return 'GIF文件结构不合法！';
+        }
         list($can_process, $skip_msg) = gd_can_post_process_image($file_path);
         if (! $can_process) {
             return $save_file;
@@ -852,6 +1262,17 @@ function resize_img($src_image, $out_image = null, $max_width = null, $max_heigh
         return '上传文件不是有效的图片！';
     }
     list ($width, $height, $type, $attr) = $size_info;
+
+    // 动画 GIF：GD 缩放会丢帧，整文件拷贝保留动图
+    if ((int) $type === IMAGETYPE_GIF && is_animated_gif($src_image)) {
+        check_dir(dirname($out_image), true);
+        if ($src_image != $out_image) {
+            if (! copy($src_image, $out_image)) {
+                return '缩放图片时拷贝到目的地址失败！';
+            }
+        }
+        return true;
+    }
     
     check_dir(dirname($out_image), true);
     
@@ -890,7 +1311,7 @@ function resize_img($src_image, $out_image = null, $max_width = null, $max_heigh
 
         $new_img = @imagecreatetruecolor($new_width, $new_height);
         if (! $new_img) {
-            imagedestroy($img);
+            gd_free_image($img);
             return '创建缩放画布失败！';
         }
         
@@ -898,17 +1319,17 @@ function resize_img($src_image, $out_image = null, $max_width = null, $max_heigh
             gd_prepare_canvas_transparency($new_img, $type, $img);
         }
         if (! @imagecopyresampled($new_img, $img, 0, 0, 0, 0, $new_width, $new_height, $width, $height)) {
-            imagedestroy($img);
-            imagedestroy($new_img);
+            gd_free_image($img);
+            gd_free_image($new_img);
             return '缩放图片失败！';
         }
         if (! gd_save_image($new_img, $out_image, $type, $img_quality)) {
-            imagedestroy($new_img);
-            imagedestroy($img);
+            gd_free_image($new_img);
+            gd_free_image($img);
             return '缩放图片保存失败！';
         }
-        imagedestroy($new_img);
-        imagedestroy($img);
+        gd_free_image($new_img);
+        gd_free_image($img);
     }
     return true;
 }
@@ -930,6 +1351,17 @@ function cut_img($src_image, $out_image = null, $new_width = null, $new_height =
     list ($width, $height, $type) = $size_info;
     if ($width < 1 || $height < 1) {
         return '上传文件不是有效的图片！';
+    }
+
+    // 动画 GIF：GD 裁剪会丢帧，整文件拷贝保留动图
+    if ((int) $type === IMAGETYPE_GIF && is_animated_gif($src_image)) {
+        check_dir(dirname($out_image), true);
+        if ($src_image != $out_image) {
+            if (! copy($src_image, $out_image)) {
+                return '裁剪图片时拷贝到目的地址失败！';
+            }
+        }
+        return true;
     }
 
     // 不限定则按另一边等比例缩放
@@ -969,7 +1401,7 @@ function cut_img($src_image, $out_image = null, $new_width = null, $new_height =
 
     $new_img = @imagecreatetruecolor($new_width, $new_height);
     if (! $new_img) {
-        imagedestroy($img);
+        gd_free_image($img);
         return '创建裁剪画布失败！';
     }
 
@@ -980,19 +1412,19 @@ function cut_img($src_image, $out_image = null, $new_width = null, $new_height =
 
     // 高质量重采样 + 居中源区域取样
     if (! @imagecopyresampled($new_img, $img, 0, 0, $src_x, $src_y, $new_width, $new_height, $cut_width, $cut_height)) {
-        imagedestroy($img);
-        imagedestroy($new_img);
+        gd_free_image($img);
+        gd_free_image($new_img);
         return '裁剪图片失败！';
     }
 
     check_dir(dirname($out_image), true);
     if (! gd_save_image($new_img, $out_image, $type, $img_quality)) {
-        imagedestroy($new_img);
-        imagedestroy($img);
+        gd_free_image($new_img);
+        gd_free_image($img);
         return '裁剪图片保存失败！';
     }
-    imagedestroy($new_img);
-    imagedestroy($img);
+    gd_free_image($new_img);
+    gd_free_image($img);
     return true;
 }
 
@@ -1023,6 +1455,17 @@ function watermark_img($src_image, $out_image = null, $position = null, $waterma
         return '原图不是有效图片，无法添加水印！';
     }
     list ($width1, $height1, $type1) = $size;
+
+    // 动画 GIF：加水印会经 GD 压成静态图，跳过以保留动图
+    if ((int) $type1 === IMAGETYPE_GIF && is_animated_gif($src_image)) {
+        if ($src_image != $out_image) {
+            check_dir(dirname($out_image), true);
+            if (! copy($src_image, $out_image)) {
+                return '水印处理时拷贝到目的地址失败！';
+            }
+        }
+        return true;
+    }
     
     $need = gd_estimate_image_memory($width1, $height1, 4);
     if (! gd_has_enough_memory($need)) {
@@ -1041,23 +1484,23 @@ function watermark_img($src_image, $out_image = null, $position = null, $waterma
     if ($watermark_pic) {
         $wm_path = upload_resolve_public_path($watermark_pic);
         if (! is_file($wm_path)) {
-            imagedestroy($img1);
+            gd_free_image($img1);
             return '水印图片不存在！';
         }
         $wm_size = @getimagesize($wm_path);
         if (! $wm_size || empty($wm_size[2])) {
-            imagedestroy($img1);
+            gd_free_image($img1);
             return '水印图片无效！';
         }
         list ($width2, $height2, $type2) = $wm_size;
         list($img2, $err) = gd_load_image($wm_path, $type2);
         if ($img2 === false) {
-            imagedestroy($img1);
+            gd_free_image($img1);
             return $err;
         }
     } else {
         if (! gd_supports_freetype()) {
-            imagedestroy($img1);
+            gd_free_image($img1);
             return '服务器未启用FreeType，无法使用文字水印！';
         }
         if (! $watermark_text_size) {
@@ -1069,12 +1512,12 @@ function watermark_img($src_image, $out_image = null, $position = null, $waterma
         $colors = explode(',', $watermark_text_color);
         $font_rel = Config::get('watermark_text_font');
         if (! $font_rel) {
-            imagedestroy($img1);
+            gd_free_image($img1);
             return '水印字体文件未配置！';
         }
         $font = upload_resolve_public_path($font_rel);
         if (! is_file($font)) {
-            imagedestroy($img1);
+            gd_free_image($img1);
             return '水印字体文件不存在！';
         }
         
@@ -1083,7 +1526,7 @@ function watermark_img($src_image, $out_image = null, $position = null, $waterma
         $height2 = $fontsize + 10;
         $img2 = @imagecreatetruecolor($width2, $height2);
         if (! $img2) {
-            imagedestroy($img1);
+            gd_free_image($img1);
             return '创建水印画布失败！';
         }
         $color = imagecolorallocate($img2, 255, 255, 255);
@@ -1091,8 +1534,8 @@ function watermark_img($src_image, $out_image = null, $position = null, $waterma
         imagecolortransparent($img2, $color);
         $textcolor = imagecolorallocate($img2, (int) $colors[0], (int) ($colors[1] ?? 0), (int) ($colors[2] ?? 0));
         if (@imagettftext($img2, $fontsize, 0, 5, $fontsize + 5, $textcolor, $font, $watermark_text) === false) {
-            imagedestroy($img1);
-            imagedestroy($img2);
+            gd_free_image($img1);
+            gd_free_image($img2);
             return '文字水印渲染失败！';
         }
     }
@@ -1139,8 +1582,8 @@ function watermark_img($src_image, $out_image = null, $position = null, $waterma
     
     $out = @imagecreatetruecolor($width1, $height1);
     if (! $out) {
-        imagedestroy($img1);
-        imagedestroy($img2);
+        gd_free_image($img1);
+        gd_free_image($img2);
         return '创建输出画布失败！';
     }
     if ($type1 == IMAGETYPE_GIF) {
@@ -1154,18 +1597,18 @@ function watermark_img($src_image, $out_image = null, $position = null, $waterma
         imagefill($out, 0, 0, $transparent);
     }
     if (! @imagecopy($out, $img1, 0, 0, 0, 0, $width1, $height1)) {
-        imagedestroy($img1);
-        imagedestroy($img2);
-        imagedestroy($out);
+        gd_free_image($img1);
+        gd_free_image($img2);
+        gd_free_image($out);
         return '合成原图失败！';
     }
     if ($type1 == IMAGETYPE_PNG || $type1 == image_type_webp()) {
         imagealphablending($out, true);
     }
     if (! @imagecopyresized($out, $img2, $x, max(0, $y - 10), 0, 0, $new_width, $new_height, $width2, $height2)) {
-        imagedestroy($img1);
-        imagedestroy($img2);
-        imagedestroy($out);
+        gd_free_image($img1);
+        gd_free_image($img2);
+        gd_free_image($out);
         return '叠加水印失败！';
     }
 
@@ -1182,15 +1625,15 @@ function watermark_img($src_image, $out_image = null, $position = null, $waterma
     check_dir(dirname($out_image), true);
 
     if (! gd_save_image($out, $out_image, $type1, 90)) {
-        imagedestroy($img1);
-        imagedestroy($img2);
-        imagedestroy($out);
+        gd_free_image($img1);
+        gd_free_image($img2);
+        gd_free_image($out);
         return '保存水印图片失败！';
     }
 
-    imagedestroy($img1);
-    imagedestroy($img2);
-    imagedestroy($out);
+    gd_free_image($img1);
+    gd_free_image($img2);
+    gd_free_image($out);
     return true;
 }
 

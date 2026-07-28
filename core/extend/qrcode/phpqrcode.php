@@ -936,7 +936,15 @@
     define('QR_IMAGE', true);
 
     class QRimage {
-    
+
+        // PHP 7.x 需 imagedestroy；PHP 8.0+ 由 GC 回收，避免 8.5 废弃告警
+        private static function freeImage($image)
+        {
+            if (PHP_VERSION_ID < 80000 && is_resource($image)) {
+                ImageDestroy($image);
+            }
+        }
+
         //----------------------------------------------------------------------
         public static function png($frame, $filename = false, $pixelPerPoint = 4, $outerFrame = 4,$saveandprint=FALSE) 
         {
@@ -955,7 +963,7 @@
                 }
             }
             
-            ImageDestroy($image);
+            self::freeImage($image);
         }
     
         //----------------------------------------------------------------------
@@ -970,7 +978,7 @@
                 ImageJpeg($image, $filename, $q);            
             }
             
-            ImageDestroy($image);
+            self::freeImage($image);
         }
     
         //----------------------------------------------------------------------
@@ -999,7 +1007,7 @@
             
             $target_image =ImageCreate($imgW * $pixelPerPoint, $imgH * $pixelPerPoint);
             ImageCopyResized($target_image, $base_image, 0, 0, 0, 0, $imgW * $pixelPerPoint, $imgH * $pixelPerPoint, $imgW, $imgH);
-            ImageDestroy($base_image);
+            self::freeImage($base_image);
             
             return $target_image;
         }

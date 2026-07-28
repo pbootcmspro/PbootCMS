@@ -11,7 +11,7 @@
 // 绘制二维码图片
 function draw_qcode($string)
 {
-    require dirname(__FILE__) . '/extend/qrcode/phpqrcode.php'; // 引入类文件
+    require_once dirname(__FILE__) . '/extend/qrcode/phpqrcode.php'; // 引入类文件
     QRcode::png($string, false, 'M', 6, 1); // 生成二维码图片
 }
 

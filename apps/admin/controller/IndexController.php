@@ -263,14 +263,10 @@ class IndexController extends Controller
         }
     }
 
-    // 清理缓存
+    // 清理缓存（常规保留 runtime/image 缩略图；仅 delall 全量清理）
     public function clearCache()
     {
-        if (get('delall')) {
-            $rs = path_delete(RUN_PATH);
-        } else {
-            $rs = (path_delete(RUN_PATH . '/cache') && path_delete(RUN_PATH . '/complile') && path_delete(RUN_PATH . '/config') && path_delete(RUN_PATH . '/upgrade'));
-        }
+        $rs = purge_runtime_cache(RUN_PATH, 'all', get('delall'));
         cache_config(); // 清理缓存后立即生成新的配置
         if ($rs) {
             if (extension_loaded('Zend OPcache')) {
@@ -283,15 +279,11 @@ class IndexController extends Controller
             alert_back('清理缓存失败！', 0);
         }
     }
-	
-	// 清理系统缓存
+
+    // 清理系统缓存（常规保留 runtime/image 与 cache；仅 delall 全量清理）
     public function clearOnlySysCache()
     {
-        if (get('delall')) {
-            $rs = path_delete(RUN_PATH);
-        } else {
-            $rs = (path_delete(RUN_PATH . '/complile') && path_delete(RUN_PATH . '/config') && path_delete(RUN_PATH . '/upgrade'));
-        }
+        $rs = purge_runtime_cache(RUN_PATH, 'sys', get('delall'));
         cache_config(); // 清理缓存后立即生成新的配置
         if ($rs) {
             if (extension_loaded('Zend OPcache')) {

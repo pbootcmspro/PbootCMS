@@ -233,7 +233,7 @@ class UpgradeController extends Controller
                 // 清理缓存
                 path_delete(RUN_PATH . '/upgrade', true);
                 path_delete(RUN_PATH . '/cache');
-                path_delete(RUN_PATH . '/complite');
+                path_delete(RUN_PATH . '/complile');
                 path_delete(RUN_PATH . '/config');
                 
                 $this->log("系统更新成功!");

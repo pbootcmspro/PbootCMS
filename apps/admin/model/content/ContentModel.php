@@ -347,13 +347,31 @@ class ContentModel extends Model
 
     public function getImage()
     {
-        $list = parent::table('ay_content')->limit(2000)->column('ico,pics,content');
-        foreach ($list as &$value){
-            preg_match_all('/<img\s+.*?src=\s?[\'|\"](.*?(\.gif|\.jpg|\.jpeg|\.png|\.webp))[\'|\"].*?[\/]?>/i', decode_string($value['content']), $match);
-            $value['content_img'] = $match[1];
-            $value['pics'] = explode(',',$value['pics']);
-            unset($value['content']);
-        }
+        $list = array();
+        $lastId = 0;
+        $pageSize = 500;
+        $pattern = '/<img\s+.*?src=\s?[\'|\"](.*?(\.gif|\.jpg|\.jpeg|\.png|\.webp))[\'|\"].*?[\/]?>/i';
+
+        do {
+            $rows = parent::table('ay_content')->field('id,ico,pics,content')
+                ->where("id>$lastId")
+                ->order('id ASC')
+                ->limit($pageSize)
+                ->select(1);
+            if (!$rows) {
+                break;
+            }
+            foreach ($rows as $value) {
+                $lastId = (int) $value['id'];
+                preg_match_all($pattern, decode_string($value['content']), $match);
+                $list[] = array(
+                    'ico' => $value['ico'],
+                    'pics' => explode(',', (string) $value['pics']),
+                    'content_img' => isset($match[1]) ? $match[1] : array()
+                );
+            }
+        } while (count($rows) === $pageSize);
+
         return $list;
     }
 }

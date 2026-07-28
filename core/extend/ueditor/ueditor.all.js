@@ -771,6 +771,26 @@ var utils = (UE.utils = {
   },
 
   /**
+     * 转义 URL 属性中的 html 特殊字符（保留路径可用字符）
+     * @method unhtmlForUrl
+     * @param { String } str 需要转义的字符串
+     * @return { String } 转义后的字符串
+     */
+  unhtmlForUrl: function(str, reg) {
+    return str
+      ? str.replace(reg || /[<">']/g, function(a) {
+          return {
+            "<": "&lt;",
+            "&": "&amp;",
+            '"': "&quot;",
+            ">": "&gt;",
+            "'": "&#39;"
+          }[a];
+        })
+      : "";
+  },
+
+  /**
      * 将str中的转义字符还原成html字符
      * @see UE.utils.unhtml(String);
      * @method html
@@ -12173,6 +12193,23 @@ UE.commands["insertimage"] = {
     if (!opt.length) {
       return;
     }
+    function sanitizeInsertImageItem(ci) {
+      utils.each("width,height,border,hspace,vspace".split(","), function(key) {
+        if (ci[key]) {
+          ci[key] = parseInt(ci[key], 10) || 0;
+        }
+      });
+      utils.each("src,_src".split(","), function(key) {
+        if (ci[key]) {
+          ci[key] = utils.unhtmlForUrl(ci[key]);
+        }
+      });
+      utils.each("title,alt".split(","), function(key) {
+        if (ci[key]) {
+          ci[key] = utils.unhtml(ci[key]);
+        }
+      });
+    }
     var me = this,
       range = me.selection.getRange(),
       img = range.getClosedNode();
@@ -12191,6 +12228,7 @@ UE.commands["insertimage"] = {
       var first = opt.shift();
       var floatStyle = first["floatStyle"];
       delete first["floatStyle"];
+      sanitizeInsertImageItem(first);
       ////                img.style.border = (first.border||0) +"px solid #000";
       ////                img.style.margin = (first.margin||0) +"px";
       //                img.style.cssText += ';margin:' + (first.margin||0) +"px;" + 'border:' + (first.border||0) +"px solid #000";
@@ -12206,6 +12244,7 @@ UE.commands["insertimage"] = {
         ci;
       ci = opt[0];
       if (opt.length == 1) {
+        sanitizeInsertImageItem(ci);
         str =
           '<img src="' +
           ci.src +
@@ -12232,6 +12271,7 @@ UE.commands["insertimage"] = {
         html.push(str);
       } else {
         for (var i = 0; (ci = opt[i++]); ) {
+          sanitizeInsertImageItem(ci);
           str =
             "<p " +
             (ci["floatStyle"] == "center"
@@ -12250,6 +12290,7 @@ UE.commands["insertimage"] = {
             (ci.border || "") +
             '" ' +
             (ci.title ? ' title="' + ci.title + '"' : "") +
+            (ci.alt && ci.alt != "" ? ' alt="' + ci.alt + '"' : "") +
             " /></p>";
           html.push(str);
         }

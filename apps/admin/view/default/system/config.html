@@ -420,6 +420,15 @@
 	                </div>
 
 	                <div class="layui-form-item">
+	                     <label class="layui-form-label">图像处理后端</label>
+	                     <div class="layui-input-block">
+	                     	<input type="radio" name="image_backend" value="auto" {if(@[$configs.image_backend.value]==''||@[$configs.image_backend.value]=='auto')} checked="checked" {/if} title="自动（实际仍走GD）">
+	                     	<input type="radio" name="image_backend" value="gd_only" {if(@[$configs.image_backend.value]=='gd_only')} checked="checked" {/if} title="仅GD（逃生阀）">
+	                     	<input type="radio" name="image_backend" value="prefer_imagick" {if(@[$configs.image_backend.value]=='prefer_imagick')} checked="checked" {/if} title="优先Imagick（仅记录意图，实际仍走GD）">
+	                     </div>
+	                </div>
+
+	                <div class="layui-form-item">
 						 <div class="layui-input-block">
 						    <button class="layui-btn" lay-submit name="submit" value="watermark">立即提交</button>
 						    <button type="reset" class="layui-btn layui-btn-primary">重置</button>

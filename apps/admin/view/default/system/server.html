@@ -81,6 +81,27 @@
 						     <th>GD库支持</th>
 						     <td>{$server->gd}</td>
 						</tr>
+
+						<tr>
+						     <th>图像后端配置</th>
+						     <td>配置：{$server->image_backend_config}；实际处理：{$server->image_backend_effective}（本阶段缩放/水印仍走 GD）</td>
+						</tr>
+
+						<tr>
+						     <th>Imagick支持</th>
+						     <td>{$server->imagick}（{$server->imagick_version}）</td>
+						</tr>
+
+						<tr>
+						     <th>图像能力矩阵</th>
+						     <td>
+						          （仅探测，不代表已接管处理）
+						          AVIF：{$server->image_cap_avif}；
+						          HEIC：{$server->image_cap_heic}；
+						          动图GIF：{$server->image_cap_animated_gif}；
+						          WebP：{$server->image_cap_webp}；
+						     </td>
+						</tr>
 						   
 						<tr>
 						    <th>Curl支持</th>

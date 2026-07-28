@@ -16,20 +16,13 @@ exit(TestAssert::runSuite(function () {
         echo "SKIP: GD PNG unavailable\n";
         return;
     }
-    error_reporting(error_reporting() & ~E_DEPRECATED);
-
     $tmpdir = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'tmp_watermark_' . mt_rand(10000, 99999);
     if (! mkdir($tmpdir) && ! is_dir($tmpdir)) {
         echo "SKIP: cannot create temp dir\n";
         return;
     }
 
-    $destroy = function ($image) {
-        if (PHP_VERSION_ID < 80000) {
-            imagedestroy($image);
-        }
-    };
-    $createSource = function (string $path, string $format) use ($destroy): bool {
+    $createSource = function (string $path, string $format): bool {
         $image = imagecreatetruecolor(80, 50);
         $color = imagecolorallocate($image, 200, 40, 40);
         imagefill($image, 0, 0, $color);
@@ -40,10 +33,10 @@ exit(TestAssert::runSuite(function () {
         } else {
             $result = imagejpeg($image, $path, 100);
         }
-        $destroy($image);
+        gd_free_image($image);
         return $result;
     };
-    $assertBlendedPixel = function (string $path, string $format) use ($destroy) {
+    $assertBlendedPixel = function (string $path, string $format) {
         if ($format === 'png') {
             $image = imagecreatefrompng($path);
         } elseif ($format === 'webp') {
@@ -51,8 +44,12 @@ exit(TestAssert::runSuite(function () {
         } else {
             $image = imagecreatefromjpeg($path);
         }
+        TestAssert::true($image !== false, strtoupper($format) . ' output image readable');
+        if ($image === false) {
+            return;
+        }
         $rgba = imagecolorsforindex($image, imagecolorat($image, 19, 9));
-        $destroy($image);
+        gd_free_image($image);
 
         TestAssert::true($rgba['red'] > 70, strtoupper($format) . ' watermark keeps base-image red channel');
         TestAssert::true($rgba['blue'] > 70, strtoupper($format) . ' watermark blends blue channel');
@@ -65,7 +62,7 @@ exit(TestAssert::runSuite(function () {
     $blue = imagecolorallocatealpha($watermarkImage, 40, 40, 200, 64);
     imagefill($watermarkImage, 0, 0, $blue);
     imagepng($watermarkImage, $watermark);
-    $destroy($watermarkImage);
+    gd_free_image($watermarkImage);
 
     $config = \core\basic\Config::get();
     $config['watermark_open'] = 1;
@@ -77,7 +74,11 @@ exit(TestAssert::runSuite(function () {
     $watermarkPath = '/tests/' . basename($tmpdir) . '/watermark.png';
 
     $formats = array('png');
-    if (gd_supports_webp()) {
+    if (PHP_VERSION_ID >= 70100
+        && defined('IMAGETYPE_WEBP')
+        && function_exists('imagewebp')
+        && function_exists('imagecreatefromwebp')
+        && gd_supports_webp()) {
         $formats[] = 'webp';
     } else {
         echo "SKIP: GD WebP unavailable\n";

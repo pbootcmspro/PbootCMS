@@ -78,9 +78,11 @@
             dataType: 'json',
             success: function (response) {
                 if(response.code === 1){
-                    layer.msg('清理成功',{time: 1000},function (){
+                    layer.msg(response.data || '清理成功',{time: 1000},function (){
                         location.reload();
                     });
+                } else {
+                    layer.msg(response.data || '清理失败', {icon: 5});
                 }
             }
         });

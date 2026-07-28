@@ -1341,10 +1341,13 @@ class ParserController extends Controller
                         }
                     }
 
-                    // 扩展字段数据筛选
+                    // 扩展字段数据筛选（多选为逗号分隔，按集合边界匹配）
                     foreach ($_GET as $key => $value) {
                         if (preg_match('/^ext_[\w\-]+$/', $key)) { // 其他字段不加入
-                            $where3[$key] = get($key, 'vars');
+                            $ext_val = get($key, 'vars');
+                            if ($ext_val !== null && $ext_val !== '' && ($clause = build_extfield_where($key, $ext_val, $fuzzy))) {
+                                $where3[] = $clause;
+                            }
                         }
                     }
                 }

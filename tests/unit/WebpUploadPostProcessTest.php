@@ -25,9 +25,7 @@ return TestAssert::runSuite(function () {
                 return false;
             }
             $ok = @imagewebp($img, $path);
-            if (PHP_VERSION_ID < 80000) {
-                imagedestroy($img);
-            }
+            gd_free_image($img);
             return $ok && is_file($path);
         }
         $webpBytes = base64_decode('UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAQAcJaQAA3AA/v56QAAA');
@@ -100,9 +98,7 @@ return TestAssert::runSuite(function () {
         $pngPath = $tmpdir . DIRECTORY_SEPARATOR . 'sample.png';
         $img = imagecreatetruecolor(2, 2);
         imagepng($img, $pngPath);
-        if (PHP_VERSION_ID < 80000) {
-            imagedestroy($img);
-        }
+        gd_free_image($img);
 
         $GLOBALS['__test_gd_supports_webp'] = false;
         list($canPng, $msgPng) = gd_can_post_process_image($pngPath);

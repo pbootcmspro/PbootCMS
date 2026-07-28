@@ -35,3 +35,4 @@ php tests/unit/ValidateIfConditionTest.php
 - [Issue #28](https://github.com/pbootcmspro/PbootCMS/issues/28) — `{pboot:if}` 编码绕过
 - 审计 #6 — `AreaController` 区域编码与域名输入过滤（`AreaInputFilterTest` / `AreaControllerFilterContractTest`）
 - 审计 #8 — 内容/栏目/站点标题与描述输入清洗（`TitleDescInputFilterTest` / `TitleDescControllerFilterContractTest`）
+- 审计 #11 — 常规清缓存保留 `runtime/image`（`ClearCachePreserveImageTest` / `ClearCachePreserveImageContractTest`）

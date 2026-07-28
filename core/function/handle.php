@@ -449,14 +449,32 @@ function parse_fuzzy_param($value, $default = null)
 // 构建单标签 SQL 条件（逗号分隔标签集合语义）
 function build_tags_where($value, $fuzzy = false)
 {
-    $value = escape_string(trim($value));
+    return build_csv_field_where('a.tags', $value, $fuzzy);
+}
+
+// 构建扩展字段筛选 SQL（多选存为逗号分隔，精确模式按集合边界匹配，避免「红色」匹配不到「红色,橙色」）
+function build_extfield_where($field, $value, $fuzzy = false)
+{
+    if (! is_string($field) || ! preg_match('/^ext_[\w\-]+$/', $field)) {
+        return '';
+    }
+    return build_csv_field_where($field, $value, $fuzzy);
+}
+
+// 构建逗号分隔字段的 SQL 条件（精确=集合包含；模糊=子串包含）
+function build_csv_field_where($column, $value, $fuzzy = false)
+{
+    if (! is_string($column) || ! preg_match('/^[a-zA-Z_][\w\-]*(?:\.[a-zA-Z_][\w\-]*)?$/', $column)) {
+        return '';
+    }
+    $value = escape_string(trim((string) $value));
     if (! $value) {
         return '';
     }
     if ($fuzzy) {
-        return "a.tags like '%" . $value . "%'";
+        return $column . " like '%" . $value . "%'";
     }
-    return "(a.tags='" . $value . "' OR a.tags like '" . $value . ",%' OR a.tags like '%," . $value . "' OR a.tags like '%," . $value . ",%')";
+    return "(" . $column . "='" . $value . "' OR " . $column . " like '" . $value . ",%' OR " . $column . " like '%," . $value . "' OR " . $column . " like '%," . $value . ",%')";
 }
 
 // 字符反转义html实体及斜杠，支持字符串、数组、对象
@@ -609,9 +627,8 @@ function ueditor_holder_html($html)
     return $html;
 }
 
-// 处理富文本中的 iframe：仅放行 content_iframe_whitelist 配置的可信域名，
-// 命中后仅重建 src/width/height/title/allow(白名单 token)/loading/allowfullscreen 等安全属性，并强制
-// sandbox 与非抑制 Referer 的 referrerpolicy；未配置白名单或未命中的 iframe 整段移除（含闭标签与内部 fallback）
+// 处理富文本中的 iframe：放行同源（本站）与 content_iframe_whitelist 域名，重建为仅含安全属性
+// 的标签并强制 sandbox / referrerpolicy；同源 PDF 免 sandbox；其余整段移除
 function filter_html_iframes($html)
 {
     if (stripos($html, '<iframe') === false && stripos($html, '</iframe') === false) {
@@ -630,14 +647,9 @@ function filter_html_iframes($html)
         }
     }
 
-    // 未配置白名单：保持原有行为，移除所有 iframe（开标签、闭标签及成对内容）
-    if (! $whitelist) {
-        $html = preg_replace('/<iframe\b[^>]*>.*?<\/iframe>/is', '', $html);
-        $html = preg_replace('/<\/?iframe\b[^>]*>/i', '', $html);
-        return $html;
-    }
+    // 白名单为空也不能删掉全部：同源 iframe 仍需放行，统一交由 filter_iframe_rebuild 判定
 
-    // 命中白名单的 iframe 先重建为安全标签并存入占位符，避免后续清理误伤重建结果
+    // 命中白名单或同源的 iframe 先重建为安全标签并存入占位符，避免后续清理误伤重建结果
     $placeholders = array();
     $html = preg_replace_callback('/<iframe\b([^>]*)>(.*?)<\/iframe>/is', function ($m) use ($whitelist, &$placeholders) {
         $safe = filter_iframe_rebuild($m[1], $whitelist);
@@ -910,7 +922,14 @@ function filter_iframe_sanitize_src($src)
     }
 
     $host = parse_url($parse_src, PHP_URL_HOST);
-    if (! $host || strpos($host, '@') !== false) {
+    if (! $host) {
+        // 根相对路径（/path，无协议无主机）属本站同源资源，放行；危险 scheme 已在上方拦截
+        if ($scheme === null && isset($src[0]) && $src[0] === '/' && strpos($src, '//') !== 0) {
+            return $src;
+        }
+        return '';
+    }
+    if (strpos($host, '@') !== false) {
         return '';
     }
 
@@ -920,6 +939,57 @@ function filter_iframe_sanitize_src($src)
     }
 
     return $src;
+}
+
+// 判断 iframe src 是否与当前站点同源（完整 origin：scheme + host + 端口，三者一致才同源）
+// 根相对路径（/path，非 //）恒视为同源；协议相对 URL 按当前请求 scheme 归一
+function filter_iframe_is_same_origin($src)
+{
+    if (! is_string($src) || $src === '') {
+        return false;
+    }
+    if ($src[0] === '/' && strpos($src, '//') !== 0) {
+        return true;
+    }
+    $self = filter_iframe_request_origin();
+    if ($self === null) {
+        return false;
+    }
+    $target = filter_iframe_src_origin($src, $self['scheme']);
+    if ($target === null) {
+        return false;
+    }
+    return $target['scheme'] === $self['scheme'] && $target['host'] === $self['host'] && $target['port'] === $self['port'];
+}
+
+// 当前请求自身 origin：scheme 依 is_https()，host / 端口取自 HTTP_HOST（端口缺省按 scheme 归一）
+function filter_iframe_request_origin()
+{
+    if (empty($_SERVER['HTTP_HOST'])) {
+        return null;
+    }
+    $host = filter_iframe_normalize_host_literal($_SERVER['HTTP_HOST']);
+    if ($host === '') {
+        return null;
+    }
+    $scheme = is_https() ? 'https' : 'http';
+    $port = preg_match('/:(\d+)$/', $_SERVER['HTTP_HOST'], $m) ? (int) $m[1] : ($scheme === 'https' ? 443 : 80);
+    return array('scheme' => $scheme, 'host' => $host, 'port' => $port);
+}
+
+// 解析 iframe src 的 origin；协议相对 URL 用请求 scheme 补全；解析不出 host 返回 null
+function filter_iframe_src_origin($src, $req_scheme)
+{
+    $normalized = (strpos($src, '//') === 0) ? $req_scheme . ':' . $src : $src;
+    $host = parse_url($normalized, PHP_URL_HOST);
+    if (! $host) {
+        return null;
+    }
+    $scheme = parse_url($normalized, PHP_URL_SCHEME);
+    $scheme = ($scheme !== null) ? strtolower($scheme) : $req_scheme;
+    $port = parse_url($normalized, PHP_URL_PORT);
+    $port = ($port !== null) ? (int) $port : ($scheme === 'https' ? 443 : 80);
+    return array('scheme' => $scheme, 'host' => rtrim(strtolower($host), '.'), 'port' => $port);
 }
 
 // 从属性串提取 allow，仅保留 Permissions Policy 白名单 token（不透传任意值）
@@ -978,8 +1048,9 @@ function filter_iframe_rebuild($attr_str, $whitelist)
     }
 
     $parse_src = (strpos($src, '//') === 0) ? 'http:' . $src : $src;
-    $host = rtrim(strtolower(parse_url($parse_src, PHP_URL_HOST)), '.');
-    if (! filter_iframe_host_in_whitelist($host, $whitelist)) {
+    $host = rtrim(strtolower((string) parse_url($parse_src, PHP_URL_HOST)), '.');
+    $same_origin = filter_iframe_is_same_origin($src);
+    if (! $same_origin && ! filter_iframe_host_in_whitelist($host, $whitelist)) {
         return '';
     }
 
@@ -1004,7 +1075,12 @@ function filter_iframe_rebuild($attr_str, $whitelist)
     // 强制安全属性；YouTube 等嵌入需 Referer，不得使用 no-referrer
     // sandbox 下需显式声明 allow-fullscreen 才能全屏
     $attrs .= ' frameborder="0" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"';
-    $attrs .= ' sandbox="allow-scripts allow-same-origin allow-popups allow-presentation allow-forms allow-fullscreen"';
+    // 同源 PDF 免 sandbox：Chrome 禁止在 sandbox iframe 内渲染 PDF（否则前台「已被 Chrome 屏蔽」）
+    $src_path = (string) parse_url($parse_src, PHP_URL_PATH);
+    $is_same_origin_pdf = $same_origin && $src_path !== '' && preg_match('/\.pdf$/i', $src_path);
+    if (! $is_same_origin_pdf) {
+        $attrs .= ' sandbox="allow-scripts allow-same-origin allow-popups allow-presentation allow-forms allow-fullscreen"';
+    }
     $attrs .= ' allowfullscreen';
 
     return '<iframe ' . $attrs . '></iframe>';
@@ -1374,6 +1450,32 @@ function get_server_info()
     $data['memory_limit'] = ini_get('memory_limit');
     // 检测gd扩展
     $data['gd'] = extension_loaded('gd') ? YES : NO;
+    // 图像后端：配置值、实际处理路径、Imagick 与能力矩阵（本阶段探测不接管）
+    if (function_exists('image_backend_config')) {
+        $matrix = image_capability_matrix();
+        $im = isset($matrix['imagick']) && is_array($matrix['imagick']) ? $matrix['imagick'] : array();
+        $data['image_backend_config'] = image_backend_config();
+        $data['image_backend_effective'] = image_backend_effective();
+        $data['imagick'] = ! empty($im['loaded']) ? YES : NO;
+        $data['imagick_version'] = ! empty($im['version']) ? $im['version'] : '-';
+        $data['image_cap_avif'] = 'GD：' . (! empty($matrix['avif']['gd']) ? YES : NO)
+            . ' / Imagick：' . (! empty($matrix['avif']['imagick']) ? YES : NO);
+        $data['image_cap_heic'] = 'GD：' . (! empty($matrix['heic']['gd']) ? YES : NO)
+            . ' / Imagick：' . (! empty($matrix['heic']['imagick']) ? YES : NO);
+        $data['image_cap_animated_gif'] = 'GD：' . (! empty($matrix['animated_gif']['gd']) ? YES : NO)
+            . ' / Imagick：' . (! empty($matrix['animated_gif']['imagick']) ? YES : NO);
+        $data['image_cap_webp'] = 'GD：' . (! empty($matrix['webp']['gd']) ? YES : NO)
+            . ' / Imagick：' . (! empty($matrix['webp']['imagick']) ? YES : NO);
+    } else {
+        $data['image_backend_config'] = 'auto';
+        $data['image_backend_effective'] = 'gd';
+        $data['imagick'] = NO;
+        $data['imagick_version'] = '-';
+        $data['image_cap_avif'] = 'GD：' . NO . ' / Imagick：' . NO;
+        $data['image_cap_heic'] = 'GD：' . NO . ' / Imagick：' . NO;
+        $data['image_cap_animated_gif'] = 'GD：' . NO . ' / Imagick：' . NO;
+        $data['image_cap_webp'] = 'GD：' . NO . ' / Imagick：' . NO;
+    }
     // 检测imap扩展
     $data['imap'] = extension_loaded('imap') ? YES : NO;
     // 检测socket扩展
