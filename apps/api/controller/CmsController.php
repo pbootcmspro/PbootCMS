@@ -171,7 +171,7 @@ class CmsController extends Controller
         
         // 获取主要参数
         $field = request('field');
-        if (! preg_match('/^[\w\|]+$/', $field)) {
+        if (! preg_match('/^[\w\|\s]+$/', $field)) {
             $field = '';
         }
         $keyword = request('keyword', 'vars');
@@ -187,6 +187,25 @@ class CmsController extends Controller
         $rorder = request('order');
         $tags = request('tags', 'vars');
         $fuzzy = parse_fuzzy_param(request('fuzzy', 'int', false, null, null), true);
+        $allowed = content_query_fields();
+
+        // 数据接收
+        if ($_POST) {
+            $receive = $_POST;
+        } else {
+            $receive = $_GET;
+        }
+
+        $hasExtField = ($keyword !== null && $keyword !== '') && preg_match('/(?:^|\|)\s*ext_[\w\-]+\s*(?:\||$)/i', $field);
+        if (! $hasExtField) {
+            foreach ($receive as $key => $value) {
+                if (preg_match('/^ext_[\w\-]+$/i', $key)) {
+                    $hasExtField = true;
+                    break;
+                }
+            }
+        }
+        $extFields = $hasExtField ? $this->model->getExtFields() : array();
         
         if (! preg_match('/^[\w\-,\s]+$/', $rorder)) {
             $order = 'a.istop DESC,a.isrecommend DESC,a.isheadline DESC,a.sorting ASC,a.date DESC,a.id DESC';
@@ -254,66 +273,77 @@ class CmsController extends Controller
         
         // 存储搜索条件，条件为“并列”关系，由于为模糊匹配，条件为空时意味着“任意”
         $where3 = array();
+        $keywordUsesTitle = false; // 多字段 keyword 条件存于 where3[0]，需单独记录是否搜索标题
         
         // 采取keyword方式
-        if ($keyword) {
+        if ($keyword !== null && $keyword !== '') {
             if (strpos($field, '|')) { // 匹配多字段的关键字搜索
-                $field = explode('|', $field);
-                foreach ($field as $value) {
-                    if ($value == 'title') {
-                        $value = 'a.title';
+                $field_arr = explode('|', $field);
+                $clauses = array();
+                foreach ($field_arr as $value) {
+                    // 只允许白名单字段与扩展字段，避免非法或歧义列名拼入SQL
+                    if (! $column = resolve_search_field($value, $allowed, $extFields)) {
+                        continue;
+                    }
+                    if ($column === 'a.title') {
+                        $keywordUsesTitle = true;
                     }
                     if ($fuzzy) {
                         $like = " like '%" . $keyword . "%'"; // 前面已经转义过
                     } else {
                         $like = " like '" . $keyword . "'"; // 前面已经转义过
                     }
-                    if (isset($where3[0])) {
-                        $where3[0] .= ' OR ' . $value . $like;
-                    } else {
-                        $where3[0] = $value . $like;
-                    }
+                    $clauses[] = $column . $like;
                 }
-                if (count($field) > 1) {
-                    $where3[0] = '(' . $where3[0] . ')';
+                if ($clauses) {
+                    if (count($clauses) > 1) {
+                        $where3[0] = '(' . implode(' OR ', $clauses) . ')';
+                    } else {
+                        $where3[0] = $clauses[0];
+                    }
+                } else {
+                    $where3['a.title'] = $keyword; // 无有效字段时回退到标题搜索
                 }
             } else { // 匹配单一字段的关键字搜索
-                if ($field) {
-                    if ($field == 'title') {
-                        $field = 'a.title';
-                    }
-                    $where3[$field] = $keyword;
+                if ($column = resolve_search_field($field, $allowed, $extFields)) {
+                    $where3[$column] = $keyword;
                 } else {
                     $where3['a.title'] = $keyword;
                 }
             }
         }
         
-        // 数据接收
-        if ($_POST) {
-            $receive = $_POST;
-        } else {
-            $receive = $_GET;
-        }
-        
         foreach ($receive as $key => $value) {
-            if (! ! $value = request($key, 'vars')) {
-                if ($key == 'title') {
-                    $key = 'a.title';
+            $value = request($key, 'vars');
+            if (preg_match('/^ext_[\w\-]+$/i', $key)) {
+                if ($canonicalKey = canonical_allowlist_field($key, $extFields)) {
+                    if ($value !== null && $value !== '' && ($clause = build_extfield_where($canonicalKey, $value, $fuzzy))) {
+                        $where3[] = $clause;
+                    }
                 }
-                if (preg_match('/^[\w\-\.]+$/', $key)) { // 带有违规字符时不带入查询
-                    $where3[$key] = $value;
+
+            } elseif ($value !== null && $value !== '') {
+                // scode/acode/tags 为保留参数，不得写入 where3；tags 过滤仅处理接口约定的小写 tags
+                // 只允许白名单字段，统一补 a. 限定，避免多表 JOIN 下列名歧义
+                $canonicalKey = canonical_allowlist_field($key, $allowed);
+                if (! $canonicalKey || in_array($canonicalKey, array('scode', 'acode', 'tags'), true)) {
+                    continue;
                 }
+                // keyword 可能以 a.title 键或多字段 OR 子句搜索标题；通用 title 仅在 keyword 未搜索标题时独立筛选
+                if ($canonicalKey === 'title' && ($keywordUsesTitle || array_key_exists('a.title', $where3))) {
+                    continue;
+                }
+                $where3['a.' . $canonicalKey] = $value;
             }
         }
         
-        // 去除特殊键值
+        // 去除特殊键值（白名单外的键本不会写入；带 a. 前缀的保留参数双清以防漏网）
         unset($where3['appid']);
         unset($where3['timestamp']);
         unset($where3['signature']);
         unset($where3['keyword']);
         unset($where3['field']);
-        unset($where3['scode']);
+        unset($where3['scode'], $where3['a.scode']);
         unset($where3['page']);
         unset($where3['from']);
         unset($where3['isappinstalled']);
@@ -323,10 +353,10 @@ class CmsController extends Controller
         unset($where3['searchtpl']);
         unset($where3['p']);
         unset($where3['s']);
-        unset($where3['acode']);
+        unset($where3['acode'], $where3['a.acode']);
         unset($where3['num']);
         unset($where3['order']);
-        unset($where3['tags']);
+        unset($where3['tags'], $where3['a.tags']);
         unset($where3['fuzzy']);
         
         // 读取数据

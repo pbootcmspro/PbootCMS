@@ -1,0 +1,79 @@
+<div class="tab-pane fade active show">
+<div class="bd-callout bd-callout-info">
+        <h4>分页条标签</h4>
+        <p>适用范围：分页条标签适用所有执行了分页的页面</p>
+        <p>标签作用：用于输出分页代码</p>
+    </div>
+
+<h4>1、分页条标签</h4>
+<table class="table table-bordered table-light">
+<tbody>
+            <tr class="firstRow">
+                <td>{page:bar}</td>
+                <td>系统内置的完整分页条</td>
+            </tr>
+<tr>
+                <td>{page:current}</td>
+                <td>当前页码</td>
+            </tr>
+<tr>
+                <td>{page:count}</td>
+                <td>总页数</td>
+            </tr>
+<tr>
+                <td>{page:rows}</td>
+                <td>总数据行数</td>
+            </tr>
+<tr>
+                <td>{page:index}</td>
+                <td>首页链接</td>
+            </tr>
+<tr>
+                <td>{page:pre}</td>
+                <td>前一页链接</td>
+            </tr>
+<tr>
+                <td>{page:next}</td>
+                <td>下一页链接</td>
+            </tr>
+<tr>
+                <td>{page:last}</td>
+                <td>尾页链接</td>
+            </tr>
+<tr>
+                <td>{page:status}</td>
+                <td>分页状态信息</td>
+            </tr>
+<tr>
+                <td>{page:numbar}</td>
+                <td>数字条,数字带class名称为page-num，当前的同时还带page-num-current</td>
+            </tr>
+<tr>
+                <td>{page:selectbar}</td>
+                <td>下拉选择条</td>
+            </tr>
+</tbody>
+    </table>
+
+<h4>2、分页条自带的HTML样式class名称</h4>
+<code>
+<p>状态：page-status</p>
+<p>首页：page-index</p>
+<p>上一页：page-pre</p>
+<p>下一页：page-next</p>
+<p>尾页：page-last</p>
+<p>数字条：page-numbar ,数字条下面的数字：page-num ，如果是当前页，那么该数字还同时带有：page-num-current</p>
+<p>下拉条：page-select （默认条已经不显示）</p>
+    </code>
+
+<div class="alert alert-warning mt-2">
+<p>如果使用系统完整分页条，则以上样式名称在输出的HTML代码中都带，你可以直接使用对应名称在自己的css中定义具体样式即可；</p>
+<p>如果使用自定义方式，那么就按照自己写的html代码来定义，但是数字条下面的page-num 、page-num-current依然有效。</p>
+</div>
+
+<div class="alert alert-danger mt-2">
+当然，如果你对前端还算比较上手，你应该知道其实上面说的这些通过F12都可以看到。                </div>
+</div>
+<p>
+    <br/>
+</p>

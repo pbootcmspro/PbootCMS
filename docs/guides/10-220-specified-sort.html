@@ -1,0 +1,125 @@
+<div class="bd-callout bd-callout-info">
+    <h4>指定栏目标签</h4>
+    <p>适用范围：全站任意地方均可使用</p>
+    <p>标签作用：用于调导航菜单栏目列表，对应后台的“基础内容>内容栏目”</p>
+</div>
+<h4>1、指定栏目列表</h4>
+<p>
+    <code>{pboot:sort scode=*}</code>
+</p>
+<p>
+    <code>&amp;lt;a href= "[sort:link]"&amp;gt;[sort:name]&amp;lt;/a&amp;gt;</code>
+</p>
+<p>
+    <code>{/pboot:sort}</code>
+</p>
+<p>
+    <br/>
+</p>
+<div class="bd-callout bd-callout-danger">
+    <p>控制参数：</p>
+    <p>scode=* 栏目编码，必填，用于控制输出的栏目，可以同时输出多个（V1.1.6+）,使用逗号隔开即可，如：1,2,3</p>
+    <p class="text-danger">scode={sort:pcode} 可用于输出当前栏目父菜单的信息</p>
+    <p class="text-danger">scode={sort:scode} 可用于输出当前栏目的信息</p>
+    <p class="text-danger">scode={sort:tcode} 可用于输出当前栏目顶级菜单的信息</p>
+</div>
+<h4 class="mt-3">2、可使用的列表标签</h4>
+<table class="table table-bordered table-light">
+    <tbody>
+        <tr class="firstRow">
+            <td>[sort:n]</td>
+            <td>序号，从0开始</td>
+        </tr>
+        <tr>
+            <td>[sort:i]</td>
+            <td>序号，从1开始</td>
+        </tr>
+        <tr>
+            <td>[sort:pcode]</td>
+            <td>父栏目编码</td>
+        </tr>
+        <tr>
+            <td>[sort:parentname]</td>
+            <td>父栏目名称</td>
+        </tr>
+        <tr>
+            <td>[sort:scode]</td>
+            <td>当前栏目编码</td>
+        </tr>
+        <tr>
+            <td>[sort:name]</td>
+            <td>栏目名称</td>
+        </tr>
+        <tr>
+            <td>[sort:subname]</td>
+            <td>栏目副名称</td>
+        </tr>
+        <tr>
+            <td>[sort:link]</td>
+            <td>栏目链接</td>
+        </tr>
+        <tr>
+            <td>[sort:type]</td>
+            <td>栏目类型，1单页、2列表</td>
+        </tr>
+        <tr>
+            <td>[sort:outlink]</td>
+            <td>后台设置的跳转链接</td>
+        </tr>
+        <tr>
+            <td>[sort:listtpl]</td>
+            <td>列表页模板</td>
+        </tr>
+        <tr>
+            <td>[sort:contenttpl]</td>
+            <td>详情页模板</td>
+        </tr>
+        <tr>
+            <td>[sort:ico]</td>
+            <td>栏目缩略图</td>
+        </tr>
+        <tr>
+            <td>[sort:pic]</td>
+            <td>栏目大图</td>
+        </tr>
+        <tr>
+            <td>[sort:title]</td>
+            <td>栏目标题(V1.3+)</td>
+        </tr>
+        <tr>
+            <td>[sort:keywords]</td>
+            <td>栏目关键字</td>
+        </tr>
+        <tr>
+            <td>[sort:description]</td>
+            <td>栏目描述</td>
+        </tr>
+        <tr>
+            <td>[sort:rows]</td>
+            <td>栏目下内容数量(V1.3+)</td>
+        </tr>
+        <tr>
+            <td>[sort:toprows]</td>
+            <td>顶级栏目下内容数量(V1.3+)</td>
+        </tr>
+        <tr>
+            <td>[sort:parentrows]</td>
+            <td>父栏目下内容数量(V1.3+)</td>
+        </tr>
+        <tr>
+            <td style="word-break: break-all;">[sort:def1]</td>
+            <td>栏目描述1（V3.0.6+）</td>
+        </tr>
+        <tr>
+            <td style="word-break: break-all;">[sort:def2]</td>
+            <td>栏目描述2（V3.0.6+）</td>
+        </tr>
+        <tr>
+            <td style="word-break: break-all;">[sort:def3]</td>
+            <td>栏目描述3（V3.0.6+）</td>
+        </tr>
+    </tbody>
+</table>
+<p>
+    <br/>
+</p>

@@ -1,0 +1,71 @@
+<div class="tab-pane fade active show">
+    <div class="bd-callout bd-callout-info">
+        <h4>站点信息标签</h4>
+        <p>适用范围：全站任意地方均可使用</p>
+        <p>标签作用：用于调取网站的基本配置信息，对应后台的“基础内容>站点信息”</p>
+    </div>
+      <table class="table table-bordered table-light">
+        <tbody>
+            <tr class="firstRow">
+                <td>{pboot:siteindex}</td>
+                <td style="word-break: break-all;">站点入口地址，一般用于站内链接跳转设置地址前置，实现自适应URL模式</td>
+            </tr>
+            <tr>
+                <td>{pboot:sitepath}</td>
+                <td style="word-break: break-all;">站点路径,根目录时值为空，为适应部署到二级目录时建议链接前面带上</td>
+            </tr>
+            <tr>
+                <td>{pboot:sitelanguage}</td>
+                <td>站点语言</td>
+            </tr>
+            <tr>
+                <td>{pboot:sitetitle}</td>
+                <td>站点标题</td>
+            </tr>
+            <tr>
+                <td>{pboot:sitesubtitle}</td>
+                <td>站点副标题</td>
+            </tr>
+            <tr>
+                <td>{pboot:sitedomain}</td>
+                <td>站点域名</td>
+            </tr>
+            <tr>
+                <td>{pboot:sitelogo}</td>
+                <td>站点logo</td>
+            </tr>
+            <tr>
+                <td>{pboot:sitekeywords}</td>
+                <td>站点关键字</td>
+            </tr>
+            <tr>
+                <td>{pboot:sitedescription}</td>
+                <td>站点描述</td>
+            </tr>
+            <tr>
+                <td>{pboot:siteicp}</td>
+                <td>站点备案信息</td>
+            </tr>
+            <tr>
+                <td>{pboot:sitetplpath}</td>
+                <td>站点模板路径</td>
+            </tr>
+            <tr>
+                <td>{pboot:sitestatistical}</td>
+                <td>站点统计</td>
+            </tr>
+            <tr>
+                <td>{pboot:sitecopyright}</td>
+                <td>站点版权</td>
+            </tr>
+        </tbody>
+    </table>
+    <div class="bd-callout bd-callout-danger">       <h4>V1.1.6+新增如下标签，推荐使用</h4>
+        <p>{pboot:pagetitle} 根据不同页面自动显示标题</p>
+        <p>{pboot:pagekeywords} 根据不同页面自动显示关键字</p>
+        <p>{pboot:pagedescription} 根据不同页面自动显示描述</p>
+    </div>
+</div>
+<p>
+    <br/>
+</p>

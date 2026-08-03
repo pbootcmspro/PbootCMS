@@ -1,0 +1,41 @@
+<div class="bd-callout bd-callout-info">
+    <h4>指定内容多选字段遍历</h4>
+    <p>适用范围：全站任意地方均可使用</p>
+    <p>标签作用：用于依次输出指定内容的多选值，也可用于遍历逗号隔开的字段，如tag</p>
+</div>
+<h4>1、指定内容多选遍历</h4>
+<p>
+    <code>{pboot:checkbox id=* field=*}</code>
+</p>
+<p>
+    <code>[checkbox:text]</code>
+</p>
+<p>
+    <code>{/pboot:checkbox}</code>
+</p>
+<div class="bd-callout bd-callout-danger">
+    <p>控制参数：</p>
+    <p>id=* 内容ID号，必填，用于控制需遍历多选的内容，<span class="text-danger">也可使用id={content:id}、id=[list:id]自适应当前内容及列表</span>
+    </p>
+    <p>field=* 字段，必填，用于控制需要遍历的字段，如扩展字段产品特色：ext_cpts</p>
+</div>
+<h4 class="mt-3">2、可使用的多选遍历标签</h4>
+<table class="table table-bordered table-light">
+    <tbody>
+        <tr class="firstRow">
+            <td>[checkbox:n]</td>
+            <td>序号从0开始</td>
+        </tr>
+        <tr>
+            <td>[checkbox:i]</td>
+            <td>序号从1开始</td>
+        </tr>
+        <tr>
+            <td>[checkbox:text]</td>
+            <td>文本</td>
+        </tr>
+    </tbody>
+</table>
+<p>
+    <br/>
+</p>

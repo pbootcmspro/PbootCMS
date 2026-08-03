@@ -455,10 +455,74 @@ function build_tags_where($value, $fuzzy = false)
 // 构建扩展字段筛选 SQL（多选存为逗号分隔，精确模式按集合边界匹配，避免「红色」匹配不到「红色,橙色」）
 function build_extfield_where($field, $value, $fuzzy = false)
 {
-    if (! is_string($field) || ! preg_match('/^ext_[\w\-]+$/', $field)) {
+    if (! is_string($field) || ! preg_match('/^ext_[\w\-]+$/i', $field)) {
         return '';
     }
     return build_csv_field_where($field, $value, $fuzzy);
+}
+
+// ay_content 表允许用于前台搜索、筛选的字段白名单（单一来源，前台与接口共用）
+function content_query_fields()
+{
+    return array(
+        'id', 'acode', 'scode', 'subscode', 'title', 'titlecolor', 'subtitle',
+        'filename', 'author', 'source', 'outlink', 'date', 'ico', 'pics',
+        'picstitle', 'content', 'tags', 'enclosure', 'keywords', 'description',
+        'sorting', 'status', 'istop', 'isrecommend', 'isheadline', 'visits',
+        'likes', 'oppose', 'create_user', 'update_user', 'create_time',
+        'update_time', 'gtype', 'gid', 'gnote'
+    );
+}
+
+// 在字段白名单中按大小写不敏感方式解析标识符，返回白名单保留的规范字段名
+function canonical_allowlist_field($field, $allowedFields)
+{
+    if (! is_string($field) || ! is_array($allowedFields)) {
+        return '';
+    }
+    $field = trim($field);
+    if ($field === '' || ! preg_match('/^[a-zA-Z_][\w\-]*$/', $field)) {
+        return '';
+    }
+    $lookup = strtolower($field);
+    foreach ($allowedFields as $allowedField) {
+        if (! is_string($allowedField) || ! preg_match('/^[a-zA-Z_][\w\-]*$/', $allowedField)) {
+            continue;
+        }
+        if (strtolower($allowedField) === $lookup) {
+            return $allowedField;
+        }
+    }
+    return '';
+}
+
+// 解析搜索字段为安全的列名，非白名单字段返回空字符串
+// 扩展字段必须命中真实字段白名单且保持不限定；普通字段补 a. 限定，避免多表关联下的列名歧义
+function resolve_search_field($field, $allowedFields = null, $extFields = null)
+{
+    if (! is_string($field)) {
+        return '';
+    }
+    $field = trim($field);
+    if ($field === '') {
+        return '';
+    }
+    if (preg_match('/^ext_[\w\-]+$/i', $field)) {
+        return canonical_allowlist_field($field, $extFields);
+    }
+    if ($allowedFields === null) {
+        $allowedFields = content_query_fields();
+    }
+    if ($field = canonical_allowlist_field($field, $allowedFields)) {
+        return 'a.' . $field;
+    }
+    return '';
+}
+
+// 转义 LIKE 元字符（配合 ESCAPE '!'，避免 %/_ 放大匹配；! 作转义符可跨 MySQL/SQLite）
+function escape_like_metachar($value)
+{
+    return str_replace(array('!', '%', '_'), array('!!', '!%', '!_'), (string)$value);
 }
 
 // 构建逗号分隔字段的 SQL 条件（精确=集合包含；模糊=子串包含）
@@ -468,13 +532,16 @@ function build_csv_field_where($column, $value, $fuzzy = false)
         return '';
     }
     $value = escape_string(trim((string) $value));
-    if (! $value) {
+    // 字面量 "0" 是合法筛选值，不能按 falsy 丢弃
+    if ($value === '') {
         return '';
     }
+    $like = escape_like_metachar($value);
     if ($fuzzy) {
-        return $column . " like '%" . $value . "%'";
+        return $column . " like '%" . $like . "%' ESCAPE '!'";
     }
-    return "(" . $column . "='" . $value . "' OR " . $column . " like '" . $value . ",%' OR " . $column . " like '%," . $value . "' OR " . $column . " like '%," . $value . ",%')";
+    // 精确：= 比较用原值；边界 LIKE 臂转义 %/_，避免 ?ext_x=% 命中全部含逗号记录
+    return "(" . $column . "='" . $value . "' OR " . $column . " like '" . $like . ",%' ESCAPE '!' OR " . $column . " like '%," . $like . "' ESCAPE '!' OR " . $column . " like '%," . $like . ",%' ESCAPE '!')";
 }
 
 // 字符反转义html实体及斜杠，支持字符串、数组、对象

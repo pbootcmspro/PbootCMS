@@ -1,0 +1,135 @@
+<div class="tab-pane fade active show">
+    <div class="bd-callout bd-callout-info">
+        <h4>API接口列表</h4>
+        <p>标签作用：用于远程调取系统数据，使用小程序、公众号、APP等。</p>
+    </div>
+    <h4>使用说明</h4>
+    <ul class="list-group list-paddingleft-2">
+        <li>
+            <p>1）请先到后台进行API相关参数配置，强烈建议启用强制认证；</p>
+        </li>
+        <li>
+            <p>2）客户端发起请求必须包含appid（认证用户）、timestamp（时间戳）、signature（签名）三个参数</p>
+        </li>
+        <li>
+            <p>3）签名参数signature通过appid、secret、timestamp三个值连接为一个字符串,然后进行双层md5加密生成;</p>
+        </li>
+    </ul>
+    <div class="bd-callout bd-callout-info">
+        <h4>站内使用Ajax获取数据示例：</h4>
+        <code>
+            <p>&amp;lt;script&amp;gt;</p>
+            <p>$(document).ready(function (e) {</p>
+            <p>  var url='/api.php/cms/site';</p>
+            <p>  $.ajax({</p>
+            <p>    type: 'POST',</p>
+            <p>    url: url,</p>
+            <p>    dataType: 'json',</p>
+            <p>    data: {</p>
+            <p>      appid: '{pboot:appid}',</p>
+            <p>      timestamp: '{pboot:timestamp}',</p>
+            <p>      signature: '{pboot:signature}'</p>
+            <p>     },</p>
+            <p>    success: function (response, status) {</p>
+            <p>      if(response.code){</p>
+            <p>        //获取数据成功</p>
+            <p>        alert(response.data.title);</p>
+            <p>      }else{</p>
+            <p>        //返回错误数据</p>
+            <p>        alert(response.data);</p>
+            <p>      }</p>
+            <p>    },</p>
+            <p>    error:function(xhr,status,error){</p>
+            <p>      //返回数据异常</p>
+            <p>      alert('返回数据异常！');</p>
+            <p>    }</p>
+            <p>  });</p>
+            <p>});</p>
+            <p>&amp;lt;/script&amp;gt;</p>
+        </code>
+        <p>此处使用了三个站内标签：{pboot:appid} 认证用户名、{pboot:timestamp} 时间戳、{pboot:signature} 认证签名</p>
+    </div>
+    <h4 class="mt-3">1、网站信息接口</h4>
+    <code>
+        <p>http://IP/api.php/cms/site</p>
+        <p>http://IP/api.php/cms/site/name/*  单个调用</p>
+    </code>
+    <div class="alert alert-warning">注意此处和CMS标签比不带site前缀，所以返回整体数据和调取单个时直接写名称，如：标题title</div>
+<h4 class="mt-3">2、公司信息接口</h4>
+    <code>
+        <p>http://IP/api.php/cms/company</p>
+        <p>http://IP/api.php/cms/company/name/* 单个调用</p>
+    </code>
+    <div class="alert alert-warning">注意此处和CMS标签比不带company前缀，所以返回整体数据和调取单个时直接写名称，如：名称name</div>
+    <h4 class="mt-3">3、自定义标签接口</h4>
+    <code>
+        <p>http://IP/api.php/cms/label</p>
+        <p>http://IP/api.php/cms/label/name/*  单个调用</p>
+    </code>
+    <h4 class="mt-3">4、栏目列表树接口</h4>
+    <code>
+        <p>http://IP/api.php/cms/nav</p>
+        <p>http://IP/api.php/cms/nav/scode/*   获取指定分类的子类</p>
+    </code>
+    <h4 class="mt-3">5、当前栏目位置接口</h4>
+    <code>
+        <p>http://IP/api.php/cms/position/scode/*  此处传递当前栏目scode值</p>
+    </code>
+    <h4 class="mt-3">6、指定分类信息接口</h4>
+    <code>
+        <p>http://IP/api.php/cms/sort/scode/* 此处传递需要调用栏目的scode值</p>
+    </code>
+    <h4 class="mt-3">7、指定内容多图接口</h4>
+    <code>
+        <p>http://IP/api.php/cms/pics/id/*  此处传递内容ID值</p>
+    </code>
+    <h4 class="mt-3">8、幻灯片接口</h4>
+    <code>
+        <p>http://IP/api.php/cms/slide/gid/*/num/*  此处传递分组gid及调取的数量num值，默认num为5</p>
+    </code>
+    <h4 class="mt-3">9、友情链接接口</h4>
+    <code>
+        <p>http://IP/api.php/cms/link/gid/*/num/*  此处传递分组gid及调取的数量num值,默认num为10</p>
+    </code>
+    <h4 class="mt-3">10、指定内容列表接口</h4>
+    <code>
+        <p>http://IP/api.php/list/*  此处传递需要调用的栏目scode</p>
+        <p>http://IP/api.php/list/*/page/2 调取第二页，如果数据已获取完，返回类似{"code":0,"data":"已经到底了！","rowtotal":"5"}</p>
+    </code>
+    <div class="alert alert-warning">同时还支持URL中传递num/*参数控制数量，传递order/* 控制排序方式，用POST方式会更好传递值</div>
+    <h4 class="mt-3">11、指定内容详情接口</h4>
+    <code>http://IP/api.php/content/*  传递需要调用的内容ID(单页一样适用)</code>
+    <h4 class="mt-3">12、指定单页详情接口</h4>
+    <code>http://IP/api.php/about/*  传递需要调用的单页scode</code>
+    <h4 class="mt-3">13、搜索内容接口</h4>
+    <code>
+        <p>http://IP/api.php/cms/search   建议使用POST提交,keyword传递搜索关键字单条件搜索</p>
+        <p>同时支持传递num/*参数控制数量，传递order/* 控制排序方式，建议POST方式</p>
+        <p>可传递参数 field指定字段，多个用|隔开；</p>
+        <p>可传递参数 scode指定分类，多个用逗号隔开；</p>
+        <p>可传递参数 fuzzy等于0关闭模糊匹配，另外也可使用多数据库字段名称传递值来多条件搜索</p>
+    </code>
+    <h4 class="mt-3">14、留言提交接口</h4>
+    <code>
+http://IP/api.php/cms/addmsg  要求POST提交，传递的字段同后台自定义的留言字段</code>
+    <h4 class="mt-3">15、留言内容接口</h4>
+    <code>
+        <p>http://IP/api.php/cms/msg/num/*   传递num分页大小</p>
+        <p>http://IP/api.php/cms/msg/num/*/page/2   调取第二页</p>
+    </code>
+    <h4 class="mt-3">16、表单提交接口</h4>
+    <code>
+http://IP/api.php/cms/addform/fcode/*  要求POST提交,fcode为表单编码，传递的字段同后台自定义的字段</code>
+    <h4 class="mt-3">17、表单数据读取接口</h4>
+    <code>
+        <p>http://IP/api.php/cms/form/fcode/*     传递fcode表单编码</p>
+        <p>http://IP/api.php/cms/form/fcode/*/num/*/page/*   num控制条数，page控制页码</p>
+    </code>
+    <div class="bd-callout bd-callout-danger">
+        <h4>温馨提示：</h4>
+        <p>以上接口对于多语言（区域）的情况，请地址中附加acode参数指定语言,否则调用默认语言，如:http://IP/api.php/cms/site/acode/en</p>
+    </div>
+</div>
+<p>
+    <br/>
+</p>

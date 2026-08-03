@@ -25,7 +25,7 @@ return TestAssert::runSuite(function () {
     echo "=== build_tags_where() fuzzy mode ===\n";
 
     $fuzzy = build_tags_where('新闻', true);
-    TestAssert::same("a.tags like '%新闻%'", $fuzzy, 'fuzzy: substring match');
+    TestAssert::same("a.tags like '%新闻%' ESCAPE '!'", $fuzzy, 'fuzzy: substring match with LIKE escape');
 
     echo "=== build_tags_where() empty input ===\n";
 

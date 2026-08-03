@@ -1,0 +1,157 @@
+<div class="bd-callout bd-callout-info">
+    <h4>自定义表单标签</h4>
+    <p>适用范围：全站任意地方均可使用</p>
+    <p>标签作用：用于用户提交表单和调取表单记录</p>
+</div>
+<p>
+    <br/>
+</p>
+<h4>1、使用步骤</h4>
+<ul class="list-group list-paddingleft-2">
+    <li>
+        <p>1）到后台”扩展内容>自定义表单“中添加表单</p>
+    </li>
+    <li>
+        <p>2）对新增的表单添加字段</p>
+    </li>
+    <li>
+        <p>3）到前台模板中新增form表单</p>
+    </li>
+</ul>
+<p>
+    <br/>
+</p>
+<div class="alert alert-danger">
+    <p>问：为什么自定义表单后台添加字段没有类型选择？？？</p>
+    <p>答：表单中字段类型只不过是页面表现的形式，类型只需在前端模板中根据实际需要编写对应HTML表单字段类型即可，数据对于后端存储来说均为文本，PbootCMS希望给前端开发者最大的开发自由，想什么类型模板说了算，这才是真正的前后端分离，那么PbootCMS的表单其实给与了最大的灵活性和通用性。</p>
+</div>
+<p>
+    <br/>
+</p>
+<h4 class="mt-3">2、提交表单示例</h4>
+<p>
+</p>
+<p>
+    <code>&amp;lt;form action="{pboot:form fcode=*}"  method="post"&amp;gt;</code>
+</p>
+<p>
+    <code>    姓名(单行文本)：&amp;lt;input type="text" name="name" &amp;gt;</code>
+</p>
+<p>
+    <code>    性别(单选类型)：</code>
+</p>
+<p>
+    <code>    &amp;lt;input type="radio" value="男" name="sex" &amp;gt;男</code>
+</p>
+<p>
+    <code>    &amp;lt;input type="radio" value="女" name="sex" &amp;gt;女</code>
+</p>
+<p>
+    <code>    爱好(多选类型)：</code>
+</p>
+<p>
+    <code>    &amp;lt;input type="checkbox" value="篮球" name="like[]" &amp;gt;篮球</code>
+</p>
+<p>
+    <code>    &amp;lt;input type="checkbox" value="足球" name="like[]" &amp;gt;足球</code>
+</p>
+<p>
+    <code>    省份(下拉类型)：</code>
+</p>
+<p>
+    <code>    &amp;lt;select name="province"&amp;gt;</code>
+</p>
+<p>
+    <code>      &amp;lt;option value="北京"&amp;gt;北京&amp;lt;/option&amp;gt;</code>
+</p>
+<p>
+    <code>      &amp;lt;option value="上海"&amp;gt;上海&amp;lt;/option&amp;gt;</code>
+</p>
+<p>
+    <code>    &amp;lt;/select&amp;gt;</code>
+</p>
+<p>
+    <code>    简介(多行文本)：&amp;lt;textarea name="description" &amp;gt;&amp;lt;/textarea&amp;gt;</code>
+</p>
+<p>
+    <code>    &amp;lt;button type="submit"&amp;gt;提交&amp;lt;/button&amp;gt;</code>
+</p>
+<p>
+    <code>&amp;lt;/form&amp;gt;</code>
+</p>
+<p>                       </p>
+<div class="alert alert-warning">
+表单提交方式为post，表单中提交的字段名称需要与后台自定义表单中添加的字段一致，否则会导致提交失败。                </div>
+<div class="alert alert-danger">
+    <p>需要特别提醒的是，如果字段为多选类型，那么表单字段名称需要用中括号，比如选择爱好：</p>
+    <p>&amp;lt;input type="checkbox" value="篮球" name="like[]" &amp;gt;篮球</p>
+    <p>&amp;lt;input type="checkbox" value="足球" name="like[]" &amp;gt;足球</p>
+</div>
+<p>
+    <br/>
+</p>
+<div class="bd-callout bd-callout-danger">
+    <p>标签说明：</p>
+    <p>{pboot:form fcode=*} 为表单接收地址，fcode对应后台接收表单的编码</p>
+    <p class="text-danger">注意：此处与留言板的提交地址不可混淆，内置的留言表单使用专用地址{pboot:msgaction}，其余自定义表单则按照此处规则定义提交地址。</p>
+</div>
+<h4 class="mt-3">3、表单记录列表</h4>
+<p>
+</p>
+<p>
+    <code>{pboot:formlist fcode=* num=*}</code>
+</p>
+<p>
+    <code>    &amp;lt;p&amp;gt;姓名：[form:name]&amp;lt;/p&amp;gt;</code>
+</p>
+<p>
+    <code>    &amp;lt;p&amp;gt;公司：[form:company]&amp;lt;/p&amp;gt;</code>
+</p>
+<p>
+    <code>    &amp;lt;p&amp;gt;职位：[form:position]&amp;lt;/p&amp;gt;</code>
+</p>
+<p>
+    <code>{/pboot:formlist}</code>
+</p>
+<div class="alert alert-warning">
+调取的留言记录默认执行分页，使用内容列表的分页代码即可.                </div>
+<p>
+    <br/>
+</p>
+<div class="alert alert-warning">
+V1.3.3之前版本使用{pboot:form}，但是如果同时使用提交表单会有冲突，所以变更了标签。                </div>
+<div class="alert alert-danger">
+调取表单的内容的标签名称与自定义的表单字段一致。                </div>
+<div class="bd-callout bd-callout-danger">
+    <p>控制参数：</p>
+    <p>fcode=* 表单编码，必填，用于控制调取的表单</p>
+    <p>num=* 数量，非必填，用于控制调取的记录分页大小</p>
+    <p>page=* 是否分页1或0，非必填，用于关闭分页</p>
+</div>
+<p>
+    <br/>
+</p>
+<h4 class="mt-3">4、表单记录列表可用标签</h4>
+<table class="table table-bordered table-light">
+    <tbody>
+        <tr class="firstRow">
+            <td>[form:n]</td>
+            <td>序号从0开始</td>
+        </tr>
+        <tr>
+            <td>[form:i]</td>
+            <td>序号从1开始</td>
+        </tr>
+        <tr>
+            <td>[form:date]</td>
+            <td>提交时间</td>
+        </tr>
+        <tr>
+            <td>[form:***]</td>
+            <td>自定义的其它字段</td>
+        </tr>
+    </tbody>
+</table>
+<p>
+    <br/>
+</p>

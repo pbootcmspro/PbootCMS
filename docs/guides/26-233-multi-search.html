@@ -1,0 +1,354 @@
+<div class="bd-callout bd-callout-info">
+    <h4>多条件搜索</h4>
+    <p>适用范围：全站任意地方均可使用</p>
+    <p>标签作用：用于执行站内搜索功能</p>
+</div>
+<h4 class="mt-3">1、最简单的搜索示例</h4>
+<p>
+    <br/>
+</p>
+<p>
+    <code>&amp;lt;form action="{pboot:scaction}"  method="get"&amp;gt;</code>
+</p>
+<p>
+    <code>    关键字：&amp;lt;input type="text" name="keyword" &amp;gt;</code>
+</p>
+<p>
+    <code>    &amp;lt;button type="submit"&amp;gt;搜索&amp;lt;/button&amp;gt;</code>
+</p>
+<p>
+    <code>&amp;lt;/form&amp;gt;</code>
+</p>
+<p>       </p>
+<p>
+    <br/>
+</p>
+<div class="alert alert-warning">
+表单提交方式为get.</div>
+<p>
+    <br/>
+</p>
+<div class="bd-callout bd-callout-danger">       <p>使用说明：</p>
+    <p>{pboot:scaction} 为搜索提交地址</p>
+    <p class="text-danger">注意：表单提交方式为get，此表单默认匹配title标题字段</p>
+</div>
+<p>
+    <br/>
+</p>
+<h4 class="mt-3">2、定义搜索字段示例</h4>
+<p>
+    <br/>
+</p>
+<p>
+    <code>&amp;lt;form action="{pboot:scaction}"  method="get"&amp;gt;</code>
+</p>
+<p>
+    <code>    关键字：&amp;lt;input type="text" name="keyword" &amp;gt;</code>
+</p>
+<p>
+    <code>    &amp;lt;input type="hidden" name="field" value="title" &amp;gt;</code>
+</p>
+<p>
+    <code>    &amp;lt;button type="submit"&amp;gt;搜索&amp;lt;/button&amp;gt;</code>
+</p>
+<p>
+    <code>&amp;lt;/form&amp;gt;</code>
+</p>
+<p>
+
+或：</p>
+<p>
+    <code>&amp;lt;form action="{pboot:scaction}"  method="get"&amp;gt;</code>
+</p>
+<p>
+    <code>
+ </code>
+</p>
+<p>
+    <code>    &amp;lt;select name="field"&amp;gt;</code>
+</p>
+<p>
+    <code>        &amp;lt;option value="title"&amp;gt;内容标题&amp;lt;/option&amp;gt;</code>
+</p>
+<p>
+    <code>        &amp;lt;option value="content"&amp;gt;内容详情&amp;lt;/option&amp;gt;</code>
+</p>
+<p>
+    <code>    &amp;lt;/select&amp;gt;</code>
+</p>
+<p>
+    <code>    关键字：&amp;lt;input type="text" name="keyword" &amp;gt;</code>
+</p>
+<p>
+    <code>    &amp;lt;button type="submit"&amp;gt;搜索&amp;lt;/button&amp;gt;</code>
+</p>
+<p>
+    <code>&amp;lt;/form&amp;gt;</code>
+</p>
+<p>       </p>
+<p>
+    <br/>
+</p>
+<p>
+    <br/>
+</p>
+<p>
+    <br/>
+</p>
+<div class="alert alert-warning">
+通过添加隐藏域传递field值来控制搜索的字段，也可以同时设置多个字段，如： value="title|content" ，当然这只是方式之一，后面还有！</div>
+<p>
+    <br/>
+</p>
+<h4 class="mt-3">3、定义更多搜索条件示例</h4>
+<p>
+    <br/>
+</p>
+<p>
+    <code>&amp;lt;form action="{pboot:scaction}"  method="get"&amp;gt;</code>
+</p>
+<p>
+    <code>    关键字：&amp;lt;input type="text" name="keyword" &amp;gt;</code>
+</p>
+<p>
+    <code>    &amp;lt;input type="hidden" name="field" value="title" &amp;gt;</code>
+</p>
+<p>
+    <code>    &amp;lt;input type="hidden" name="scode" value="2,3" &amp;gt;</code>
+</p>
+<p>
+    <code>    &amp;lt;button type="submit"&amp;gt;搜索&amp;lt;/button&amp;gt;</code>
+</p>
+<p>
+    <code>&amp;lt;/form&amp;gt;</code>
+</p>
+<p>       </p>
+<p>
+    <br/>
+</p>
+<div class="alert alert-warning">
+这里只定义搜索的字段和搜索的分类，其实你可以定义更多数据库中任意可用的字段。如author为admin的：name="author" value="admin"，当然你可以使用非隐藏域，那么就相当于综合搜索类型。</div>
+<p>
+    <br/>
+</p>
+<div class="alert alert-danger">如果需要定义的scode分类有多个，可以用逗号隔开，同时需要注意，如果表单传递的分类和字段无效时，要考虑结果页循环是否做了限制。</div>
+<p>
+    <br/>
+</p>
+<div class="alert alert-warning">
+    <p>（V1.3.7+）如果有多个搜索表单想定义不同的结果页模板，那么可以传递searchtpl字段来定义模板页，如：</p>
+    <p>&amp;lt;input type="hidden" name="searchtpl" value="test.html" &amp;gt;</p>
+</div>
+<p>
+    <br/>
+</p>
+<h4 class="mt-3">4、多条件综合搜索示例</h4>
+<p>
+    <br/>
+</p>
+<p>
+    <code>&amp;lt;form action="{pboot:scaction}"  method="get"&amp;gt;</code>
+</p>
+<p>
+    <code>    内容：&amp;lt;input type="text" name="content" &amp;gt;</code>
+</p>
+<p>
+    <code>    标题：&amp;lt;input type="text" name="title" &amp;gt;</code>
+</p>
+<p>
+    <code>    作者：&amp;lt;input type="text" name="author" &amp;gt;</code>
+</p>
+<p>
+    <code>    &amp;lt;input type="hidden" name="scode" value="2,3" &amp;gt;</code>
+</p>
+<p>
+    <code>    &amp;lt;button type="submit"&amp;gt;搜索&amp;lt;/button&amp;gt;</code>
+</p>
+<p>
+    <code>&amp;lt;/form&amp;gt;</code>
+</p>
+<p>       </p>
+<p>
+    <br/>
+</p>
+<div class="alert alert-warning">
+    <p>
+这里自定义了三个字段，其实你可以定义更多数据库中任意可用的字段。</p>
+    <p> 如果URL采用兼容模式，这时候搜索应该使用POST，或者在首行添加隐藏域，&amp;lt;input type="<code>hidden</code>" name="search" ></p>
+</div>
+<h4 class="mt-3">5、搜索结果列表</h4>
+<p>
+    <br/>
+</p>
+<p>
+    <code>{pboot:search}</code>
+</p>
+<p>
+    <code>&amp;lt;a href="[search:link]"&amp;gt;[search:title]&amp;lt;/a&amp;gt;</code>
+</p>
+<p>
+    <code>{/pboot:search}</code>
+</p>
+<p>
+
+</p>
+<p>
+    <br/>
+</p>
+<div class="bd-callout bd-callout-danger">       <p>使用说明：</p>
+    <p>搜索结果页面使用模板search.html</p>
+    <p>num=* 每页数量，非必填，用于控制分页大小</p>
+    <p>order=*
+排序方式，非必填，用于输出内容的排序方式，可选：date、sorting、istop、isrecommend、isheadline、visits、likes、oppose等字段，其中sorting为按后台填写的排序，122版本开始支持自定义模式，如：order='date
+desc,id desc' 、order='sorting desc,id desc',(V1.3.7+)还支持random随机排序</p>
+    <p>scode=* 分类编码，非必填，加前面说的方式，此作为第二种限制搜索分类的方式,多个分类用逗号隔开，如： scode='2,3,4'</p>
+    <p>field=* 字段限制，非必填，在使用了keyword时用于限定匹配的数据库字段，多个字段用竖线隔开即可，如：field='title|content'</p>
+    <p>filter=*|x,y 数据过滤，非必填，用于对列表内容进行过滤筛选，如：filter=title|ASP,PHP 只显示标题含有ASP和PHP的内容</p>
+    <p>fuzzy=* 是否模糊匹配，非必填，可选1或0，1时为默认的模糊匹配，0则关闭</p>
+</div>
+<p>
+    <br/>
+</p>
+<div class="alert alert-warning">
+搜索结果默认执行分页，使用内容列表的分页代码即可.</div>
+<p>
+    <br/>
+</p>
+<h4 class="mt-3">6、搜索结果列表可用标签</h4>
+<p>获取当前搜索内容：{pboot:keyword} </p>
+<p>对搜索结果关键字进行标红 mark=1 （V2.0.5新增），如：[search:title mark=1]；</p>
+<table class="table table-bordered table-light">
+    <tbody>
+        <tr class="firstRow">
+            <td>[search:n]</td>
+            <td>序号从0开始</td>
+        </tr>
+        <tr>
+            <td>[search:i]</td>
+            <td>序号从1开始</td>
+        </tr>
+        <tr>
+            <td>[search:id]</td>
+            <td>编号</td>
+        </tr>
+        <tr>
+            <td>[search:scode]</td>
+            <td>分类编码</td>
+        </tr>
+        <tr>
+            <td>[search:subscode]</td>
+            <td>副分类编码</td>
+        </tr>
+        <tr>
+            <td>[search:sortname]</td>
+            <td>分类名称</td>
+        </tr>
+        <tr>
+            <td>[search:subsortname]</td>
+            <td>副分类名称</td>
+        </tr>
+        <tr>
+            <td>[search:sortlink]</td>
+            <td>分类链接</td>
+        </tr>
+        <tr>
+            <td>[search:subsortlink]</td>
+            <td>副分类链接</td>
+        </tr>
+        <tr>
+            <td>[search:title]</td>
+            <td>标题</td>
+        </tr>
+        <tr>
+            <td>[search:titlecolor]</td>
+            <td>标题颜色</td>
+        </tr>
+        <tr>
+            <td>[search:subtitle]</td>
+            <td>副标题</td>
+        </tr>
+        <tr>
+            <td>[search:author]</td>
+            <td>作者</td>
+        </tr>
+        <tr>
+            <td>[search:source]</td>
+            <td>来源</td>
+        </tr>
+        <tr>
+            <td>[search:link]</td>
+            <td>链接</td>
+        </tr>
+        <tr>
+            <td>[search:outlink]</td>
+            <td>外部链接</td>
+        </tr>
+        <tr>
+            <td>[search:date]</td>
+            <td>发布日期</td>
+        </tr>
+        <tr>
+            <td>[search:ico]</td>
+            <td>缩略图</td>
+        </tr>
+        <tr>
+            <td>[search:pics]</td>
+            <td>多图</td>
+        </tr>
+        <tr>
+            <td>[search:content]</td>
+            <td>内容</td>
+        </tr>
+        <tr>
+            <td>[search:enclosure]</td>
+            <td>附件</td>
+        </tr>
+        <tr>
+            <td>[search:enclosuresize]</td>
+            <td>附件大小</td>
+        </tr>
+        <tr>
+            <td>[search:keywords]</td>
+            <td>关键词</td>
+        </tr>
+        <tr>
+            <td>[search:description]</td>
+            <td>描述</td>
+        </tr>
+        <tr>
+            <td>[search:istop]</td>
+            <td>是否置顶</td>
+        </tr>
+        <tr>
+            <td>[search:isrecommend]</td>
+            <td>是否推荐</td>
+        </tr>
+        <tr>
+            <td>[search:isheadline]</td>
+            <td>是否头条</td>
+        </tr>
+        <tr>
+            <td>[search:visits]</td>
+            <td>访问数量</td>
+        </tr>
+        <tr>
+            <td>[search:likes]</td>
+            <td>点赞数量</td>
+        </tr>
+        <tr>
+            <td>[search:oppose]</td>
+            <td>反对数量</td>
+        </tr>
+        <tr>
+            <td>[search:likeslink]</td>
+            <td>点赞链接</td>
+        </tr>
+        <tr>
+            <td>[search:opposelink]</td>
+            <td>反对链接</td>
+        </tr>
+    </tbody>
+</table>
+<p>
+    <br/>
+</p>

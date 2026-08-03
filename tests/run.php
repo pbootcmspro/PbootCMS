@@ -56,7 +56,9 @@ foreach ($suites as $suiteName => $dir) {
         echo "\n[$suiteName] $basename\n";
         echo str_repeat('-', 40) . "\n";
 
-        $cmd = escapeshellarg($phpBin) . ' ' . escapeshellarg($file);
+        // 直接执行脚本不会把顶层 return 作为进程退出码；用包装器显式传递。
+        $runner = '$_testStatus = require $argv[1]; exit(is_int($_testStatus) ? $_testStatus : 0);';
+        $cmd = escapeshellarg($phpBin) . ' -r ' . escapeshellarg($runner) . ' ' . escapeshellarg($file);
         $code = 1;
         passthru($cmd, $code);
         $code = (int) $code;

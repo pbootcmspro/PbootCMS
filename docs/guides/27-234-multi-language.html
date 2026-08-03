@@ -1,0 +1,35 @@
+<div class="tab-pane fade active show">
+    <div class="bd-callout bd-callout-info">
+        <h4>多语言/区域建站</h4>
+        <p>标签作用：用于使用同一个后台建立多国语言网站或多区域网站</p>
+    </div>
+    <h4>1、使用步骤</h4>
+    <ul class="list-group list-paddingleft-2">
+        <li>
+            <p>1）在后台"系统管理>数据区域"添加相应的区域，具体参考默认区域；</p>
+        </li>
+        <li>
+            <p>2）将多语言的模板放入模板目录，不同语言的模板均放在template目录下；</p>
+        </li>
+        <li>
+            <p>3）在后台选择语言切换到不同语言，分别设置：站点信息（注意选择模板）、公司信息、栏目信息、添加内容等；</p>
+        </li>
+        <li>
+            <p>4）在不同模板中添加多语言切换按钮。</p>
+        </li>
+    </ul>
+    <h4 class="mt-3">2、多语言切换按钮</h4>
+    <code>
+        <p>&amp;lt;a href="{pboot:lgpath}&amp;lg=cn"&amp;gt;切换中文&amp;lt;/a&amp;gt;</p>
+        <p>&amp;lt;a href="{pboot:lgpath}&amp;lg=en"&amp;gt;切换英文&amp;lt;/a&amp;gt;</p>
+    </code>
+    <div class="alert alert-warning">请注意：PB2.0开始lg前面用&amp;符号，之前老版本用?符号！</div>
+    <div class="alert alert-warning">更多语言，类似方式添加即可。</div>
+    <div class="bd-callout bd-callout-info">
+        <h5>如何判断当前语言并高亮？</h5>
+        <p>在按钮上添加判断语句：{pboot:if('{pboot:sitelanguage}'=='cn')}class="active"{/pboot:if}</p>
+    </div>
+</div>
+<p>
+    <br/>
+</p>

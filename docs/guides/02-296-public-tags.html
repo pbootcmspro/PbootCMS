@@ -1,0 +1,149 @@
+<div class="tab-pane fade active show">
+    <div class="bd-callout bd-callout-info">
+        <h4>公共标签</h4>
+    </div>
+    <h4>1、模板文件嵌套引用</h4>
+    <code>
+        <p>{include file=***.html}</p>
+    </code>
+
+<div class="bd-callout bd-callout-danger">
+        <p>使用说明：</p>
+        <p>可以嵌套使用，如：index.html 嵌套一个head.html，同时head.html中嵌套comm.html</p>
+        <p>支持使用子目录，如：{include file=comm/***.html}</p>
+    </div>
+    <h4>2、时间格式化标签</h4>
+    <code>
+        <p>style=*</p>
+        <p>如:内容列表时间格式化[list:date style=Y-m-d]、内容详情页时间格式化{content:date style=Y-m-d}</p>
+    </code>
+
+<div class="bd-callout bd-callout-danger">
+        <p>使用说明：</p>
+        <p>时间格式化标签和PHP时间格式化语法一致，分别用不同字母代替，中间可以穿插任意字符，如：Y-m-d、Y/m/d、Y年m月d日等等</p>
+        <p class="text-danger">注意：Y代表完整年份，y代表简化年份，m代表月份，d代表日，H代表小时，i代表分，s代表秒，如完整时间：style='Y-m-d
+H:i:s'，更多请参考PHP时间格式化语法 ，参考链接
+：http://php.net/manual/zh/function.date.php</p>
+    </div>
+<h4>3、HTML去除标签</h4>
+    <code>
+        <p>drophtml=1</p>
+        <p>如:内容列表内容[list:content drophtml=1]、内容详情页内容{content:content drophtml=1}</p>
+    </code>
+
+<div class="bd-callout bd-callout-danger">
+        <p>使用说明：</p>
+        <p>一般在首页等特殊位置需要调取正文一段纯文本时使用，这时一般会配合下面的内容截取标签一起使用</p>
+    </div>
+<h4>4、内容截取标签</h4>
+    <code>
+        <p>长度截取使用len=* 或 lencn=* ，使用第二个将避免中英文长度不统一问题，一个英文字符算半个字</p>
+        <p>(V1.3.5+)内容截取时可使用more='*'设置省略号内容，设置more=''则不显示省略号</p>
+        <p>如:内容列表标题截取[list:title len=10]</p>
+        <p class="mt-3">substr=x,y 截取一段</p>
+        <p>substr截取字符串长度,传递两个数字，第一个为起始位置，第二个为截取长度，如只有一个数字则截取此数字起后面全部</p>
+    </code>
+
+<div class="bd-callout bd-callout-danger">
+        <p>使用说明：</p>
+        <p>使用内容截取时要注意如果是html内容需要先去除html再截取，否则可能导致html错位，如：[list:content drophtml=1 len=50]</p>
+    </div>
+<h4>5、其它格式化标签</h4>
+    <code>
+        <p>dropblank=1 ，去除空白字符，如换行符、制表符等</p>
+        <p>decode=1 解码数据html字符，如果等于0.则不解码（包括源码已经解码的）,此标签一般不使用</p>
+        <p>decimal=* 小数点位数</p>
+        <p>unit=* 容量单位，可以是kb,mb,gb,tb,pb,eb</p>
+        <p>operate=** （V2.0.4新增）数字运算（支持+-*/%），如访问量加1000[list:visits operate=+1000] 、序号求余[list:i operate=%2]</p>
+        <p>lfield="a,b" （V2.0.5新增）限制列表数据查询字段，提高大数据性能，如lfield="title,content"</p>
+        <p>mark=1 （V2.0.5新增）对搜索结果关键字进行标红，如：[search:title mark=1]；</p>
+    </code>
+    <h4 class="mt-4">6、自定义标签</h4>
+    <code>
+        <p>{label:***}</p>
+    </code>
+<div class="bd-callout bd-callout-danger">
+        <p>使用说明：</p>
+        <p>在后台”全局配置>定制标签“中定义，前台使用对应名字进行调用即可</p>
+    </div>
+<h4>7、面包屑标签</h4>
+    <code>
+        <p>{pboot:position}</p>
+    </code>
+<div class="bd-callout bd-callout-danger">
+        <p>参数说明：</p>
+        <p>separator=* 分隔符,非必填，默认为>></p>
+        <p>separatoricon=* 分割图标,非必填，如使用图标字体：separatoricon='fa fa-angle-double-right'</p>
+        <p>indextext=* 首页文本,非必填，默认为"首页"</p>
+        <p>indexicon=* 首页图标,非必填，如使用图标字体：indexicon='fa fa-home'</p>
+    </div>
+<h4>8、当前网址</h4>
+    <code>
+        <p>{pboot:httpurl}</p>
+    </code>
+<div class="bd-callout bd-callout-danger">
+        <p>使用说明：</p>
+        <p>自适应获取当前访问网址，主要用于需要使用网站路径前缀的情况，如输出：https://www.pbootcms.com</p>
+    </div>
+<h4>9、当前页面</h4>
+    <code>
+        <p>{pboot:pageurl}</p>
+    </code>
+<div class="bd-callout bd-callout-danger">
+        <p>使用说明：</p>
+        <p>自适应获取当前访问页面完整地址</p>
+    </div>
+<h4>10、二维码生成标签</h4>
+    <code>
+        <p>{pboot:qrcode string=***}</p>
+    </code>
+<div class="bd-callout bd-callout-danger">
+        <p>使用说明：</p>
+        <p>用于生成对应文本的二维码图片，可用于产品列表页或详情页为每个产品生成二维码 ：{pboot:qrcode string={pboot:httpurl}{content:link}}或{pboot:qrcode string={pboot:pageurl}</p>
+    </div>
+<h4>11、程序运行时间</h4>
+    <code>
+        <p>{pboot:runtime@} 使用时@去掉<br/>
+        </p>
+    </code>
+<div class="bd-callout bd-callout-danger">
+        <p>使用说明：</p>
+        <p>用于输出页面运行时间/缓存时间，使用时请将反斜杠去掉。</p>
+    </div>
+<h4>12、留言验证码开关状态</h4>
+    <code>
+        <p>{pboot:checkcodestatus}</p>
+    </code>
+<div class="bd-callout bd-callout-danger">
+        <p>使用说明：</p>
+        <p>用于判断留言验证码是否开启状态，方便页面控制验证码图标的显示。</p>
+    </div>
+<h4>13、站点地图</h4>
+    <code>
+        <p>http://www.xxx.com/sitemap</p>
+        <p>http://<code>www.xxx.com</code>/sitemap.xml<br/>
+        </p>
+        <p>
+            <span class="file-name">
+                <code>http://<code>www.xxx.com</code>/</code>sitemap.txt</span> </p>
+    </code>
+<div class="bd-callout bd-callout-danger">
+        <p>使用说明：</p>
+        <p>系统使用动态站点地图，不需要生成，访问地址即为实时地图，输出格式为xml 或 txt，当然你也可以打开后另存为一个地图文件。</p>
+        <p>使用以上地址需要已经开启伪静态，否则域名后带问号才可以访问。</p>
+    </div>
+<h4>14、图片缩放及裁剪（v1.3.5+）</h4>
+    <code>
+        <p>图片缩放及裁剪总共四个参数：</p>
+        <p>参数：width=* height=* maxwidth=*  maxheight=*</p>
+        <p>使用方式，如：[list:ico width=100]</p>
+    </code>
+<div class="bd-callout bd-callout-danger">
+        <p>使用说明：</p>
+        <p>四个参数可以组合使用，此处会生成改变了图片大小的缓存图片，缓存图片是裁切过后的图片，但原上传的图片不变。</p>
+        <p class="text-danger">如果不想改变大小及裁切图片，只是想缩放显示，那么请使用CSS进行控制即可。</p>
+    </div>
+</div>
+<p>
+    <br/>
+</p>

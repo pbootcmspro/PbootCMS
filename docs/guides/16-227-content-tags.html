@@ -1,0 +1,115 @@
+<div class="bd-callout bd-callout-info">
+    <h4>内容tags标签调用</h4>
+    <p>适用范围：全站任意地方均可使用</p>
+    <p>获取当前tags值可用：{$get.tag} <br/>
+    </p>
+</div>
+<h4>1、调用指定栏目下的内容tags</h4>
+<p>
+    <br/>
+</p>
+<p>
+    <code>{pboot:tags scode=*,*}</code>
+</p>
+<p>
+    <code>&amp;lt;a href="[tags:link]"&amp;gt;[tags:text]&amp;lt;/a&amp;gt;</code>
+</p>
+<p>
+    <code>{/pboot:tags}</code>
+</p>
+<p>
+    <br/>
+</p>
+<div class="alert alert-danger mt-2">
+此处tags的链接指向所填scode分类下列表页，比如如果填写5,7,那么5下面的内容指向5，7下面的指向7。</div>
+<p>
+    <br/>
+</p>
+<div class="bd-callout bd-callout-danger">
+    <p>控制参数：</p>
+    <p>scode=* 栏目编码，用于控制需要输出内容的栏目编码，多个用逗号隔开</p>
+    <p>num=* 数量，非必填，用于控制需要输出的数量</p>
+    <p>target=tag （V2.0.6+）可以指定链接跳转到tags.html独立模板 <br/>
+    </p>
+</div>
+<p>
+    <br/>
+</p>
+<h4>2、调用指定内容的tags</h4>
+<p>
+    <br/>
+</p>
+<p>
+    <code>{pboot:tags id=*}</code>
+</p>
+<p>
+    <code>&amp;lt;a href="[tags:link]"&amp;gt;[tags:text]&amp;lt;/a&amp;gt;</code>
+</p>
+<p>
+    <code>{/pboot:tags}</code>
+</p>
+<p>
+    <br/>
+</p>
+<div class="alert alert-danger mt-2">
+此处tags的链接默认指向内容本身的分类，如果你不想这样，那么可以指定scode=* 来设置跳转的分类。</div>
+<p>
+    <br/>
+</p>
+<div class="bd-callout bd-callout-danger">
+    <p>控制参数：</p>
+    <p>id=* 内容ID，用于控制需要输出的内容ID，<strong style="color:Red">如果与列表标签嵌套可以用id=[list:id]</strong>
+    </p>
+    <p>num=* 数量，非必填，用于控制需要输出的数量</p>
+    <p>target=tag （V2.0.6+）可以指定链接跳转到tags.html独立模板</p>
+</div>
+<p>
+    <br/>
+</p>
+<h4>3、使用tags显示相似内容列表</h4>
+<p>
+    <br/>
+</p>
+<p>
+    <code>{pboot:list scode=* tags='x,y'}</code>
+</p>
+<p>
+    <code>&amp;lt;p&amp;gt;&amp;lt;a href="[list:link]"&amp;gt;[list:title]&amp;lt;/a&amp;gt;&amp;lt;/p&amp;gt;</code>
+</p>
+<p>
+    <code>{/pboot:list}</code>
+</p>
+<p>
+    <br/>
+</p>
+<div class="alert alert-danger mt-2">此处scode可以是当前栏目标签{sort:scode}，详情页可配合tags={content:tags}来调用当前文章的相关相似文章</div>
+<p>
+    <br/>
+</p>
+<h4 class="mt-3">4、可使用的列表标签</h4>
+<p>
+    <br/>
+</p>
+<table class="table table-bordered table-light">
+    <tbody>
+        <tr class="firstRow">
+            <td>[tags:n]</td>
+            <td>序号从0开始</td>
+        </tr>
+        <tr>
+            <td>[tags:i]</td>
+            <td>序号从1开始</td>
+        </tr>
+        <tr>
+            <td>[tags:link]</td>
+            <td>链接地址</td>
+        </tr>
+        <tr>
+            <td>[tags:text]</td>
+            <td>tags名称</td>
+        </tr>
+    </tbody>
+</table>
+<p>
+    <br/>
+</p>

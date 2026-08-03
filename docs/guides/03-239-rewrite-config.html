@@ -1,0 +1,56 @@
+<div class="tab-pane fade active show">
+    <div class="bd-callout bd-callout-info">
+        <h4>伪静态配置</h4>
+        <p>标签作用：配置程序伪静态后URL中将不再包含兼容模式的问号，整个地址更美观，也便于推广优化。</p>
+        <p>适用版本：2.X 、3.X</p>
+    </div>
+    <h4 class="mt-3">1、IIS7+环境（IIS6的环境自行百度）：</h4>
+    <p>1）安装rewrite组件，如果使用空间一般空间商默认已经安装；</p>
+    <p>2）到后台配置参数中开启伪静态开关；</p>
+    <p>3）在站点目录建立web.config文件（可到源码包rewrite目录下拷贝规则），规则内容如下：</p>
+    <pre>&amp;lt;?xml version="1.0" encoding="UTF-8"?&amp;gt;
+&amp;lt;configuration&amp;gt;
+    &amp;lt;system.webServer&amp;gt;
+        &amp;lt;rewrite&amp;gt;
+            &amp;lt;rules&amp;gt;
+                 &amp;lt;rule name="reIndex" stopProcessing="true"&amp;gt;
+                    &amp;lt;match url="^(.*)$" ignoreCase="true" /&amp;gt;
+                    &amp;lt;conditions logicalGrouping="MatchAll"&amp;gt;
+                        &amp;lt;add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" /&amp;gt;
+                        &amp;lt;add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" /&amp;gt;
+                    &amp;lt;/conditions&amp;gt;
+                    &amp;lt;action type="Rewrite" url="index.php?p={R:1}" appendQueryString="true" /&amp;gt;
+                &amp;lt;/rule&amp;gt;
+            &amp;lt;/rules&amp;gt;
+        &amp;lt;/rewrite&amp;gt;
+    &amp;lt;/system.webServer&amp;gt;
+&amp;lt;/configuration&amp;gt;</pre>
+    <h4 class="mt-3">2、Apache环境</h4>
+    <p>1）开启Apache重写模块，具体请百度，如果使用空间一般空间商默认已经开启；</p>
+    <p>2）到后台配置参数中开启伪静态开关；</p>
+    <p>3）在站点目录建立.htaccess文件（可到源码包rewrite目录下拷贝规则），规则内容如下：</p>
+    <pre>&amp;lt;IfModule mod_rewrite.c&amp;gt;
+  Options +FollowSymlinks
+  RewriteEngine On
+
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME} !-f
+
+  RewriteRule ^(.*)$ index.php?p=$1 [QSA,PT,L]
+&amp;lt;/IfModule&amp;gt;</pre>
+    <h4 class="mt-3">3、Nginx环境</h4>
+    <p>1、到后台配置参数中开启伪静态；</p>
+    <p>2、在nginx虚拟主机location配置中添加规则，规则如下：</p>
+    <pre>location / {
+ if (!-e $request_filename){
+        rewrite ^/index.php(.*)$ /index.php?p=$1 last;
+                rewrite ^(.*)$ /index.php?s=$1 last;
+ }
+}</pre>
+    <div class="alert alert-warning">
+        <p>注意：Nginx中如果站点部署在二级目录，请对应修改重写规则， 如：二级目录为test则：rewrite ^/test/(.*)$ /test/index.php?p=$1 last;</p>
+    </div>
+</div>
+<p>
+    <br/>
+</p>

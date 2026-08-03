@@ -1,0 +1,40 @@
+<div class="tab-pane fade active show">
+    <div class="bd-callout bd-callout-info">
+        <h4>IF条件语句使用</h4>
+        <p>标签作用：用于根据条件输出不同内容</p>
+        <p>注意：从V3.2.0开始，if标签仅支持'&amp;gt;'、'&amp;gt;='、'!='、'=='、'&amp;lt;='、'&amp;lt;'、'&amp;&amp;'、'||'、'%'等符号，详情可查看V3.2.0开发日志</p>
+        <h4>1、IF语句格<span style="color: rgb(0, 0, 0);">
+            </span>式<br/>
+        </h4>
+    </div>
+    <code>
+        <p>{pboot@if('a'=='b')}</p>
+        <p>  内容1</p>
+        <p>{else}</p>
+        <p>  内容2</p>
+        <p>{/pboot@if}</p>
+    </code>
+    <div class="bd-callout bd-callout-info">
+        <p class="text-danger">使用提示：</p>
+        <p>对于非数字类的条件均为字符串类型，请加上引号，如：{pboot@if('[list:author]'=='admin')}，但是数字类的可以不加：{pboot@if([list:i]==1)}</p>
+        <p>如果条件有多个，可以按照PHP的语法进行运算，如下：</p>
+        <p>条件并列：{pboot@if('[list:author]'=='admin' &amp;&amp; [list:i]==1)}</p>
+        <p>条件或：{pboot@if('[list:author]'=='admin' || [list:i]==1)}</p>
+    </div>
+    <h4 class="mt-3">2、IF语句嵌套</h4>
+    <code>
+        <p>{pboot@if('a'=='b')}</p>
+        <p>  {pboot:2if('a'=='c')}</p>
+        <p>    内容1</p>
+        <p>  {2else}</p>
+        <p>    内容2</p>
+        <p>  {/pboot:2if}</p>
+        <p>{else}</p>
+        <p>  内容3</p>
+        <p>{/pboot@if}</p>
+    </code>
+    <div class="alert alert-warning">嵌套层级理论上不受限制，按此方式用数字依次嵌套即可。</div>
+</div>
+<p>
+    <br/>
+</p>

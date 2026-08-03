@@ -59,5 +59,31 @@ return TestAssert::runSuite(function () {
 
     $fuzzyClause = build_extfield_where('ext_color', '1', true);
     $sqlFuzzy = build_select_sql(array($fuzzyClause), true);
-    TestAssert::contains($sqlFuzzy, "ext_color like '%1%'", 'fuzzy: substring preserved through Model');
+    TestAssert::contains($sqlFuzzy, "ext_color like '%1%' ESCAPE '!'", 'fuzzy: substring preserved through Model');
+
+    echo "=== search-path style: fuzzy=0 + ext_ CSV member ===\n";
+
+    // 模拟搜索/API 接入 build_extfield_where 后：$where3[] = clause（非字符串键）
+    $searchExact = build_extfield_where('ext_color', '红色', false);
+    $sqlSearchExact = build_select_sql(array($searchExact), false);
+    TestAssert::contains($sqlSearchExact, "ext_color='红色'", 'search fuzzy=0: equality in SQL');
+    TestAssert::contains($sqlSearchExact, "ext_color like '红色,%' ESCAPE '!'", 'search fuzzy=0: prefix boundary in SQL');
+    TestAssert::contains($sqlSearchExact, "ext_color like '%,红色' ESCAPE '!'", 'search fuzzy=0: suffix boundary in SQL');
+    TestAssert::contains($sqlSearchExact, "ext_color like '%,红色,%' ESCAPE '!'", 'search fuzzy=0: middle boundary in SQL');
+    TestAssert::notContains($sqlSearchExact, "like '%红色%'", 'search fuzzy=0: no unbounded substring');
+
+    echo "=== search-path style: fuzzy default (true) unchanged semantics ===\n";
+
+    $searchFuzzy = build_extfield_where('ext_color', '红色', true);
+    TestAssert::same("ext_color like '%红色%' ESCAPE '!'", $searchFuzzy, 'search fuzzy default: still substring');
+    $sqlSearchFuzzy = build_select_sql(array($searchFuzzy), true);
+    TestAssert::contains($sqlSearchFuzzy, "ext_color like '%红色%' ESCAPE '!'", 'search fuzzy default: substring in SQL');
+
+    echo "=== LIKE metachar must not amplify ===\n";
+
+    $pctFuzzy = build_extfield_where('ext_color', '%', true);
+    TestAssert::same("ext_color like '%!%%' ESCAPE '!'", $pctFuzzy, '% fuzzy: escaped');
+    $pctExact = build_extfield_where('ext_color', '%', false);
+    TestAssert::contains($pctExact, "ESCAPE '!'", '% exact: ESCAPE on LIKE arms');
+    TestAssert::notContains($pctExact, "like '%,%'", '% exact: no bare comma-wildcard amplify');
 });

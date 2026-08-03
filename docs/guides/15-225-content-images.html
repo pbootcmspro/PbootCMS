@@ -1,0 +1,49 @@
+<div class="bd-callout bd-callout-info">
+    <h4>指定内容多图遍历</h4>
+    <p>适用范围：全站任意地方均可使用</p>
+    <p>标签作用：用于依次输出指定内容的多张图片</p>
+</div>
+<h4>1、指定内容多图遍历</h4>
+<p>
+    <code>{pboot:pics id=* num=*}</code>
+</p>
+<p>
+    <code>&amp;lt;img src="[pics:src]" alt="[pics:title]"&amp;gt;</code>
+</p>
+<p>
+    <code>{/pboot:pics}</code>
+</p>
+<div class="bd-callout bd-callout-danger">
+    <p>控制参数：</p>
+    <p>id=* 内容ID号，必填，用于控制需要输出图片的内容，<span class="text-danger">也可使用id={content:id}、id=[list:id]自适应当前内容及列表</span>
+    </p>
+    <p>num=* 数量，非必填，用于控制需要输出图片得数量</p>
+    <p>
+        <span style="color: rgb(255, 0, 0);">field=* 多图字段名称（V3.1.0+），默认为pics，即系统默认的多图字段，如果使用扩展字段则必须指定字段名称</span>
+    </p>
+</div>
+<h4 class="mt-3">2、可使用的多图标签</h4>
+<table class="table table-bordered table-light">
+    <tbody>
+        <tr class="firstRow">
+            <td>[pics:n]</td>
+            <td>序号从0开始</td>
+        </tr>
+        <tr>
+            <td>[pics:i]</td>
+            <td>序号从1开始</td>
+        </tr>
+        <tr>
+            <td style="word-break: break-all;">[pics:src]</td>
+            <td>图片地址</td>
+        </tr>
+        <tr>
+            <td colspan="1" rowspan="1" style="word-break: break-all;">[pics:title]</td>
+            <td colspan="1" rowspan="1" style="word-break: break-all;">图片标题（V3.0.6+）<br/>
+            </td>
+        </tr>
+    </tbody>
+</table>
+<p>
+    <br/>
+</p>

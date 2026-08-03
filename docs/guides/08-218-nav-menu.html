@@ -1,0 +1,158 @@
+<div class="tab-pane fade active show">
+    <div class="bd-callout bd-callout-info">
+        <h4>导航菜单列表标签</h4>
+        <p>适用范围：全站任意地方均可使用</p>
+        <p>标签作用：用于调导航菜单栏目列表，对应后台的“基础内容>内容栏目”</p>
+    </div>
+    <h4>1、导航菜单列表</h4>
+    <code>
+        <p>{pboot:nav}</p>
+        <p>&amp;lt;a href="[nav:link]"&amp;gt;[nav:name]&amp;lt;/a&amp;gt;</p>
+        <p>{/pboot:nav}</p>
+    </code>
+    <br/>
+    <div class="bd-callout bd-callout-danger">
+        <p>控制参数：</p>
+        <p>num=* 数量，非必填，用于控制输出的数量</p>
+        <p>parent=* 父菜单编码，用于输出子栏目，默认从一级菜单开始输出，<span style="color: rgb(255, 0, 0);">（V3.1.2+）支持传递多个编码</span>
+        </p>
+        <p class="text-danger">parent={sort:pcode} 可用于输出当前栏目的同级菜单</p>
+        <p class="text-danger">parent={sort:scode} 可用于输出当前栏目的子菜单</p>
+        <p class="text-danger">parent={sort:tcode} 可用于输出当前栏目顶级菜单的子菜单</p>
+        <p class="text-danger">
+            <span style="color: rgb(255, 0, 0);">scode=1,2,3 用于控制输出栏目范围（V3.1.2+）</span>
+        </p>
+        <p class="text-danger">
+            <span style="color: rgb(255, 0, 0);">要注意parent和<span style="color: rgb(255, 0, 0);">scode的区别，一个是输出子栏目，一个控制范围</span>
+            </span>
+        </p>
+        <p class="text-danger">
+            <br/>
+        </p>
+    </div>
+    <h4 class="mt-3">2、可使用的列表标签</h4>
+    <table class="table table-bordered table-light">
+        <tbody>
+            <tr class="firstRow">
+                <td>[nav:n]</td>
+                <td>序号，从0开始</td>
+            </tr>
+            <tr>
+                <td>[nav:i]</td>
+                <td>序号，从1开始</td>
+            </tr>
+            <tr>
+                <td>[nav:pcode]</td>
+                <td>父栏目编码</td>
+            </tr>
+            <tr>
+                <td>[nav:scode]</td>
+                <td>当前栏目编码</td>
+            </tr>
+            <tr>
+                <td>[nav:name]</td>
+                <td>栏目名称</td>
+            </tr>
+            <tr>
+                <td>[nav:subname]</td>
+                <td>栏目副名称</td>
+            </tr>
+            <tr>
+                <td>[nav:link]</td>
+                <td>栏目链接</td>
+            </tr>
+            <tr>
+                <td>[nav:type]</td>
+                <td>栏目类型，1单页、2列表</td>
+            </tr>
+            <tr>
+                <td>[nav:outlink]</td>
+                <td>后台设置的跳转链接</td>
+            </tr>
+            <tr>
+                <td>[nav:listtpl]</td>
+                <td>列表页模板</td>
+            </tr>
+            <tr>
+                <td>[nav:contenttpl]</td>
+                <td>详情页模板</td>
+            </tr>
+            <tr>
+                <td>[nav:ico]</td>
+                <td>栏目缩略图</td>
+            </tr>
+            <tr>
+                <td>[nav:pic]</td>
+                <td>栏目大图</td>
+            </tr>
+            <tr>
+                <td>[nav:keywords]</td>
+                <td>栏目关键字</td>
+            </tr>
+            <tr>
+                <td>[nav:description]</td>
+                <td>栏目描述</td>
+            </tr>
+            <tr>
+                <td>[nav:soncount]</td>
+                <td>当前栏目子栏目的数量，无子栏目时为0</td>
+            </tr>
+            <tr>
+                <td style="word-break: break-all;">[nav:rows]</td>
+                <td style="word-break: break-all;">输出栏目下内容数量（V1.3+）</td>
+            </tr>
+            <tr>
+                <td>[nav:def1]</td>
+                <td>栏目描述1（V3.0.6+）</td>
+            </tr>
+            <tr>
+                <td>[nav:def2]</td>
+                <td>栏目描述2（V3.0.6+）</td>
+            </tr>
+            <tr>
+                <td>[nav:def3]</td>
+                <td>栏目描述3（V3.0.6+）</td>
+            </tr>
+        </tbody>
+    </table>
+    <h4 class="mt-3">3、常见使用示例<br/>
+    </h4>
+    <div class="bd-callout bd-callout-danger">
+        <h4>高亮菜单</h4>
+        <p>使用判断语句：<code>{pboot@if('[nav:scode]'=='{sort:tcode}')}class="active"{/pboot@if}</code>
+        </p>
+        <p>首页特殊用法：<code>{pboot@if(0=='{sort:scode}')}class="active"{/pboot@if}</code>
+        </p>
+    </div>
+    <div class="bd-callout bd-callout-danger">       <h4>菜单嵌套</h4>
+        <p>二级嵌套</p>
+        <code>
+            <p>{pboot:nav}
+                   <br/>
+            </p>
+            <p>  &amp;lt;a href= "[nav:link]"&amp;gt;[nav:name]&amp;lt;/a&amp;gt;</p>
+            <p>  {pboot:2nav parent=[nav:scode]}</p>
+            <p>    &amp;lt;a href= "[2nav:link]"&amp;gt;[2nav:name]&amp;lt;/a&amp;gt;</p>
+            <p>  {/pboot:2nav}</p>
+            <p>{/pboot:nav}</p>
+        </code>
+        <p class="mt-3">三级嵌套</p>
+        <code>
+            <p>{pboot:nav}
+                   <br/>
+            </p>
+            <p>  &amp;lt;a href= "[nav:link]"&amp;gt;[nav:name]&amp;lt;/a&amp;gt;</p>
+            <p>  {pboot:2nav parent=[nav:scode]}</p>
+            <p>    &amp;lt;a href= "[2nav:link]"&amp;gt;[2nav:name]&amp;lt;/a&amp;gt;</p>
+            <p>    {pboot:3nav parent=[2nav:scode]}</p>
+            <p>      &amp;lt;a href= "[3nav:link]"&amp;gt;[3nav:name]&amp;lt;/a&amp;gt;</p>
+            <p>    {/pboot:3nav}</p>
+            <p>  {/pboot:2nav}</p>
+            <p>{/pboot:nav}</p>
+        </code>
+        <p>如果有更多级别，以此类推，使用数字依层级套用，理论上不限级调用</p>
+    </div>
+</div>
+<p>
+    <br/>
+</p>

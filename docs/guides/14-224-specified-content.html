@@ -1,0 +1,159 @@
+<div class="bd-callout bd-callout-info">
+    <h4>指定内容标签</h4>
+    <p>适用范围：全站任意地方均可使用</p>
+    <p>标签作用：用于调取指定id的内容</p>
+</div>
+<h4>1、调取指定内容</h4>
+<p>
+    <br/>
+</p>
+<p>
+    <code>{pboot:content id=*}</code>
+</p>
+<p>
+    <code>&amp;lt;a href= "[content:link]"&amp;gt;[content:title]&amp;lt;/a&amp;gt;</code>
+</p>
+<p>
+    <code>{/pboot:content}</code>
+</p>
+<div class="bd-callout bd-callout-danger">
+    <p>控制参数：</p>
+    <p>id=* 内容的ID号，必填，用于控制输出的内容，适用单页或列表页内容</p>
+    <p>scode=* 单页的分类编码，必填，用于控制输出单页的内容，只适用单页内容</p>
+</div>
+<h4 class="mt-3">2、可使用的内容标签</h4>
+<table class="table table-bordered table-light">
+    <tbody>
+        <tr class="firstRow">
+            <td>[content:id]</td>
+            <td>编号</td>
+        </tr>
+        <tr>
+            <td>[content:scode]</td>
+            <td style="word-break: break-all;">栏目编码</td>
+        </tr>
+        <tr>
+            <td>[content:subscode]</td>
+            <td style="word-break: break-all;">副栏目编码</td>
+        </tr>
+        <tr>
+            <td>[content:sortname]</td>
+            <td style="word-break: break-all;">栏目名称</td>
+        </tr>
+        <tr>
+            <td>[content:subsortname]</td>
+            <td style="word-break: break-all;">副栏目名称</td>
+        </tr>
+        <tr>
+            <td>[content:sortlink]</td>
+            <td style="word-break: break-all;">栏目链接</td>
+        </tr>
+        <tr>
+            <td>[content:subsortlink]</td>
+            <td style="word-break: break-all;">副栏目链接</td>
+        </tr>
+        <tr>
+            <td>[content:title]</td>
+            <td>标题</td>
+        </tr>
+        <tr>
+            <td>[content:titlecolor]</td>
+            <td>标题颜色</td>
+        </tr>
+        <tr>
+            <td>[content:subtitle]</td>
+            <td>副标题</td>
+        </tr>
+        <tr>
+            <td>[content:author]</td>
+            <td>作者</td>
+        </tr>
+        <tr>
+            <td>[content:source]</td>
+            <td>来源</td>
+        </tr>
+        <tr>
+            <td>[content:link]</td>
+            <td>链接</td>
+        </tr>
+        <tr>
+            <td>[content:outlink]</td>
+            <td>外部链接</td>
+        </tr>
+        <tr>
+            <td>[content:date]</td>
+            <td>发布日期</td>
+        </tr>
+        <tr>
+            <td>[content:ico]</td>
+            <td>缩略图</td>
+        </tr>
+        <tr>
+            <td>[content:pics]</td>
+            <td>图集</td>
+        </tr>
+        <tr>
+            <td>[content:content]</td>
+            <td>内容</td>
+        </tr>
+        <tr>
+            <td>[content:tags]</td>
+            <td>直接输出tags</td>
+        </tr>
+        <tr>
+            <td>[content:enclosure]</td>
+            <td>附件</td>
+        </tr>
+        <tr>
+            <td>[content:enclosuresize]</td>
+            <td>附件大小</td>
+        </tr>
+        <tr>
+            <td>[content:keywords]</td>
+            <td>关键词</td>
+        </tr>
+        <tr>
+            <td>[content:description]</td>
+            <td>描述</td>
+        </tr>
+        <tr>
+            <td>[content:istop]</td>
+            <td>是否置顶</td>
+        </tr>
+        <tr>
+            <td>[content:isrecommend]</td>
+            <td>是否推荐</td>
+        </tr>
+        <tr>
+            <td>[content:isheadline]</td>
+            <td>是否头条</td>
+        </tr>
+        <tr>
+            <td>[content:visits]</td>
+            <td>访问数量</td>
+        </tr>
+        <tr>
+            <td>[content:likes]</td>
+            <td>点赞数量</td>
+        </tr>
+        <tr>
+            <td>[content:oppose]</td>
+            <td>反对数量    </td>
+        </tr>
+        <tr>
+            <td>[content:likeslink]</td>
+            <td>点赞链接</td>
+        </tr>
+        <tr>
+            <td>[content:opposelink]</td>
+            <td>反对链接</td>
+        </tr>
+        <tr>
+            <td>[content:ext_***]</td>
+            <td>调取扩展字段内容</td>
+        </tr>
+    </tbody>
+</table>
+<p>
+    <br/>
+</p>

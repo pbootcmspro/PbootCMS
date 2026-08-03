@@ -1,0 +1,93 @@
+<div class="tab-pane fade active show">
+    <div class="bd-callout bd-callout-info">
+        <h4>多条件筛选标签</h4>
+        <p>适用范围：内容列表页使用，其实也可以用在首页等</p>
+        <p>标签作用：用于对内容列表进行筛选</p>
+    </div>
+    <h4>1、使用步骤</h4>
+    <ul class="list-group list-paddingleft-2">
+        <li>
+            <p>1）到后台对模型添加扩展字段，字段类型选择单选或多选，同时填写单选或多选的可选内容；</p>
+        </li>
+        <li>
+            <p>2）添加对应模型的栏目，并对栏目添加内容；</p>
+        </li>
+        <li>
+            <p>3）到前台模板中调用相关扩展字段进行输出，具体见下面的例子。</p>
+            <p class="text-danger">注意：如果需要在首页使用筛选，列表需要启用分页功能，添加page=1参数才有效。</p>
+        </li>
+        <li>
+            <p class="text-danger">4）获取筛选值可以用{$get.xxxx}，如获取类型：{$get.<code>ext_leixing</code>}<br/>
+            </p>
+        </li>
+    </ul>
+    <h4 class="mt-3">2、筛选调用标签</h4>
+    <p>1）全部标签</p>
+    <code>{pboot:selectall field=* text=* class=* active=*}</code>
+    <br/>
+    <div class="bd-callout bd-callout-danger">
+        <p>控制参数：</p>
+        <p>field=* 筛选的字段，必填，用于控制调取的筛选字段名称</p>
+        <p>text=* 显示文字，非必填，用于控制显示的文字，默认显示”全部“</p>
+        <p>class=* 非选中时样式，非必填，用于设置为文字非选中时的class常规样式</p>
+        <p>active=* 选中时样式，非必填，用于设置为文字选中时的class高亮样式</p>
+    </div>
+    <p>2）筛选值标签</p>
+    <code>
+        <p>{pboot:select field=*}</p>
+        <p>&amp;lt;a href= "[select:link]"&amp;gt;[select:value]&amp;lt;/a&amp;gt;</p>
+        <p>{/pboot:select}</p>
+    </code>
+    <div class="bd-callout bd-callout-danger">       <p>控制参数：</p>
+        <p>field=* 筛选的字段，必填，用于控制调取的筛选字段名称</p>
+        <p class="text-danger">一般情况下我们会有多个字段，那么只要重复上面的代码即可。</p>
+        <p class="text-danger">选中值高亮处理：{pboot:if('[select:value]'=='[select:current]')}class= "active" {/pboot:if}</p>
+    </div>
+    <p>2）筛选可用标签</p>
+    <table class="table table-bordered table-light">
+        <tbody>
+            <tr class="firstRow">
+                <td>[select:i]</td>
+                <td>序号</td>
+            </tr>
+            <tr>
+                <td>[select:current]</td>
+                <td>当前选中值</td>
+            </tr>
+            <tr>
+                <td>[select:link]</td>
+                <td>链接</td>
+            </tr>
+            <tr>
+                <td>[select:value]</td>
+                <td>筛选值</td>
+            </tr>
+        </tbody>
+    </table>
+    <h4 class="mt-3">3、多条件筛选示例</h4>
+    <div class="bd-callout bd-callout-danger">
+        <code>
+            <p>&amp;lt;p&amp;gt;</p>
+            <p>类型：{pboot:selectall field=ext_leixing text=全部 class='btn btn-light'  active='btnbtn-info'} |</p>
+            <p>{pboot:select field=ext_leixing}</p>
+            <p>{pboot:if([select:i]>1)}|{/pboot:if}</p>
+            <p>&amp;lt;a
+href="[select:link]"{pboot:if('[select:value]'=='[select:current]')}class="active"
+{/pboot:if}&amp;gt;[select:value]&amp;lt;/a&amp;gt;</p>
+            <p>{/pboot:select}</p>
+            <p>&amp;lt;/p&amp;gt;</p>
+            <p>&amp;lt;p&amp;gt;</p>
+            <p>颜色：{pboot:selectall field=ext_yanse text=全部 class='btn btn-light' active='btnbtn-info'} |</p>
+            <p>{pboot:select field=ext_yanse}</p>
+            <p>{pboot:if([select:i]>1)}|{/pboot:if}</p>
+            <p>&amp;lt;a
+href="[select:link]"{pboot:if('[select:value]'=='[select:current]')}class="active"
+{/pboot:if}&amp;gt;[select:value]&amp;lt;/a&amp;gt;</p>
+            <p>{/pboot:select}</p>
+            <p>&amp;lt;/p&amp;gt;</p>
+        </code>
+    </div>
+</div>
+<p>
+    <br/>
+</p>

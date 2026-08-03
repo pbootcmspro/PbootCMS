@@ -72,7 +72,26 @@ return TestAssert::runSuite(function () {
     echo "=== build_extfield_where() fuzzy mode ===\n";
 
     $fuzzy = build_extfield_where('ext_color', '1', true);
-    TestAssert::same("ext_color like '%1%'", $fuzzy, 'fuzzy: unbounded substring (legacy)');
+    TestAssert::same("ext_color like '%1%' ESCAPE '!'", $fuzzy, 'fuzzy: unbounded substring (legacy) with LIKE escape');
+
+    echo "=== build_extfield_where() LIKE metachar escape ===\n";
+
+    $fuzzyPct = build_extfield_where('ext_color', '%', true);
+    TestAssert::same("ext_color like '%!%%' ESCAPE '!'", $fuzzyPct, 'fuzzy %: escaped, no match-all');
+    TestAssert::notContains($fuzzyPct, "like '%%%'", 'fuzzy %: must not be bare %%%');
+
+    $fuzzyUnd = build_extfield_where('ext_color', '_', true);
+    TestAssert::same("ext_color like '%!_%' ESCAPE '!'", $fuzzyUnd, 'fuzzy _: escaped');
+
+    $exactPct = build_extfield_where('ext_color', '%', false);
+    TestAssert::contains($exactPct, "ext_color='%'", 'exact %: equality keeps literal');
+    TestAssert::contains($exactPct, "like '!%,%' ESCAPE '!'", 'exact %: prefix LIKE escaped');
+    TestAssert::contains($exactPct, "like '%,!%,%' ESCAPE '!'", 'exact %: middle LIKE escaped');
+    TestAssert::notContains($exactPct, "like '%,%'", 'exact %: must not use bare %,');
+
+    $exactBang = build_extfield_where('ext_color', 'a!b', false);
+    TestAssert::contains($exactBang, "ext_color='a!b'", 'exact !: equality keeps literal');
+    TestAssert::contains($exactBang, "like 'a!!b,%' ESCAPE '!'", 'exact !: doubled in LIKE arm');
 
     echo "=== build_extfield_where() guards ===\n";
 
@@ -85,5 +104,6 @@ return TestAssert::runSuite(function () {
 
     $tagsExact = build_tags_where('新闻', false);
     TestAssert::contains($tagsExact, "a.tags='新闻'", 'tags exact still works');
-    TestAssert::same("a.tags like '%新闻%'", build_tags_where('新闻', true), 'tags fuzzy still works');
+    TestAssert::contains($tagsExact, "ESCAPE '!'", 'tags exact uses ESCAPE');
+    TestAssert::same("a.tags like '%新闻%' ESCAPE '!'", build_tags_where('新闻', true), 'tags fuzzy still works with ESCAPE');
 });

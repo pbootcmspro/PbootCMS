@@ -27011,12 +27011,14 @@ UE.plugin.register("simpleupload", function () {
             var link = me.options.imageUrlPrefix + json.url;
             if (json.state === "SUCCESS" && json.url) {
               var loader = me.document.getElementById(loadingId);
-              domUtils.removeClasses(loader, "loadingclass");
-              loader.setAttribute("src", link);
-              loader.setAttribute("_src", link);
-              loader.setAttribute("alt", json.original || "");
-              loader.removeAttribute("id");
-              me.fireEvent("contentchange");
+              if (loader) {
+                domUtils.removeClasses(loader, "loadingclass");
+                loader.setAttribute("src", link);
+                loader.setAttribute("_src", link);
+                loader.setAttribute("alt", json.original || "");
+                loader.removeAttribute("id");
+                me.fireEvent("contentchange");
+              }
             } else {
               showErrorLoader && showErrorLoader(json.state);
             }
@@ -27029,7 +27031,7 @@ UE.plugin.register("simpleupload", function () {
         }
 
         function uploadDirect() {
-          domUtils.on(iframe, "load", function () {
+          function onIframeLoad() {
             var body = (iframe.contentDocument || iframe.contentWindow.document).body;
             var result = body.innerText || body.textContent || "";
             var json;
@@ -27042,9 +27044,10 @@ UE.plugin.register("simpleupload", function () {
               json = {state: 'ERROR:UPLOAD_FAIL'};
             }
             callback(json, function () {
-              domUtils.un(iframe, "load", callback);
+              domUtils.un(iframe, "load", onIframeLoad);
             });
-          });
+          }
+          domUtils.on(iframe, "load", onIframeLoad);
           form.action = targetActionUrl;
           form.submit();
         }

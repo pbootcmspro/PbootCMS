@@ -116,6 +116,15 @@ layui.use(['element','upload','laydate','form'], function(){
   var files='';
   var html='';
   var html2='';
+  var uploadOrigNames={}; // chooseFiles 的 index -> 浏览器原文件名
+  function escapeAttr(s){
+	return String(s)
+	  .replace(/&/g,'&amp;')
+	  .replace(/"/g,'&quot;')
+	  .replace(/'/g,'&#39;')
+	  .replace(/</g,'&lt;')
+	  .replace(/>/g,'&gt;');
+  }
   var uploadsInst = upload.render({
 	elem: '.uploads' //绑定元素
 	,url: uploadurl //上传接口
@@ -124,6 +133,13 @@ layui.use(['element','upload','laydate','form'], function(){
 	,accept: 'images' //接收文件类型 images（图片）、file（所有文件）、video（视频）、audio（音频）
 	,acceptMime: 'image/*'
 	,exts: imageExts
+	,choose: function(obj){
+	   // 同步缓存 File.name；pushFile 后须在 done 中 delete，避免重复上传
+	   var chosen = this._uploadFiles = obj.pushFile();
+	   layui.each(chosen, function(index, file){
+		   uploadOrigNames[index] = (file && file.name) ? file.name : '';
+	   });
+	}
 	,before: function(obj){ 
 	   //判断是否需要加水印
        if($(this.item).hasClass('watermark')){
@@ -131,18 +147,24 @@ layui.use(['element','upload','laydate','form'], function(){
 	   }
 	   layer.load(); //上传loading
 	}
-	,done: function(res){
+	,done: function(res, index){
+	   if(this._uploadFiles){
+		   delete this._uploadFiles[index];
+	   }
 	   if(res.code==1){
 		   if(files){
 			   files+=','+res.data[0];
 		   }else{
 			   files+=res.data[0];
 		   }
+		   var title = uploadOrigNames[index] || '';
+		   delete uploadOrigNames[index];
 		   html += "<dl><dt><img src='"+sitedir+res.data[0]+"' data-url='"+res.data[0]+"'></dt><dd>删除</dd>" +
-		   		"<dt><input type='text' name='picstitle[]' style='width:95%' /></dt>"+		
+		   		"<dt><input type='text' name='picstitle[]' style='width:95%' value='"+escapeAttr(title)+"' /></dt>"+		
 		   		"</dl>";
 		   html2 += "<dl><dt><img src='"+sitedir+res.data[0]+"' data-url='"+res.data[0]+"'></dt><dd>删除</dd>" +	"</dl>";
 	   }else{
+		   delete uploadOrigNames[index];
 		   layer.msg('有文件上传失败：'+res.data); 
 	   } 
 	}
@@ -157,6 +179,7 @@ layui.use(['element','upload','laydate','form'], function(){
 	       }else{
 	    	   $('#'+des).val(files); 
 	       }
+	       // 仅 append 本次上传项，不重绘已有 input，避免覆盖用户手改标题
 	       if(des=='pics'){
 	    	   $('#'+des+'_box').append(html); 
 	       }else{
@@ -166,12 +189,22 @@ layui.use(['element','upload','laydate','form'], function(){
 	 	   files='';
 	 	   html='';
 	 	   html2='';
+	 	   uploadOrigNames={};
+	 	   if(this._uploadFiles){
+	 		   for(var k in this._uploadFiles){ delete this._uploadFiles[k]; }
+	 	   }
 	    }else{
+	 	   uploadOrigNames={};
+	 	   if(this._uploadFiles){
+	 		   for(var k in this._uploadFiles){ delete this._uploadFiles[k]; }
+	 	   }
 	 	   layer.msg('全部上传失败！'); 
 	    }
 	    
 	 }
-	,error: function(){
+	,error: function(index){
+		if(this._uploadFiles){ delete this._uploadFiles[index]; }
+		delete uploadOrigNames[index];
 		layer.closeAll('loading'); //关闭loading
 		layer.msg('上传发生错误！'); 
 	}

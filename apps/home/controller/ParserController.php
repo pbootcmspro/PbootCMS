@@ -24,20 +24,17 @@ class ParserController extends Controller
 
     protected $var = array();
 
-    protected $allowed_fields = array(
-        'id', 'acode', 'scode', 'subscode', 'title', 'titlecolor', 'subtitle', 
-        'filename', 'author', 'source', 'outlink', 'date', 'ico', 'pics', 
-        'picstitle', 'content', 'tags', 'enclosure', 'keywords', 'description', 
-        'sorting', 'status', 'istop', 'isrecommend', 'isheadline', 'visits', 
-        'likes', 'oppose', 'create_user', 'update_user', 'create_time', 
-        'update_time', 'gtype', 'gid', 'gnote'
-    );
-    protected $allowed_tags_fields = array('title','isico','ispics','istop','isrecommend','isheadline');
+    // 内容表可用于搜索、筛选的字段白名单，统一取自 content_query_fields()
+    protected $allowed_fields = array();
+
+    // isico/ispics 是调节参数名（映射到 ico/pics），不是列名，勿列入白名单
+    protected $allowed_tags_fields = array('title','istop','isrecommend','isheadline');
 
 
     public function __construct()
     {
         $this->model = new ParserModel();
+        $this->allowed_fields = content_query_fields();
     }
 
     public function _empty()
@@ -513,8 +510,9 @@ class ParserController extends Controller
                                     }
                                     break;
                                 case 'pic':
-                                    if ($value['pic']) {
-                                        $one_html = str_replace($matches2[0][$j], $this->parserAssetUrl($value['pic'], $params), $one_html);
+                                    $nav_pic = $this->model->resolveSortPic($value['scode']);
+                                    if ($nav_pic) {
+                                        $one_html = str_replace($matches2[0][$j], $this->parserAssetUrl($nav_pic, $params), $one_html);
                                     } else {
                                         $one_html = str_replace($matches2[0][$j], '', $one_html);
                                     }
@@ -690,8 +688,9 @@ class ParserController extends Controller
                         }
                         break;
                     case 'pic':
-                        if ($sort->pic) {
-                            $content = str_replace($matches[0][$i], $this->parserAssetUrl($sort->pic, $params), $content);
+                        $sort_pic = $this->model->resolveSortPic($sort->scode);
+                        if ($sort_pic) {
+                            $content = str_replace($matches[0][$i], $this->parserAssetUrl($sort_pic, $params), $content);
                         } else {
                             $content = str_replace($matches[0][$i], '', $content);
                         }
@@ -851,8 +850,9 @@ class ParserController extends Controller
                                 }
                                 break;
                             case 'pic':
-                                if ($value->pic) {
-                                        $one_html = str_replace($matches2[0][$j], $this->parserAssetUrl($value->pic, $params), $one_html);
+                                $sort_pic = $this->model->resolveSortPic($value->scode);
+                                if ($sort_pic) {
+                                        $one_html = str_replace($matches2[0][$j], $this->parserAssetUrl($sort_pic, $params), $one_html);
                                 } else {
                                     $one_html = str_replace($matches2[0][$j], '', $one_html);
                                 }
@@ -1160,6 +1160,7 @@ class ParserController extends Controller
         $pattern = '/\{pboot:list(\s+[^}]+)?\}([\s\S]*?)\{\/pboot:list\}/';
 
         if (preg_match_all($pattern, $content, $matches)) {
+            $extFields = null;
 
             for ($i = 0; $i < count($matches[0]); $i++) {
 
@@ -1290,26 +1291,17 @@ class ParserController extends Controller
                     }
                 }
 
-                // filter数据筛选
-                $where1 = array();
-                if ($filter) {
-                    $filter = explode('|', $filter);
-                    if (count($filter) == 2 && in_array($filter[0], $this->allowed_tags_fields)) {
-                        $filter_arr = explode(',', $filter[1]);
-                        if ($filter[0] == 'title') {
-                            $filter[0] = 'a.title';
-                        }
-                        foreach ($filter_arr as $value) {
-                            if ($value) {
-                                if ($fuzzy) {
-                                    $where1[] = $filter[0] . " like '%" . escape_string($value) . "%'";
-                                } else {
-                                    $where1[] = $filter[0] . "='" . escape_string($value) . "'";
-                                }
-                            }
-                        }
-                    }
+                if ($extFields === null && preg_match('/^\s*ext_[\w\-]+\s*\|/i', $filter)) {
+                    $extFields = $this->model->getExtFields();
                 }
+
+                // 标签未显式传 fuzzy 时，回退读取 URL/请求参数（与 search/API 一致，支持 ?fuzzy=1）
+                if (! array_key_exists('fuzzy', $params)) {
+                    $fuzzy = parse_fuzzy_param(request('fuzzy', 'int', false, null, null), $fuzzy);
+                }
+
+                // filter数据筛选
+                $where1 = $this->buildFilterWhere($filter, $fuzzy, $this->allowed_tags_fields, false, $extFields);
 
                 // tags数据参数筛选
                 $where2 = array();
@@ -1343,9 +1335,15 @@ class ParserController extends Controller
 
                     // 扩展字段数据筛选（多选为逗号分隔，按集合边界匹配）
                     foreach ($_GET as $key => $value) {
-                        if (preg_match('/^ext_[\w\-]+$/', $key)) { // 其他字段不加入
+                        if (preg_match('/^ext_[\w\-]+$/i', $key)) { // 其他字段不加入
                             $ext_val = get($key, 'vars');
-                            if ($ext_val !== null && $ext_val !== '' && ($clause = build_extfield_where($key, $ext_val, $fuzzy))) {
+                            if ($ext_val === null || $ext_val === '') {
+                                continue;
+                            }
+                            if ($extFields === null) {
+                                $extFields = $this->model->getExtFields();
+                            }
+                            if (($field = canonical_allowlist_field($key, $extFields)) && ($clause = build_extfield_where($field, $ext_val, $fuzzy))) {
                                 $where3[] = $clause;
                             }
                         }
@@ -1529,6 +1527,8 @@ class ParserController extends Controller
         $pattern2 = '/\[pics:([\w]+)(\s+[^]]+)?\]/';
         if (preg_match_all($pattern, $content, $matches)) {
             $count = count($matches[0]);
+            $extFields = null;
+            $contentFields = content_query_fields();
             for ($i = 0; $i < $count; $i++) {
                 // 获取调节参数
                 $params = $this->parserParam($matches[1][$i]);
@@ -1559,6 +1559,20 @@ class ParserController extends Controller
                             break;
                     }
                 }
+
+                // 校验字段名，避免非法列名拼入查询字段列表
+                $canonicalField = canonical_allowlist_field($field, $contentFields);
+                if ($canonicalField === '' && preg_match('/^ext_[\w\-]+$/i', $field)) {
+                    if ($extFields === null) {
+                        $extFields = $this->model->getExtFields();
+                    }
+                    $canonicalField = canonical_allowlist_field($field, $extFields);
+                }
+                if ($canonicalField === '') {
+                    $content = str_replace($matches[0][$i], '', $content);
+                    continue;
+                }
+                $field = $canonicalField;
 
                 // 读取内容多图
                 if (!!$rs = $this->model->getContentPics(escape_string($id), $field)) {
@@ -1631,6 +1645,7 @@ class ParserController extends Controller
         $pattern2 = '/\[checkbox:([\w]+)(\s+[^]]+)?\]/';
         if (preg_match_all($pattern, $content, $matches)) {
             $count = count($matches[0]);
+            $extFields = null;
             for ($i = 0; $i < $count; $i++) {
                 // 获取调节参数
                 $params = $this->parserParam($matches[1][$i]);
@@ -1661,6 +1676,19 @@ class ParserController extends Controller
                             $field = $value;
                             break;
                     }
+                }
+
+                // 校验字段名，该标签只查询扩展字段表，仅允许扩展字段
+                if (!preg_match('/^ext_[\w\-]+$/i', $field)) {
+                    $content = str_replace($matches[0][$i], '', $content);
+                    continue;
+                }
+                if ($extFields === null) {
+                    $extFields = $this->model->getExtFields();
+                }
+                if (($field = canonical_allowlist_field($field, $extFields)) === '') {
+                    $content = str_replace($matches[0][$i], '', $content);
+                    continue;
                 }
 
                 // 读取内容多图
@@ -1971,14 +1999,9 @@ class ParserController extends Controller
                     continue;
                 }
 
-                $gid = 1;
+                $gid = 1; // 默认分组
                 $num = 10;
                 $start = 1;
-
-                // 跳过未指定gid的标签
-                if (!array_key_exists('gid', $params)) {
-                    continue;
-                }
 
                 foreach ($params as $key => $value) {
                     switch ($key) {
@@ -2797,6 +2820,7 @@ class ParserController extends Controller
 
         if (preg_match_all($pattern, $content, $matches)) {
             $count = count($matches[0]);
+            $extFields = null;
             $field = request('field');
             if (!preg_match('/^[\w\|\s]+$/', $field)) {
                 $field = '';
@@ -2929,30 +2953,21 @@ class ParserController extends Controller
                     }
                 }
 
+                if ($extFields === null && ((($keyword !== null && $keyword !== '') && preg_match('/(?:^|\|)\s*ext_[\w\-]+\s*(?:\||$)/i', $field)) || preg_match('/^\s*ext_[\w\-]+\s*\|/i', $filter))) {
+                    $extFields = $this->model->getExtFields();
+                }
+
                 if ($scode == '*') {
                     $scode = '';
                 }
 
-                // filter数据筛选
-                $where1 = array();
-                if ($filter) {
-                    $filter = explode('|', $filter);
-                    if (count($filter) == 2) {
-                        $filter_arr = explode(',', $filter[1]);
-                        if ($filter[0] == 'title') {
-                            $filter[0] = 'a.title';
-                        }
-                        foreach ($filter_arr as $value) {
-                            if ($value) {
-                                if ($fuzzy) {
-                                    $where1[] = $filter[0] . " like '%" . escape_string($value) . "%'";
-                                } else {
-                                    $where1[] = $filter[0] . "='" . escape_string($value) . "'";
-                                }
-                            }
-                        }
-                    }
+                // 标签未显式传 fuzzy 时，回退读取 URL/请求参数（与 API search 一致，支持 ?fuzzy=0）
+                if (! array_key_exists('fuzzy', $params)) {
+                    $fuzzy = parse_fuzzy_param(request('fuzzy', 'int', false, null, null), $fuzzy);
                 }
+
+                // filter数据筛选
+                $where1 = $this->buildFilterWhere($filter, $fuzzy, $this->allowed_fields, true, $extFields);
 
                 // tags数据筛选
                 $where2 = array();
@@ -2967,35 +2982,40 @@ class ParserController extends Controller
 
                 // 存储搜索条件，条件为“并列”关系，由于为模糊匹配，条件为空时意味着“任意”
                 $where3 = array();
+                $keywordUsesTitle = false; // 多字段 keyword 条件存于 where3[0]，需单独记录是否搜索标题
 
                 // 采取keyword方式
-                if ($keyword) {
+                if ($keyword !== null && $keyword !== '') {
                     if (strpos($field, '|')) { // 匹配多字段的关键字搜索
-                        $field = explode('|', $field);
-                        foreach ($field as $value) {
-                            if ($value == 'title') {
-                                $value = 'a.title';
+                        $field_arr = explode('|', $field);
+                        $clauses = array();
+                        foreach ($field_arr as $value) {
+                            // 只允许白名单字段与扩展字段，避免非法或歧义列名拼入SQL
+                            if (! $column = resolve_search_field($value, $this->allowed_fields, $extFields)) {
+                                continue;
+                            }
+                            if ($column === 'a.title') {
+                                $keywordUsesTitle = true;
                             }
                             if ($fuzzy) {
                                 $like = " like '%" . $keyword . "%'"; // 前面已经转义过
                             } else {
                                 $like = " like '" . $keyword . "'"; // 前面已经转义过
                             }
-                            if (isset($where3[0])) {
-                                $where3[0] .= ' OR ' . $value . $like;
-                            } else {
-                                $where3[0] = $value . $like;
-                            }
+                            $clauses[] = $column . $like;
                         }
-                        if (count($field) > 1) {
-                            $where3[0] = '(' . $where3[0] . ')';
+                        if ($clauses) {
+                            if (count($clauses) > 1) {
+                                $where3[0] = '(' . implode(' OR ', $clauses) . ')';
+                            } else {
+                                $where3[0] = $clauses[0];
+                            }
+                        } else {
+                            $where3['a.title'] = $keyword; // 无有效字段时回退到标题搜索
                         }
                     } else { // 匹配单一字段的关键字搜索
-                        if ($field) {
-                            if ($field == 'title') {
-                                $field = 'a.title';
-                            }
-                            $where3[$field] = $keyword;
+                        if ($column = resolve_search_field($field, $this->allowed_fields, $extFields)) {
+                            $where3[$column] = $keyword;
                         } else {
                             $where3['a.title'] = $keyword;
                         }
@@ -3010,21 +3030,38 @@ class ParserController extends Controller
                 }
 
                 foreach ($receive as $key => $value) {
-                    if (!!$value = request($key, 'vars')) {
-                        if ($key == 'title') {
-                            $key = 'a.title';
+                    $value = request($key, 'vars');
+                    // 扩展字段多选：与 list/API 一致，在普通字段白名单之前按集合边界匹配
+                    if (preg_match('/^ext_[\w\-]+$/i', $key)) {
+                        if ($value === null || $value === '') {
+                            continue;
                         }
-                        // 只允许白名单中的字段，并且检查字段格式
-                        if (in_array($key, $this->allowed_fields) && preg_match('/^[\w\-\.]+$/', $key)) {
-                            $where3[$key] = $value;
+                        if ($extFields === null) {
+                            $extFields = $this->model->getExtFields();
                         }
+                        if (($field = canonical_allowlist_field($key, $extFields)) && ($clause = build_extfield_where($field, $value, $fuzzy))) {
+                            $where3[] = $clause;
+                        }
+                    } elseif ($value !== null && $value !== '') {
+                        // scode 由上方独立参数走栏目树展开，不得再写入 where3（否则 a.scode 精确/模糊条件会破坏含子栏语义）
+                        // 只允许白名单字段，统一补 a. 限定，避免多表 JOIN 下列名歧义
+                        $canonicalKey = canonical_allowlist_field($key, $this->allowed_fields);
+                        if (! $canonicalKey || $canonicalKey === 'scode') {
+                            continue;
+                        }
+
+                        // keyword 可能以 a.title 键或多字段 OR 子句搜索标题；通用 title 仅在 keyword 未搜索标题时独立筛选
+                        if ($canonicalKey === 'title' && ($keywordUsesTitle || array_key_exists('a.title', $where3))) {
+                            continue;
+                        }
+                        $where3['a.' . $canonicalKey] = $value;
                     }
                 }
 
-                // 去除特殊键值
+                // 去除特殊键值（白名单外的键本不会写入；a.scode 双清以防漏网）
                 unset($where3['keyword']);
                 unset($where3['field']);
-                unset($where3['scode']);
+                unset($where3['scode'], $where3['a.scode']);
                 unset($where3['page']);
                 unset($where3['from']);
                 unset($where3['isappinstalled']);
@@ -3334,22 +3371,22 @@ class ParserController extends Controller
         if (! $path) {
             return '';
         }
+        // 统一为不含 SITE_DIR 的站点相对路径，避免二级目录下与 ROOT_PATH 重复拼接
+        // http(s)：CDN 地址可经 upload_local_path 还原为本地相对路径再缩放
         if (preg_match('#^https?://#i', $path)) {
-            return $this->adjustLabelData($params, $path);
+            $processed = $this->adjustLabelData($params, $path);
+        } else {
+            $localPath = upload_local_path($path);
+            if ($localPath === null) {
+                return $this->adjustLabelData($params, $path);
+            }
+            $processed = $this->adjustLabelData($params, $localPath);
         }
-        $localPath = (defined('SITE_DIR') ? SITE_DIR : '') . upload_local_path($path);
-        $processed = $this->adjustLabelData($params, $localPath);
+        // 缩放后可能变为 /runtime/image/...，外链早退也需补 SITE_DIR / 公网 URL
         if (preg_match('#^https?://#i', $processed)) {
             return $processed;
         }
-        if (defined('SITE_DIR') && SITE_DIR && strpos($processed, SITE_DIR) === 0) {
-            $relative = substr($processed, strlen(SITE_DIR));
-        } elseif (defined('ROOT_PATH') && strpos($processed, ROOT_PATH) === 0) {
-            $relative = str_replace(ROOT_PATH, '', $processed);
-        } else {
-            $relative = $processed;
-        }
-        $relative = upload_local_path($relative);
+        $relative = upload_local_path($processed);
         if ($relative === null) {
             return $processed;
         }
@@ -3366,14 +3403,17 @@ class ParserController extends Controller
         if (isset($params['maxwidth']) || isset($params['maxheight'])) {
             $maxwidth = isset($params['maxwidth']) ? $params['maxwidth'] : null;
             $maxheight = isset($params['maxheight']) ? $params['maxheight'] : null;
-            $max_src_file = ROOT_PATH . $data;
-            $max_out_file = RUN_PATH . '/image/mw' . $maxwidth . '_mh' . $maxheight . '_' . basename($data);
-            if (!file_exists($max_out_file) && file_exists($max_src_file)) {
-                if (resize_img($max_src_file, $max_out_file, $maxwidth, $maxheight) === true) {
+            $max_relative = upload_local_path($data);
+            if ($max_relative !== null) {
+                $max_src_file = ROOT_PATH . $max_relative;
+                $max_out_file = RUN_PATH . '/image/mw' . $maxwidth . '_mh' . $maxheight . '_' . basename($max_relative);
+                if (!file_exists($max_out_file) && file_exists($max_src_file)) {
+                    if (resize_img($max_src_file, $max_out_file, $maxwidth, $maxheight) === true) {
+                        $data = str_replace(ROOT_PATH, '', $max_out_file);
+                    }
+                } elseif (file_exists($max_out_file) && file_exists($max_src_file)) {
                     $data = str_replace(ROOT_PATH, '', $max_out_file);
                 }
-            } elseif (file_exists($max_out_file) && file_exists($max_src_file)) {
-                $data = str_replace(ROOT_PATH, '', $max_out_file);
             }
         }
 
@@ -3381,14 +3421,17 @@ class ParserController extends Controller
         if (isset($params['width']) || isset($params['height'])) {
             $width = isset($params['width']) ? $params['width'] : null;
             $height = isset($params['height']) ? $params['height'] : null;
-            $src_file = ROOT_PATH . $data;
-            $out_file = RUN_PATH . '/image/w' . $width . '_h' . $height . '_' . basename($data);
-            if (!file_exists($out_file) && file_exists($src_file)) {
-                if (cut_img($src_file, $out_file, $width, $height) === true) {
+            $relative = upload_local_path($data);
+            if ($relative !== null) {
+                $src_file = ROOT_PATH . $relative;
+                $out_file = RUN_PATH . '/image/w' . $width . '_h' . $height . '_' . basename($relative);
+                if (!file_exists($out_file) && file_exists($src_file)) {
+                    if (cut_img($src_file, $out_file, $width, $height) === true) {
+                        $data = str_replace(ROOT_PATH, '', $out_file);
+                    }
+                } elseif (file_exists($out_file) && file_exists($src_file)) {
                     $data = str_replace(ROOT_PATH, '', $out_file);
                 }
-            } elseif (file_exists($out_file) && file_exists($src_file)) {
-                $data = str_replace(ROOT_PATH, '', $out_file);
             }
         }
 
@@ -3548,6 +3591,60 @@ class ParserController extends Controller
             }
         }
         return $param;
+    }
+
+    // 构建 filter 调节参数的筛选条件，格式为 字段|值1,值2
+    // 扩展字段（ext_xxx）走集合边界匹配，其余字段必须在白名单内
+    // $allowedFields 为普通字段白名单，$prefixAllowedField 为真时给普通字段补 a. 表限定
+    protected function buildFilterWhere($filter, $fuzzy, $allowedFields, $prefixAllowedField = false, $extFields = array())
+    {
+        $where = array();
+
+        if (! $filter || ! is_string($filter)) {
+            return $where;
+        }
+
+        $filter = explode('|', $filter, 2);
+        if (count($filter) != 2) {
+            return $where;
+        }
+
+        $field = trim($filter[0]);
+        $isExtField = (bool) preg_match('/^ext_[\w\-]+$/i', $field);
+        $field = canonical_allowlist_field($field, $isExtField ? $extFields : $allowedFields);
+
+        // 扩展字段必须命中真实字段白名单；其余字段必须命中普通字段白名单
+        if ($field === '') {
+            return $where;
+        }
+
+        if ($field == 'title') {
+            $column = 'a.title';
+        } elseif ($prefixAllowedField) {
+            $column = 'a.' . $field;
+        } else {
+            $column = $field;
+        }
+
+        $filter_arr = explode(',', $filter[1]);
+        foreach ($filter_arr as $value) {
+            $value = trim($value);
+            if ($value === '') {
+                continue;
+            }
+            if ($isExtField) {
+                // 扩展字段多选存为逗号分隔，需按集合边界匹配
+                if ($clause = build_extfield_where($field, $value, $fuzzy)) {
+                    $where[] = $clause;
+                }
+            } elseif ($fuzzy) {
+                $where[] = $column . " like '%" . escape_string($value) . "%'";
+            } else {
+                $where[] = $column . "='" . escape_string($value) . "'";
+            }
+        }
+
+        return $where;
     }
 
     // 解析列表标签
@@ -3847,22 +3944,27 @@ class ParserController extends Controller
                     // 将A链接保护起来,alt、titel保护起来
                     $rega = "/(<a .*?>.*?<\/a>)|(alt=.*?>)|(title=.*?>)/i";
                     preg_match_all($rega, $data->content, $matches1);
-                    foreach ($matches1[0] as $key => $value) {
+                    $protects = $matches1[0];
+                    foreach ($protects as $key => $value) {
                         $data->content = str_replace($value, '#rega:' . $key . '#', $data->content);
                     }
 
-                    // 去除包含关系的短tags,实现长关键字优先
-                    foreach ($tags as $key => $value) {
-                        foreach ($tags as $key2 => $value2) {
-                            if (strpos($value2->name, $value->name) !== false && $key != $key2) {
-                                unset($tags[$key]);
+                    // 按关键词长度优先替换（getTags 已 length desc），不删除短词；
+                    // 全部命中都占位：前 N 次生成内链，超限保留纯文本，避免短词嵌入长词
+                    $replaceNum = $this->config('content_tags_replace_num') ?: 3;
+                    foreach ($tags as $tag) {
+                        $pattern = '/' . preg_quote($tag->name, '/') . '/';
+                        $linked = 0;
+                        $data->content = preg_replace_callback($pattern, function ($m) use (&$protects, $tag, $replaceNum, &$linked) {
+                            $key = count($protects);
+                            if ($linked < $replaceNum) {
+                                $protects[$key] = '<a href="' . $tag->link . '">' . $tag->name . '</a>';
+                                $linked++;
+                            } else {
+                                $protects[$key] = $tag->name;
                             }
-                        }
-                    }
-
-                    // 执行内链替换
-                    foreach ($tags as $value) {
-                        $data->content = preg_replace('/' . $value->name . '/', '<a href="' . $value->link . '">' . $value->name . '</a>', $data->content, $this->config('content_tags_replace_num') ?: 3);
+                            return '#rega:' . $key . '#';
+                        }, $data->content);
                     }
 
                     // 还原保护的内容
@@ -3870,7 +3972,7 @@ class ParserController extends Controller
                     if (preg_match_all($pattern, $data->content, $matches2)) {
                         $count = count($matches2[0]);
                         for ($i = 0; $i < $count; $i++) {
-                            $data->content = str_replace($matches2[0][$i], $matches1[0][$matches2[1][$i]], $data->content);
+                            $data->content = str_replace($matches2[0][$i], $protects[$matches2[1][$i]], $data->content);
                         }
                     }
                 }

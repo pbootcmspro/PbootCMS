@@ -13,6 +13,9 @@ use core\basic\Model;
 class ParserModel extends Model
 {
 
+    // 扩展内容表中真实存在的扩展字段（单个模型实例内缓存）
+    protected $ext_fields;
+
     // 存储分类及子编码
     protected $scodes = array();
 
@@ -189,6 +192,38 @@ class ParserModel extends Model
         return $this->getTopParent($scode, $result);
     }
 
+    /**
+     * 栏目大图回退：当前 → 直接父级 → 顶级；全部无图返回空字符串
+     *
+     * @param string $scode
+     * @return string
+     */
+    public function resolveSortPic($scode)
+    {
+        if (! $scode) {
+            return '';
+        }
+        $sorts = $this->getSortList();
+        if (! isset($sorts[$scode])) {
+            return '';
+        }
+        if (! empty($sorts[$scode]['pic'])) {
+            return $sorts[$scode]['pic'];
+        }
+        $pcode = isset($sorts[$scode]['pcode']) ? $sorts[$scode]['pcode'] : '';
+        if ($pcode && isset($sorts[$pcode]) && ! empty($sorts[$pcode]['pic'])) {
+            return $sorts[$pcode]['pic'];
+        }
+        $tcode = $scode;
+        while (! empty($sorts[$tcode]['pcode']) && isset($sorts[$sorts[$tcode]['pcode']])) {
+            $tcode = $sorts[$tcode]['pcode'];
+        }
+        if ($tcode && $tcode != $scode && $tcode != $pcode && ! empty($sorts[$tcode]['pic'])) {
+            return $sorts[$tcode]['pic'];
+        }
+        return '';
+    }
+
     // 获取位置
     public function getPosition($scode)
     {
@@ -277,6 +312,7 @@ class ParserModel extends Model
                 'a.name',
                 'a.filename',
                 'a.outlink',
+                'a.pic',
                 'b.type',
                 'b.urlname'
             );
@@ -298,35 +334,72 @@ class ParserModel extends Model
         return parent::table('ay_extfield')->where("name='$field'")->value('value');
     }
 
+    // 获取内容扩展表中真实存在的扩展字段
+    public function getExtFields()
+    {
+        if (! isset($this->ext_fields)) {
+            $this->ext_fields = array();
+            $fields = parent::tableFields('ay_content_ext');
+            foreach ($fields as $field) {
+                if (is_string($field) && preg_match('/^ext_[\w\-]+$/i', $field)) {
+                    $this->ext_fields[] = $field;
+                }
+            }
+        }
+        return $this->ext_fields;
+    }
+
     // 列表内容，分页以參數形式帶入，不区分语言，兼容跨语言
     public function getList($scode, $num, $order, $filter = array(), $tags = array(), $select = array(), $fuzzy = false, $start = 1, $lfield = null, $lg = null, bool $page = false)
     {
         $scode = escape_string($scode);
         $ext_table = false;
         if ($lfield) {
+            $extFields = null;
             $lfield .= ',id,outlink,type,scode,sortfilename,filename,urlname'; // 附加必须字段
             $fields = explode(',', $lfield);
             $fields = array_unique($fields); // 去重
-            foreach ($fields as $key => $value) {
-                if (strpos($value, 'ext_') === 0) {
-                    $ext_table = true;
-                    $fields[$key] = 'e.' . $value;
-                } elseif ($value == 'sortname') {
-                    $fields[$key] = 'b.name as sortname';
-                } elseif ($value == 'sortfilename') {
-                    $fields[$key] = 'b.filename as sortfilename';
-                } elseif ($value == 'subsortname') {
-                    $fields[$key] = 'c.name as subsortname';
-                } elseif ($value == 'subfilename') {
-                    $fields[$key] = 'c.filename as subfilename';
-                } elseif ($value == 'type' || $value == 'urlname') {
-                    $fields[$key] = 'd.' . $value;
-                } elseif ($value == 'modelname') {
-                    $fields[$key] = 'd.name as modelname';
-                } else {
-                    $fields[$key] = 'a.' . $value;
+            $allowed = content_query_fields();
+            $relatedFields = array('sortname', 'sortfilename', 'subsortname', 'subfilename', 'type', 'urlname', 'modelname');
+            $safe_fields = array();
+            foreach ($fields as $value) {
+                $value = trim($value);
+                if ($value === '') {
+                    continue;
                 }
+                if ($value == '*') {
+                    $safe_fields[] = 'a.*';
+                } elseif (preg_match('/^ext_[\w\-]+$/i', $value)) {
+                    if ($extFields === null) {
+                        $extFields = $this->getExtFields();
+                    }
+                    $extField = canonical_allowlist_field($value, $extFields);
+                    if ($extField === '') {
+                        continue; // 不存在或非法的扩展字段名丢弃
+                    }
+                    $ext_table = true;
+                    $safe_fields[] = 'e.' . $extField;
+                } else {
+                    $relatedField = canonical_allowlist_field($value, $relatedFields);
+                    if ($relatedField === 'sortname') {
+                        $safe_fields[] = 'b.name as sortname';
+                    } elseif ($relatedField === 'sortfilename') {
+                        $safe_fields[] = 'b.filename as sortfilename';
+                    } elseif ($relatedField === 'subsortname') {
+                        $safe_fields[] = 'c.name as subsortname';
+                    } elseif ($relatedField === 'subfilename') {
+                        $safe_fields[] = 'c.filename as subfilename';
+                    } elseif ($relatedField === 'type' || $relatedField === 'urlname') {
+                        $safe_fields[] = 'd.' . $relatedField;
+                    } elseif ($relatedField === 'modelname') {
+                        $safe_fields[] = 'd.name as modelname';
+                    } elseif ($contentField = canonical_allowlist_field($value, $allowed)) {
+                        $safe_fields[] = 'a.' . $contentField;
+                    }
+                }
+                // 其余非白名单字段丢弃，避免非法列名拼入查询字段列表
             }
+            $fields = array_unique($safe_fields);
         } else {
             $ext_table = true;
             $fields = array(
@@ -403,6 +476,12 @@ class ParserModel extends Model
             )
         );
 
+        // 排序、筛选或搜索条件中引用了扩展字段时，同样需要加载扩展字段表，
+        // 否则会生成引用未关联表的SQL导致查询报错
+        if (! $ext_table && $this->hasExtFieldReference($order, $filter, $tags, $select)) {
+            $ext_table = true;
+        }
+
         // 加载扩展字段表
         if ($ext_table) {
             $join[] = array(
@@ -477,6 +556,27 @@ class ParserModel extends Model
                 ->select();
         }
 
+    }
+
+    // 判断传入的排序、条件等参数中是否引用了扩展字段（ext_xxx 或 e.ext_xxx）
+    // 递归检查数组的键与值：条件数组既可能以字段名为键，也可能是数值索引的原始子句
+    private function hasExtFieldReference()
+    {
+        foreach (func_get_args() as $arg) {
+            if (is_array($arg)) {
+                foreach ($arg as $key => $value) {
+                    if ($this->hasExtFieldReference($key) || $this->hasExtFieldReference($value)) {
+                        return true;
+                    }
+                }
+            } elseif (is_string($arg)) {
+                $arg = preg_replace("/'(?:\\\\.|[^'\\\\])*'|\"(?:\\\\.|[^\"\\\\])*\"/", '', $arg);
+                if ($arg !== null && preg_match('/(?:^|[^\w])(?:e\.)?ext_[\w\-]+/i', $arg)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     // 内容详情，不区分语言，兼容跨语言

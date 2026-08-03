@@ -16,6 +16,9 @@ class CmsModel extends Model
     // 存储分类及子编码
     protected $scodes = array();
 
+    // 扩展内容表中真实存在的扩展字段（单个模型实例内缓存）
+    protected $ext_fields;
+
     // 存储分类查询数据
     protected $sorts;
 
@@ -58,6 +61,21 @@ class CmsModel extends Model
     public function getLabelAll()
     {
         return parent::table('ay_label')->decode()->column('value', 'name');
+    }
+
+    // 获取内容扩展表中真实存在的扩展字段
+    public function getExtFields()
+    {
+        if (! isset($this->ext_fields)) {
+            $this->ext_fields = array();
+            $fields = parent::tableFields('ay_content_ext');
+            foreach ($fields as $field) {
+                if (is_string($field) && preg_match('/^ext_[\w\-]+$/i', $field)) {
+                    $this->ext_fields[] = $field;
+                }
+            }
+        }
+        return $this->ext_fields;
     }
 
     // 分类信息

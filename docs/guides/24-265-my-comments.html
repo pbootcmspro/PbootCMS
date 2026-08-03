@@ -1,0 +1,108 @@
+<div class="bd-callout bd-callout-info">
+    <h4>我的评论</h4>
+    <p>用于在个人中心我的评论页面调用，具体使用建议参考默认模板</p>
+</div>
+<h4 class="mt-3">1、基本标签</h4>
+<p>
+    <code> {pboot:mycommentpage}  我的评论页面地址</code>
+</p>
+<h4 class="mt-3">2、评论循环输出</h4>
+<p>
+{pboot:mycomment}</p>
+<p>
+[comment:***]</p>
+<p>
+{/pboot:mycomment}</p>
+<h4 class="mt-3">3、可使用的输出标签</h4>
+<table class="table table-bordered table-light">
+    <tbody>
+        <tr class="firstRow">
+            <td style="word-break: break-all;">[mycomment:n]</td>
+            <td>序号，从0开始</td>
+        </tr>
+        <tr>
+            <td style="word-break: break-all;">[mycomment:i]</td>
+            <td>序号，从1开始</td>
+        </tr>
+        <tr>
+            <td style="word-break: break-all;">[mycomment:pid]</td>
+            <td>父评论ID</td>
+        </tr>
+        <tr>
+            <td style="word-break: break-all;">[mycomment:contentid]</td>
+            <td>评论文章ID</td>
+        </tr>
+        <tr>
+            <td style="word-break: break-all;">[mycomment:title]</td>
+            <td style="word-break: break-all;">评论文章标题</td>
+        </tr>
+        <tr>
+            <td style="word-break: break-all;">[mycomment:comment]</td>
+            <td>评论内容</td>
+        </tr>
+        <tr>
+            <td>[mycomment:ip]</td>
+            <td>IP地址</td>
+        </tr>
+        <tr>
+            <td>[mycomment:os]</td>
+            <td>操作系统</td>
+        </tr>
+        <tr>
+            <td>[mycomment:bs]</td>
+            <td>浏览器</td>
+        </tr>
+        <tr>
+            <td>[mycomment:date]</td>
+            <td>日期</td>
+        </tr>
+        <tr>
+            <td>[mycomment:uid]</td>
+            <td>评论人ID</td>
+        </tr>
+        <tr>
+            <td>[mycomment:username]</td>
+            <td>评论人账号</td>
+        </tr>
+        <tr>
+            <td>[mycomment:nickname]</td>
+            <td>评论人昵称</td>
+        </tr>
+        <tr>
+            <td>[mycomment:headpic]</td>
+            <td>评论人头像</td>
+        </tr>
+        <tr>
+            <td>[mycomment:pid]</td>
+            <td>父评论人ID</td>
+        </tr>
+        <tr>
+            <td>[mycomment:pusername]</td>
+            <td>父评论人账号</td>
+        </tr>
+        <tr>
+            <td>[mycomment:pnickname]</td>
+            <td>父评论人昵称</td>
+        </tr>
+        <tr>
+            <td>[mycomment:pheadpic]</td>
+            <td>父评论人头像</td>
+        </tr>
+        <tr>
+            <td>[mycomment:likes]</td>
+            <td>点赞数量</td>
+        </tr>
+        <tr>
+            <td>[mycomment:oppose]</td>
+            <td>反对数量</td>
+        </tr>
+        <tr>
+            <td style="word-break: break-all;">[mycomment:status]</td>
+            <td style="word-break: break-all;">评论状态：1审核2待审核</td>
+        </tr>
+        <tr>
+            <td style="word-break: break-all;">[mycomment:delaction]</td>
+            <td style="word-break: break-all;">评论删除地址</td>
+        </tr>
+    </tbody>
+</table>

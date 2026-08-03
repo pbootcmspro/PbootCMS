@@ -1,0 +1,126 @@
+<div class="bd-callout bd-callout-info">
+    <h4>文章评论</h4>
+    <p>文章评论调用在内容详情页可用，具体使用建议参考默认模板</p>
+</div>
+<h4 class="mt-3">1、基本标签</h4>
+<p>
+    <code>{pboot:commentcodestatus} 验证码是否开启</code>
+</p>
+<p>
+    <code>{pboot:commentaction} 评论提交地址</code>
+</p>
+<p>
+    <code>comment、checkcode 评论表单必填</code>
+</p>
+<p>
+    <code>注：由于涉及东西较多，具体使用可参考默认模板</code>
+</p>
+<p>
+    <code>
+        <br/>
+    </code>
+</p>
+<h4 class="mt-3">2、评论循环输出</h4>
+<p>
+{pboot:comment contentid={content:id}}</p>
+<p>
+[comment:***]</p>
+<p>
+{pboot:commentsub}<br/>  [commentsub:***] <br/>{/pboot:commentsub} <br/>
+</p>
+<p>
+{/pboot:comment}</p>
+<p>
+    <br/>
+</p>
+<h4 class="mt-3">3、可使用的输出标签</h4>
+<table class="table table-bordered table-light">
+    <tbody>
+        <tr class="firstRow">
+            <td style="word-break: break-all;">[comment:n]</td>
+            <td>序号，从0开始</td>
+        </tr>
+        <tr>
+            <td style="word-break: break-all;">[comment:i]</td>
+            <td>序号，从1开始</td>
+        </tr>
+        <tr>
+            <td style="word-break: break-all;">[comment:pid]</td>
+            <td>父评论ID</td>
+        </tr>
+        <tr>
+            <td style="word-break: break-all;">[comment:contentid]</td>
+            <td>评论文章ID</td>
+        </tr>
+        <tr>
+            <td style="word-break: break-all;">[comment:comment]</td>
+            <td>评论内容</td>
+        </tr>
+        <tr>
+            <td>[comment:ip]</td>
+            <td>IP地址</td>
+        </tr>
+        <tr>
+            <td>[comment:os]</td>
+            <td>操作系统</td>
+        </tr>
+        <tr>
+            <td>[comment:bs]</td>
+            <td>浏览器</td>
+        </tr>
+        <tr>
+            <td>[comment:date]</td>
+            <td>日期</td>
+        </tr>
+        <tr>
+            <td>[comment:uid]</td>
+            <td>评论人ID</td>
+        </tr>
+        <tr>
+            <td>[comment:username]</td>
+            <td>评论人账号</td>
+        </tr>
+        <tr>
+            <td>[comment:nickname]</td>
+            <td>评论人昵称</td>
+        </tr>
+        <tr>
+            <td>[comment:headpic]</td>
+            <td>评论人头像</td>
+        </tr>
+        <tr>
+            <td>[comment:pid]</td>
+            <td>父评论人ID</td>
+        </tr>
+        <tr>
+            <td>[comment:pusername]</td>
+            <td>父评论人账号</td>
+        </tr>
+        <tr>
+            <td>[comment:pnickname]</td>
+            <td>父评论人昵称</td>
+        </tr>
+        <tr>
+            <td>[comment:pheadpic]</td>
+            <td>父评论人头像</td>
+        </tr>
+        <tr>
+            <td>[comment:likes]</td>
+            <td>点赞数量</td>
+        </tr>
+        <tr>
+            <td>[comment:oppose]</td>
+            <td>反对数量</td>
+        </tr>
+        <tr>
+            <td>[comment:replyaction]</td>
+            <td>评论回复提交地址</td>
+        </tr>
+        <tr>
+            <td style="word-break: break-all;">{pboot:commentsub} 子评论输出<br/>
+  [commentsub:***] 子评论调用字段同上<br/>
+{/pboot:commentsub}</td>
+            <td>子评论输出</td>
+        </tr>
+    </tbody>
+</table>

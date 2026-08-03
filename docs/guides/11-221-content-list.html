@@ -1,0 +1,216 @@
+<div class="bd-callout bd-callout-info">
+    <h4>内容列表标签</h4>
+    <p>适用范围：指定栏目编码时全站可用，适用当前列表</p>
+    <p>标签作用：用于调取指定栏目的内容列表或自动当前列表</p>
+</div>
+<h4>1、当前栏目内容列表</h4>
+<p>
+    <br/>
+</p>
+<p>
+    <code>{pboot:list}</code>
+</p>
+<p>
+    <code>&amp;lt;a href= "[list:link]"&amp;gt;[list:title]&amp;lt;/a&amp;gt;</code>
+</p>
+<p>
+    <code>{/pboot:list}</code>
+</p>
+<div class="alert alert-warning">
+只能在列表页面使用，带分页，同一个页面只能使用一次，否则：老版本会出现分页冲突，新版会显示一样的内容。                </div>
+<p>
+    <br/>
+</p>
+<div class="alert alert-danger">V1.2.2版本开始order排序进行调整，默认情况下置顶、推荐、头条具有优先显示，包括使用date、sorting、visits、likes、oppose时，那么如果要想按照自己的设置来可以使用自定义模式，可以自己任意组合：如order='date
+desc,id desc' 此时意味着将按照时间倒序,然后添加顺序倒序。如order='sorting desc,id desc'
+将先按照后台排序，然后按照id倒序。更多情况自己参照例子定义即可。                </div>
+<div class="bd-callout bd-callout-danger">           <p>控制参数：</p>
+    <p>num=* 每页数量，非必填，用于控制分页大小</p>
+    <p>order=*
+排序方式，非必填，用于输出内容的排序方式，可选：date、sorting、istop、isrecommend、isheadline、visits、likes、oppose、等字段，其中sorting为按后台填写的排序，122版本开始支持自定义模式，如：order='date
+desc,id desc' 、order='sorting desc,id desc'，(V1.3.7+)还支持random随机排序</p>
+    <p>filter=*|x,y 数据过滤，非必填，用于对列表内容进行过滤筛选，如：filter=title|ASP,PHP
+只显示标题含有ASP和PHP的内容，如果需要只显示推荐，可使用如下过滤参数： filter=isrecommend|1
+（V1.2.0+版本用下面的方式更好）</p>
+    <p>isico=*、ispics=*、istop=*、isrecommend=*、isheadline=* 用于对数据进行特殊筛选，可选值1和0，非必填，比如只调取推荐内容：isrecommend=1</p>
+    <p>tags=x,y tags方式数据过滤，非必填，用于对列表内容进行过滤筛选，如：tags='ASP,PHP',则为含有asp或php标签的内容,那么可以用 tags={content:tags}来调用当前文章的相关文章</p>
+    <p>start=* 起始数据(V1.3.2+)，非必填，用于需要从第几条开始</p>
+</div>
+<p>
+    <br/>
+</p>
+<h4>2、指定栏目内容列表</h4>
+<p>
+    <br/>
+</p>
+<p>
+    <code>{pboot:list scode=*}</code>
+</p>
+<p>
+    <code>&amp;lt;a href= "[list:link]"&amp;gt;[list:title]&amp;lt;/a&amp;gt;</code>
+</p>
+<p>
+    <code>{/pboot:list}</code>
+</p>
+<div class="alert alert-warning">可以全站使用，多个栏目编码使用逗号隔开，如果使用星号，意味全部栏目。指定栏目内容列表默认不分页，当然你还是可以通过page参数控制强制分页，但要注意不可在同一页面使用多个带分页的列表。                </div>
+<p>
+    <br/>
+</p>
+<div class="alert alert-danger">如果要使用本循环标签调用当前内容列表，可以使用scode={sort:scode}，同时也避免了同一个页面多次调用当前栏目内容时分页冲突问题。                </div>
+<p>
+    <br/>
+</p>
+<div class="bd-callout bd-callout-danger">           <p>控制参数：</p>
+    <p>scode=* 栏目编码，必填，用于指定需要调取的栏目编码，读取的内容会同时包含该栏目下子菜单的内容,支持多个栏目如:1,2,3</p>
+    <p>page=* 是否分页，非必填，用于列表是否执行分页，可设置1或0，本功能适合首页分页等场景</p>
+    <p>start=* 起始数据(V1.3.2+)，非必填，用于需要从第几条开始</p>
+    <p class="text-danger">其余控制参数同上面当前栏目内容列表</p>
+</div>
+<p>
+    <br/>
+</p>
+<h4 class="mt-3">3、可使用的列表标签</h4>
+<p>                           </p>
+<table class="table table-bordered table-light">
+    <tbody>
+        <tr class="firstRow">
+            <td>[list:n]</td>
+            <td>计数0开始</td>
+        </tr>
+        <tr>
+            <td>[list:i]</td>
+            <td>计数1开始</td>
+        </tr>
+        <tr>
+            <td>[list:id]</td>
+            <td>编号</td>
+        </tr>
+        <tr>
+            <td>[list:scode]</td>
+            <td style="word-break: break-all;">栏目编码</td>
+        </tr>
+        <tr>
+            <td>[list:subscode]</td>
+            <td style="word-break: break-all;">    副栏目编码</td>
+        </tr>
+        <tr>
+            <td>[list:sortname]</td>
+            <td style="word-break: break-all;">    栏目名称</td>
+        </tr>
+        <tr>
+            <td>[list:subsortname]</td>
+            <td style="word-break: break-all;">副栏目名称</td>
+        </tr>
+        <tr>
+            <td>[list:sortlink]</td>
+            <td style="word-break: break-all;">    栏目链接</td>
+        </tr>
+        <tr>
+            <td>[list:subsortlink]</td>
+            <td style="word-break: break-all;">副栏目链接</td>
+        </tr>
+        <tr>
+            <td>[list:title]</td>
+            <td>标题</td>
+        </tr>
+        <tr>
+            <td>[list:titlecolor]</td>
+            <td>标题颜色</td>
+        </tr>
+        <tr>
+            <td>[list:subtitle]</td>
+            <td>    副标题</td>
+        </tr>
+        <tr>
+            <td>[list:tags]</td>
+            <td>直接输出tags</td>
+        </tr>
+        <tr>
+            <td>[list:author]</td>
+            <td>作者</td>
+        </tr>
+        <tr>
+            <td>[list:source]</td>
+            <td>来源</td>
+        </tr>
+        <tr>
+            <td>[list:link]</td>
+            <td>链接</td>
+        </tr>
+        <tr>
+            <td>[list:outlink]</td>
+            <td>外部链接</td>
+        </tr>
+        <tr>
+            <td>[list:date]</td>
+            <td>发布日期</td>
+        </tr>
+        <tr>
+            <td>[list:ico]</td>
+            <td style="word-break: break-all;">缩略图，不存在时自动调用文章第一张图，[list:isico]可用于判断，返回1或0</td>
+        </tr>
+        <tr>
+            <td>[list:pics]</td>
+            <td style="word-break: break-all;">多图，V2.0.2新增[list:ispics]可用于判断，返回1或0</td>
+        </tr>
+        <tr>
+            <td>[list:content]</td>
+            <td>内容</td>
+        </tr>
+        <tr>
+            <td>[list:enclosure]</td>
+            <td>附件</td>
+        </tr>
+        <tr>
+            <td>[list:enclosuresize]</td>
+            <td>附件大小</td>
+        </tr>
+        <tr>
+            <td>[list:keywords]</td>
+            <td>关键词</td>
+        </tr>
+        <tr>
+            <td>[list:description]</td>
+            <td>描述</td>
+        </tr>
+        <tr>
+            <td>[list:istop]</td>
+            <td>是否置顶</td>
+        </tr>
+        <tr>
+            <td>[list:isrecommend]</td>
+            <td>是否推荐</td>
+        </tr>
+        <tr>
+            <td>[list:isheadline]</td>
+            <td>是否头条</td>
+        </tr>
+        <tr>
+            <td>[list:visits]</td>
+            <td>访问数量</td>
+        </tr>
+        <tr>
+            <td>[list:likes]</td>
+            <td>点赞数量</td>
+        </tr>
+        <tr>
+            <td>[list:oppose]</td>
+            <td>反对数量</td>
+        </tr>
+        <tr>
+            <td>[list:likeslink]</td>
+            <td>点赞链接</td>
+        </tr>
+        <tr>
+            <td>[list:opposelink]</td>
+            <td>反对链接</td>
+        </tr>
+        <tr>
+            <td>[list:ext_***]</td>
+            <td>调取扩展字段内容</td>
+        </tr>
+    </tbody>
+</table>
+<p>
+    <br/>
+</p>
