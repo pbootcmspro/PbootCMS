@@ -10,6 +10,7 @@
 namespace app\home\controller;
 
 use core\basic\Controller;
+use core\log\LogSpider;
 
 class SpiderController extends Controller
 {
@@ -18,15 +19,41 @@ class SpiderController extends Controller
 
     public function __construct($url = null)
     {
-        $this->url = $url ? escape_string($url) : get('url');
+        $this->url = $this->normalizeUrl($url);
     }
 
     public function index()
     {
+        if ($this->config('spiderlog') === '0') {
+            return;
+        }
+        if ($this->url === '') {
+            return;
+        }
         $rs = $this->getSpider();
         if ($rs !== false) {
-            $this->log($rs . '爬行' . $this->url);
+            LogSpider::getInstance()->write($rs, $this->url);
         }
+    }
+
+    // 规范化待记录 URL：去控制字符、限制长度，保留原始可读性
+    private function normalizeUrl($url = null)
+    {
+        if ($url === null || $url === '') {
+            $url = get('url');
+        }
+        if (! is_string($url)) {
+            return '';
+        }
+        $url = trim($url);
+        if ($url === '') {
+            return '';
+        }
+        $url = str_replace(array("\0", "\r", "\n", "\t"), '', $url);
+        if (mb_strlen($url) > 2000) {
+            $url = mb_substr($url, 0, 2000);
+        }
+        return $url;
     }
 
     private function getSpider()

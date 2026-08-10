@@ -151,9 +151,36 @@ return TestAssert::runSuite(function () {
     $apiSearchBody = substr($apiSrc, $posApiSearch, $posApiNext - $posApiSearch);
     TestAssert::contains($apiSearchBody, '$hasExtField = ($keyword !== null && $keyword !== \'\') && preg_match(', 'API 仅在非空 keyword 的 whitespace-tolerant ext_* field 时读取表结构');
     TestAssert::contains($apiSearchBody, "preg_match('/^ext_[\\w\\-]+$/i', \$key)", 'API 根据大小写不敏感 ext_* 请求键决定是否读取表结构');
+    TestAssert::contains($apiSearchBody, 'order_requests_ext_field($rorder)', 'API order 经统一预加载检测（含可选 ASC/DESC）');
     TestAssert::contains($apiSearchBody, '$extFields = $hasExtField ? $this->model->getExtFields() : array();', 'API 未使用 ext_* 时不读取表结构');
     TestAssert::contains($apiSearchBody, "if (\$keyword !== null && \$keyword !== '')", 'API keyword=0 不会因 truthiness 被跳过');
     TestAssert::contains($apiSearchBody, "} elseif (\$value !== null && \$value !== '')", 'API 普通白名单字段值 0 不会因 truthiness 被跳过');
+
+    $listCtrlSrc = file_get_contents(APP_PATH . '/api/controller/ListController.php');
+    TestAssert::false($listCtrlSrc === false, 'ListController 源码可读');
+    TestAssert::contains(
+        $listCtrlSrc,
+        'order_requests_ext_field($rorder)',
+        'ListController order 经统一预加载检测（含可选 ASC/DESC）'
+    );
+    TestAssert::notContains(
+        $listCtrlSrc,
+        "/(?:^|,)\\s*ext_[\\w\\-]+\\s*(?:,|$)/i",
+        'ListController 不再使用不含方向的旧预加载正则'
+    );
+
+    $handleSrc = file_get_contents(CORE_PATH . '/function/handle.php');
+    TestAssert::false($handleSrc === false, 'handle.php 源码可读');
+    TestAssert::contains(
+        $handleSrc,
+        "function order_requests_ext_field(",
+        'order_requests_ext_field() 已定义'
+    );
+    TestAssert::contains(
+        $handleSrc,
+        '/(?:^|,)\\s*ext_[\\w\\-]+(?:\\s+(?:ASC|DESC))?\\s*(?:,|$)/i',
+        '预加载检测允许可选 ASC/DESC'
+    );
     TestAssert::contains(
         $apiSrc,
         "canonical_allowlist_field(\$key, \$allowed)",

@@ -4,12 +4,6 @@ return array(
     // 定义CMS名称
     'cmsname' => 'PbootCMS',
     
-    // 模板内容输出缓存开关
-    'tpl_html_cache' => 1,
-    
-    // 模板内容缓存有效时间（秒）
-    'tpl_html_cache_time' => 900000000000,
-    
     // 会话文件使用网站路径
     'session_in_sitepath' => 1,
     

@@ -1,3 +1,4 @@
 *.js linguist-language=PHP
 tests export-ignore
 docs export-ignore
+docs/guides/** text eol=lf

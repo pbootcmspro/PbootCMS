@@ -34,7 +34,7 @@ class SingleController extends Controller
             if (! $mcode = get('mcode', 'var')) {
                 error('传递的模型编码参数有误，请核对后重试！');
             }
-            
+
             if (! ! ($field = get('field', 'var')) && ! ! ($keyword = get('keyword', 'vars'))) {
                 $result = $this->model->findSingle($mcode, $field, $keyword);
             } else {
@@ -42,7 +42,8 @@ class SingleController extends Controller
             }
             $this->assign('baidu_zz_token', $this->config('baidu_zz_token'));
             $this->assign('baidu_ks_token', $this->config('baidu_ks_token'));
-            
+            $this->assign('indexnow_key', get_effective_indexnow_key($this->config('indexnow_key'), $this->config('indexnow_key_location')));
+
             // 模型名称
             $this->assign('model_name', model('admin.content.Model')->getName($mcode));
             
@@ -61,7 +62,7 @@ class SingleController extends Controller
         if (! $id = get('id', 'int')) {
             error('传递的参数值错误！', - 1);
         }
-        
+
         if ($this->model->delSingle($id)) {
             $this->log('删除单页内容' . $id . '成功！');
             success('删除成功！', - 1);
@@ -75,7 +76,7 @@ class SingleController extends Controller
     public function mod()
     {
         // 前端地址连接符判断
-        if (get('baiduzz') || get('baiduxzh')) {
+        if (get('baiduzz') || get('baiduks') || get('indexnow')) {
             $url_break_char = $this->config('url_break_char') ?: '_';
             $url_rule_sort_suffix = $this->config('url_rule_sort_suffix') ? true : false;
         }
@@ -140,6 +141,49 @@ class SingleController extends Controller
             }
         }
         
+        // IndexNow推送
+        if (! ! $id = get('indexnow', 'int')) {
+            $urls = array();
+            if (! $key = get_effective_indexnow_key($this->config('indexnow_key'), $this->config('indexnow_key_location'))) {
+                alert_back('请先到系统配置中填写IndexNow推送密钥！');
+            }
+
+            $domain = get_http_url();
+            $expected_host = get_http_host(true);
+            $data = $this->model->getSingle($id);
+            if (! is_object($data)) {
+                alert_back('要推送的单页内容不存在！');
+                return;
+            }
+            $data->urlname = $data->urlname ?: 'about';
+            if ($data->outlink) {
+                alert_back('链接类型不允许推送！');
+            }
+            if ($data->filename) {
+                $urls[] = build_indexnow_url($domain, homeurl('/home/Index/' . $data->filename, $url_rule_sort_suffix));
+            } else {
+                $urls[] = build_indexnow_url($domain, homeurl('/home/Index/' . $data->urlname . $url_break_char . $data->scode, $url_rule_sort_suffix));
+            }
+            $urls = filter_indexnow_urls($urls, $expected_host);
+            if (! $urls) {
+                alert_back('没有可推送的本站地址！');
+            }
+
+            $key_location = resolve_indexnow_key_location($key, $this->config('indexnow_key_location'), $urls);
+            if (! indexnow_key_location_file_ready($key, $key_location)) {
+                alert_back('密钥文件不存在或内容与推送密钥不一致，请先到系统配置保存IndexNow密钥，并检查网站根目录（或自定义密钥文件地址）写入权限！');
+            }
+            $rs = post_indexnow($key, $key_location, $urls, $expected_host);
+            $msg = get_indexnow_msg($rs, count($urls));
+            $this->log('IndexNow推送：' . $urls[0]);
+            if (! $rs['errno'] && ($rs['code'] == 200 || $rs['code'] == 202)) {
+                $this->log('IndexNow推送成功：' . $msg);
+            } else {
+                $this->log('IndexNow推送失败：' . $msg);
+            }
+            alert_back($msg);
+        }
+
         if (! $id = get('id', 'int')) {
             error('传递的参数值错误！', - 1);
         }

@@ -19,11 +19,12 @@ php tests/unit/ValidateIfConditionTest.php
 | 路径 | 说明 |
 |---|---|
 | `bootstrap.php` | 轻量环境，不启 Kernel |
-| `support/` | Assert、ParserControllerHarness |
+| `support/` | Assert、ParserControllerHarness、DatabaseTestSupport |
 | `fixtures/security/` | pboot:if 绕过 payload |
 | `unit/` | 单函数/单方法 |
 | `integration/` | 多模块管线 |
 | `contract/` | 源码/行为不变量 |
+| `scripts/` | 子进程探测（并发、错误模式等） |
 
 ## 安全测试约束
 
@@ -36,3 +37,4 @@ php tests/unit/ValidateIfConditionTest.php
 - 审计 #6 — `AreaController` 区域编码与域名输入过滤（`AreaInputFilterTest` / `AreaControllerFilterContractTest`）
 - 审计 #8 — 内容/栏目/站点标题与描述输入清洗（`TitleDescInputFilterTest` / `TitleDescControllerFilterContractTest`）
 - 审计 #11 — 常规清缓存保留 `runtime/image`（`ClearCachePreserveImageTest` / `ClearCachePreserveImageContractTest`）
+- Issue #26 / 审计 #7 — 站点统计代码完整输出（可信管理员；`StatisticalSanitizeTest` / `StatisticalSanitizeContractTest`）

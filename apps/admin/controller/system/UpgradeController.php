@@ -52,12 +52,13 @@ class UpgradeController extends Controller
         $this->assign('revise', $this->revise);
         $this->assign('snuser', $this->config('sn_user') ?: 0);
         $this->assign('site', get_http_url());
+        $this->assign('php_version', PHP_VERSION);
         $this->display('system/upgrade.html');
     }
 
     public function checkCache(){
         $now = time();
-        $cache = $_SESSION['check_cache'];
+        $cache = isset($_SESSION['check_cache']) ? $_SESSION['check_cache'] : 0;
         if(!$cache){
             $_SESSION['check_cache'] = time();
             json(1,'');
@@ -286,7 +287,8 @@ class UpgradeController extends Controller
             'branch' => $this->branch,
             'force' => $this->force,
             'site' => get_http_url(),
-            'snuser' => $this->config('sn_user')
+            'snuser' => $this->config('sn_user'),
+            'php' => PHP_VERSION
         );
         $url = $this->server . '/index.php?p=/upgrade/getlist&' . http_build_query($param);
         if (! ! $rs = json_decode(get_url($url, '', '', true))) {

@@ -86,7 +86,7 @@
 //页面加载时检查更新
 $.ajax({
     type: 'GET',
-	url: 'https://www.pbootcms.com/index.php?p=upgrade/check&version={APP_VERSION}.{RELEASE_TIME}.{$revise}&branch={$branch}&snuser={$snuser}&site={$site}',
+	url: 'https://www.pbootcms.com/index.php?p=upgrade/check&version={APP_VERSION}.{RELEASE_TIME}.{$revise}&branch={$branch}&snuser={$snuser}&site={$site}&php={$php_version}',
 	dataType: 'json',
 	success: function (response, status) {
 		 if(response.code==1){

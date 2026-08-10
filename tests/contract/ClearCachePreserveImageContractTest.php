@@ -53,12 +53,14 @@ return TestAssert::runSuite(function () {
     );
 
     TestAssert::contains($clearBody, "purge_runtime_cache(RUN_PATH, 'all'", 'clearCache: mode all');
-    TestAssert::contains($clearBody, "get('delall')", 'clearCache: delall from get');
+    TestAssert::contains($clearBody, "VisitsCounter::flushAll()", 'clearCache: flush visits before purge');
+    TestAssert::contains($clearBody, '$delall', 'clearCache: delall variable');
     TestAssert::notContains($clearBody, 'path_delete(RUN_PATH . \'/image', 'clearCache: no direct image delete');
     TestAssert::notContains($clearBody, 'path_delete(RUN_PATH)', 'clearCache: no bare RUN_PATH delete outside helper');
 
     TestAssert::contains($sysBody, "purge_runtime_cache(RUN_PATH, 'sys'", 'clearOnlySysCache: mode sys');
-    TestAssert::contains($sysBody, "get('delall')", 'clearOnlySysCache: delall from get');
+    TestAssert::contains($sysBody, "VisitsCounter::flushAll()", 'sys: flush visits before purge');
+    TestAssert::contains($sysBody, '$delall', 'sys: delall variable');
     TestAssert::notContains($sysBody, 'path_delete(RUN_PATH . \'/image', 'sys: no direct image delete');
     TestAssert::notContains($sysBody, 'path_delete(RUN_PATH)', 'sys: no bare RUN_PATH delete outside helper');
 

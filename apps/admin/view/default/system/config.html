@@ -6,6 +6,7 @@
 	    <li class="layui-this" lay-id="t1">基本配置</li>
 	    <li  lay-id="t2">邮件通知</li>
 	    <li  lay-id="t3">百度接口</li>
+	    <li  lay-id="t12">IndexNow推送</li>
 	    <li  lay-id="t4">WebAPI</li>
 	    <li  lay-id="t5">图片水印</li>
 	    <li  lay-id="t6">安全配置</li>
@@ -98,7 +99,7 @@
 		                     <div class="layui-input-block">
 		                     	<input type="radio" name="spiderlog" value="1" {if([$configs.spiderlog.value]=='1'||[$configs.spiderlog.value]=='')} checked="checked" {/if} title="启用">
 								<input type="radio" name="spiderlog" value="0" {if([$configs.spiderlog.value]=='0')} checked="checked" {/if} title="禁用">
-		                     	<span class="layui-icon layui-icon-about tips" data-content="开启后自动在系统日志进行记录！"></span>
+								<span class="layui-icon layui-icon-about tips" data-content="开启后将搜索引擎爬虫访问记录至独立文本日志 log/spider/，不写入系统日志数据库。{if([$is_sqlite]==1)}当前使用 SQLite 时，后台操作等其他数据库写入仍可能遇 database is locked，生产环境建议使用 MySQL。{/if}"></span>
 		                     </div>
 		                </div>
 
@@ -180,8 +181,8 @@
 		  	   </div>
 
 		  	   <div class="layui-tab-item">
-		  	   	   <form action="{url./admin/Config/index}" method="post" class="layui-form">
-			  	   	    <input type="hidden" name="formcheck" value="{$formcheck}" >
+                <form action="{url./admin/Config/index}" method="post" class="layui-form">
+                    <input type="hidden" name="formcheck" value="{$formcheck}" >
 
 		                <div class="layui-form-item">
 			                   <label class="layui-form-label">服务器状态 </label>
@@ -284,8 +285,8 @@
 		  	   </div>
 
 		  	   <div class="layui-tab-item">
-		  	   	   <form action="{url./admin/Config/index}" method="post" class="layui-form">
-			  	   	    <input type="hidden" name="formcheck" value="{$formcheck}" >
+                <form action="{url./admin/Config/index}" method="post" class="layui-form">
+                    <input type="hidden" name="formcheck" value="{$formcheck}" >
 
 		                <div class="layui-form-item">
 		                     <label class="layui-form-label">普通收录token</label>
@@ -313,7 +314,40 @@
 	              </form>
 		  	   </div>
 
-		  	   <div class="layui-tab-item">
+                <div class="layui-tab-item">
+                    <form action="{url./admin/Config/index}" method="post" class="layui-form">
+                        <input type="hidden" name="formcheck" value="{$formcheck}" >
+
+                        <div class="layui-form-item">
+                            <label class="layui-form-label">推送密钥</label>
+                            <div class="layui-input-inline">
+                                <input type="text" id="indexnow_key" name="indexnow_key"  value="{$configs.indexnow_key.value}" placeholder="8-128位字母、数字或连字符"  class="layui-input">
+		                     </div>
+		                     <div class="layui-input-inline" style="width:auto;">
+                            <button type="button" class="layui-btn layui-btn-primary" id="indexnowKeyBtn">生成密钥</button>
+		                     </div>
+		                     <span class="layui-icon layui-icon-about tips" data-content="提交后自动在网站根目录生成密钥文件，一次推送即可同时通知必应等IndexNow参与引擎！"></span>
+		                </div>
+
+		               <div class="layui-form-item">
+		                     <label class="layui-form-label">密钥文件地址</label>
+		                     <div class="layui-input-inline" style="width:480px;">
+                            <input type="text" id="indexnow_key_location" name="indexnow_key_location"  value="{$configs.indexnow_key_location.value}" placeholder="留空则使用网站根目录下的密钥文件"  class="layui-input">
+		                     </div>
+		                     <span class="layui-icon layui-icon-about tips" data-content="可填相对路径或本站完整URL（须与推送页面同域），文件名必须为「推送密钥.txt」（如 /static/你的密钥.txt）。不支持跨域远程地址。变更推送密钥并提交后会自动清空此处；留空则使用网站根目录密钥文件！"></span>
+		               </div>
+
+
+		                <div class="layui-form-item">
+							 <div class="layui-input-block">
+							    <button class="layui-btn" lay-submit name="submit" value="indexnow">立即提交</button>
+							    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+							 </div>
+						</div>
+	              </form>
+                </div>
+
+                <div class="layui-tab-item">
 		  	   	  <form action="{url./admin/Config/index}" method="post" class="layui-form">
 		  	   	  	<input type="hidden" name="formcheck" value="{$formcheck}" >
 		  	   		<div class="layui-form-item">
@@ -974,6 +1008,29 @@
 				layer.closeAll('loading');
 				layer.alert('请求异常：' + e.message);
 			});
+	};
+})();
+(function(){
+	var btn = document.getElementById('indexnowKeyBtn');
+	var input = document.getElementById('indexnow_key');
+	var loc = document.getElementById('indexnow_key_location');
+	if(!btn || !input) return;
+	btn.onclick = function(){
+		if(input.value && !confirm('重新生成密钥后需再次提交；若已填写密钥文件地址，提交后将自动清空并改用根目录密钥文件，确定继续么？')) return;
+		var key = '';
+		if(window.crypto && window.crypto.getRandomValues){
+			var bytes = new Uint8Array(16);
+			window.crypto.getRandomValues(bytes);
+			for(var i=0;i<bytes.length;i++){
+				key += ('0' + bytes[i].toString(16)).slice(-2);
+			}
+		}else{
+			for(var j=0;j<32;j++){
+				key += Math.floor(Math.random()*16).toString(16);
+			}
+		}
+		input.value = key;
+		if(loc) loc.value = '';
 	};
 })();
 </script>

@@ -15,6 +15,15 @@ class Mysqli implements Builder
 
     protected static $mysqli;
 
+    /** @var bool 软失败：SQL 错误时回滚并返回 false，不终止请求（仅 VisitsCounter 刷盘等场景） */
+    protected static $failSoft = false;
+
+    /** @var bool 最近一次软失败是否发生过 SQL 错误 */
+    protected static $failSoftError = false;
+
+    /** @var int 软失败作用域嵌套深度；错误标记保留到最外层退出才清 */
+    protected static $failSoftDepth = 0;
+
     protected $master;
 
     protected $slave;
@@ -40,9 +49,42 @@ class Mysqli implements Builder
         return self::$mysqli;
     }
 
+    /**
+     * 开启/关闭软失败模式（支持嵌套引用计数）。
+     * 仅最外层开启时清错误标记；内层退出不关窗口、不清标记。
+     */
+    public static function setFailSoft($enabled)
+    {
+        if ($enabled) {
+            if (self::$failSoftDepth === 0) {
+                self::$failSoftError = false;
+            }
+            self::$failSoftDepth ++;
+            self::$failSoft = true;
+            return;
+        }
+        if (self::$failSoftDepth > 0) {
+            self::$failSoftDepth --;
+        }
+        if (self::$failSoftDepth === 0) {
+            self::$failSoft = false;
+            self::$failSoftError = false;
+        }
+    }
+
+    /** 软失败模式下是否发生过 SQL 错误（读后不清除，由最外层 setFailSoft(false) 重置） */
+    public static function hadFailSoftError()
+    {
+        return self::$failSoftError;
+    }
+
     // 连接数据库，接受数据库连接参数，返回数据库连接对象
     public function conn($cfg)
     {
+        // PHP 8.1+ 默认抛 mysqli_sql_exception；关闭报告并用 catch 兜住，统一走友好错误页
+        if (function_exists('mysqli_report')) {
+            mysqli_report(MYSQLI_REPORT_OFF);
+        }
         if (! extension_loaded('mysqli')) {
             if (extension_loaded('pdo_mysql')) {
                 error('未检测到您服务器环境的mysqli数据库扩展，请检查php.ini中是否已经开启该扩展！<br>另外，检测到您服务器支持pdo_mysql扩展，您也可以修改数据库配置连接驱动为pdo_mysql试试！');
@@ -56,7 +98,12 @@ class Mysqli implements Builder
             $cfg['host'] = '127.0.0.1';
         }
         
-        $conn = @new \Mysqli($cfg['host'], $cfg['user'], $cfg['passwd'], $cfg['dbname'], $cfg['port']);
+        try {
+            $conn = @new \Mysqli($cfg['host'], $cfg['user'], $cfg['passwd'], $cfg['dbname'], $cfg['port']);
+        } catch (\Throwable $e) {
+            // PHP 8.1+ 可能抛 mysqli_sql_exception；统一转为友好错误页
+            error("连接数据库服务器失败：" . $e->getMessage());
+        }
         if (mysqli_connect_errno()) {
             error("连接数据库服务器失败：" . iconv('gbk', 'utf-8', mysqli_connect_error()));
         }
@@ -83,10 +130,17 @@ class Mysqli implements Builder
     public function commitTransaction()
     {
         if ($this->begin) {
-            $this->master->commit(); // 提交事务
+            $ok = $this->master->commit(); // 提交事务
             $this->master->autocommit(true); // 提交后恢复自动提交
             $this->begin = false; // 关闭事务模式
+            // 非 failSoft：保持历史行为，不因 commit 失败改返回值（调用方历来不检查）；
+            // 仅 failSoft 返回 false，供 VisitsCounter 等把增量退回本地待刷。
+            if (! $ok && self::$failSoft) {
+                self::$failSoftError = true;
+                return false;
+            }
         }
+        return true;
     }
 
     // 执行SQL语句,接受完整SQL语句，返回结果集对象
@@ -111,7 +165,11 @@ class Mysqli implements Builder
                 if (Config::get('database.transaction') && ! $this->begin) { // 根据配置开启mysql事务，注意需要是InnoDB引擎
                     $this->beginTransaction();
                 }
-                $result = $this->master->query($sql) or $this->error($sql, 'master');
+                $result = $this->master->query($sql);
+                if ($result === false) {
+                    $this->error($sql, 'master');
+                    return false;
+                }
                 break;
             case 'slave':
                 if (! $this->slave) {
@@ -127,7 +185,11 @@ class Mysqli implements Builder
                     }
                     $this->slave = $this->conn($cfg);
                 }
-                $result = $this->slave->query($sql) or $this->error($sql, 'slave');
+                $result = $this->slave->query($sql);
+                if ($result === false) {
+                    $this->error($sql, 'slave');
+                    return false;
+                }
                 break;
         }
         return $result;
@@ -253,19 +315,25 @@ class Mysqli implements Builder
     // 执行多条SQL模型，成功返回true,否则false
     public function multi($sql)
     {
-        $result = $this->master->multi_query($sql) or $this->error($sql);
-        if ($result) {
-            $result->free();
-            return true;
-        } else {
+        $ok = $this->master->multi_query($sql);
+        if ($ok === false) {
+            $this->error($sql, 'master');
             return false;
         }
+        // multi_query 成功时返回 true；UPDATE/INSERT 等无结果集，不能对 true 调 free()
+        do {
+            if ($res = $this->master->store_result()) {
+                $res->free();
+            }
+        } while ($this->master->more_results() && $this->master->next_result());
+        return true;
     }
 
     // 显示执行错误
     protected function error($sql, $conn)
     {
-        $err = '错误：' . mysqli_error($this->$conn);
+        $raw = mysqli_error($this->$conn);
+        $err = '错误：' . $raw;
         if (preg_match('/XPATH/i', $err)) {
             $err = '';
         }
@@ -273,8 +341,17 @@ class Mysqli implements Builder
             $this->$conn->rollback();
             $this->begin = false;
         }
-        // error('执行SQL发生错误！' . $err . '语句：' . $sql);
-        error('执行SQL发生错误！' . $err);
+        if (self::$failSoft) {
+            self::$failSoftError = true;
+            return;
+        }
+        // 详情只入日志；非调试模式对外仅给通用文案，避免暴露表名/列名/约束名
+        @error_log('[PbootCMS][mysqli] 执行SQL发生错误！错误：' . $raw . ' 语句：' . $sql);
+        if (Config::get('debug')) {
+            error('执行SQL发生错误！' . $err);
+        } else {
+            error('数据库执行错误，请稍后重试或联系管理员！');
+        }
     }
 
     //返回对象结果集

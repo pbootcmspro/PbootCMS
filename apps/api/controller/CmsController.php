@@ -205,11 +205,15 @@ class CmsController extends Controller
                 }
             }
         }
+        if (! $hasExtField && order_requests_ext_field($rorder)) {
+            $hasExtField = true;
+        }
         $extFields = $hasExtField ? $this->model->getExtFields() : array();
         
         if (! preg_match('/^[\w\-,\s]+$/', $rorder)) {
             $order = 'a.istop DESC,a.isrecommend DESC,a.isheadline DESC,a.sorting ASC,a.date DESC,a.id DESC';
         } else {
+            $order = 'a.istop DESC,a.isrecommend DESC,a.isheadline DESC,a.sorting ASC,a.date DESC,a.id DESC';
             switch ($rorder) {
                 case 'id':
                     $order = 'a.id DESC,a.istop DESC,a.isrecommend DESC,a.isheadline DESC,a.sorting ASC,a.date DESC';
@@ -232,7 +236,7 @@ class CmsController extends Controller
                 case 'visits':
                 case 'likes':
                 case 'oppose':
-                    $order = $rorder . ' DESC,a.istop DESC,a.isrecommend DESC,a.isheadline DESC,a.sorting ASC,a.date DESC,a.id DESC';
+                    $order = 'a.' . $rorder . ' DESC,a.istop DESC,a.isrecommend DESC,a.isheadline DESC,a.sorting ASC,a.date DESC,a.id DESC';
                     break;
                 case 'random': // 随机取数
                     $db_type = get_db_type();
@@ -243,18 +247,10 @@ class CmsController extends Controller
                     }
                     break;
                 default:
-                    if ($rorder) {
-                        $orders = explode(',', $rorder);
-                        foreach ($orders as $k => $v) {
-                            if (strpos($v, 'ext_') === 0) {
-                                $orders[$k] = 'e.' . $v;
-                            } else {
-                                $orders[$k] = 'a.' . $v;
-                            }
-                        }
-                        $order = implode(',', $orders);
-                        $order .= ',a.istop DESC,a.isrecommend DESC,a.isheadline DESC,a.sorting ASC,a.date DESC,a.id DESC';
+                    if ($rorder && ($custom = resolve_content_order_custom($rorder, $allowed, $extFields))) {
+                        $order = $custom . ',a.istop DESC,a.isrecommend DESC,a.isheadline DESC,a.sorting ASC,a.date DESC,a.id DESC';
                     }
+                    break;
             }
         }
         

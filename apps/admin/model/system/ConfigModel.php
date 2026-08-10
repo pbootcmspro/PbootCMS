@@ -8,6 +8,7 @@
  */
 namespace app\admin\model\system;
 
+use core\basic\Config;
 use core\basic\Model;
 
 class ConfigModel extends Model
@@ -136,6 +137,58 @@ class ConfigModel extends Model
     public function getConfig()
     {
         return parent::table('ay_config')->column('value', 'name');
+    }
+
+    /**
+     * 动态缓存两项是否均已在 ay_config 中
+     * @return bool
+     */
+    public function hasTplHtmlCacheConfig()
+    {
+        return $this->checkConfig("name='tpl_html_cache'") && $this->checkConfig("name='tpl_html_cache_time'");
+    }
+
+    /**
+     * 将动态缓存配置从 config.php 迁移至 ay_config（幂等，不覆盖已有库值）
+     * 新装/空值兜底与发布默认一致：开启缓存、近似永不过期
+     * @return bool 是否成功新增过配置项
+     */
+    public function migrateTplHtmlCacheConfig()
+    {
+        $items = array(
+            'tpl_html_cache' => array(
+                'type' => '1',
+                'description' => '动态缓存开关',
+                'default' => '1'
+            ),
+            'tpl_html_cache_time' => array(
+                'type' => '2',
+                'description' => '缓存有效期(秒)',
+                'default' => '900000000000'
+            )
+        );
+        $migrated = false;
+        foreach ($items as $name => $meta) {
+            if ($this->checkConfig("name='$name'")) {
+                continue;
+            }
+            $value = Config::get($name);
+            if ($value === null || $value === '') {
+                $value = $meta['default'];
+            }
+            $ok = $this->addConfig(array(
+                'name' => $name,
+                'value' => (string) $value,
+                'type' => $meta['type'],
+                'sorting' => 255,
+                'description' => $meta['description']
+            ));
+            // 仅插入成功才报告迁移；失败时不触发无意义的「已迁移」标记
+            if ($ok) {
+                $migrated = true;
+            }
+        }
+        return $migrated;
     }
 }
 

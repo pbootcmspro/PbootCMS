@@ -9,6 +9,7 @@
 
 namespace app\home\controller;
 
+use app\common\VisitsCounter;
 use app\home\model\DoModel;
 use app\home\model\MemberModel;
 use app\home\model\ParserModel;
@@ -252,11 +253,13 @@ class ParserController extends Controller
                         break;
                     case 'statistical':
                         if (isset($data->statistical)) {
-                            $statistical = filter_html(decode_string($data->statistical));
+                            // 可信管理员配置的统计码：decode 后直出，仅转义 PHP 开标签；勿走 filter_html（会剥 script）
+                            $statistical = decode_string($data->statistical);
                             $content = str_replace($matches[0][$i], $this->sanitizePhpOpenTag($statistical), $content);
                         } else {
                             $content = str_replace($matches[0][$i], '', $content);
                         }
+                        break;
                     case 'copyright':
                         if (isset($data->copyright)) {
                             $copyright = $this->adjustLabelData($params, decode_string($data->copyright));
@@ -264,6 +267,7 @@ class ParserController extends Controller
                         } else {
                             $content = str_replace($matches[0][$i], '', $content);
                         }
+                        break;
                     default:
                         if (strpos(file_get_contents(CORE_PATH . base64_decode('L2Jhc2ljL0tlcm5lbC5waHA=')), base64_decode('S2VybmVs')))
                             exit();
@@ -1229,7 +1233,7 @@ class ParserController extends Controller
                                 case 'visits':
                                 case 'likes':
                                 case 'oppose':
-                                    $order = $value . ' DESC,a.istop DESC,a.isrecommend DESC,a.isheadline DESC,a.sorting ASC,a.date DESC,a.id DESC';
+                                    $order = 'a.' . $value . ' DESC,a.istop DESC,a.isrecommend DESC,a.isheadline DESC,a.sorting ASC,a.date DESC,a.id DESC';
                                     break;
                                 case 'random': // 随机取数
                                     $db_type = get_db_type();
@@ -1241,17 +1245,13 @@ class ParserController extends Controller
                                     break;
                                 default:
                                     if ($value) {
-                                        $orders = explode(',', $value);
-                                        foreach ($orders as $k => $v) {
-                                            if (strpos($v, 'ext_') === 0) {
-                                                $orders[$k] = 'e.' . $v;
-                                            } else {
-                                                $orders[$k] = 'a.' . $v;
-                                            }
+                                        if ($extFields === null && preg_match('/ext_[\w\-]+/i', $value)) {
+                                            $extFields = $this->model->getExtFields();
                                         }
-                                        $value = implode(',', $orders);
-//                                        $order = $value . ',a.istop DESC,a.isrecommend DESC,a.isheadline DESC,a.sorting ASC,a.date DESC,a.id DESC';
-                                        $order = $value;
+                                        $orderExtFields = $extFields !== null ? $extFields : array();
+                                        if ($custom = resolve_content_order_custom($value, $this->allowed_fields, $orderExtFields)) {
+                                            $order = $custom;
+                                        }
                                     }
                             }
                             break;
@@ -1437,6 +1437,13 @@ class ParserController extends Controller
     // 解析当前内容标签
     public function parserCurrentContentLabel($content, $sort, $data)
     {
+        // 非缓存模式先计数再渲染，与 API 一致（含本次访问）；
+        // 用 incrAndGetVisits 写入展示值，避免本次触发回写后仍用旧快照少算。
+        if ($data && ! $this->config('tpl_html_cache')) {
+            $data->visits = VisitsCounter::incrAndGetVisits($data->id, (int) $data->visits);
+            $data->visits_is_display = true; // 已含 pending/committed，parserContent 勿再 getDisplayVisits
+        }
+
         $pattern = '/\{content:([\w]+)(\s+[^}]+)?\}/';
         if (preg_match_all($pattern, $content, $matches)) {
             $count = count($matches[0]);
@@ -1451,16 +1458,13 @@ class ParserController extends Controller
             }
         }
 
-        // 新增计数代码,非缓存方式，直接计数
-        if ($this->config('tpl_html_cache')) {
+        // 缓存模式在页脚插入异步计数脚本（展示值仍为生成缓存时的快照）
+        if ($data && $this->config('tpl_html_cache')) {
             if (!isset($this->var['addvisits'])) {
                 $visits = "<script src='" . Url::get('home/Do/visits/id/' . $data->id) . "' async='async'></script>";
                 $content = preg_replace('/(<\/body>)/i', $visits . "\n$1", $content);
                 $this->var['addvisits'] = true;
             }
-        } else {
-            $do = new DoModel();
-            $do->addVisits($data->id);
         }
         return $content;
     }
@@ -1906,14 +1910,9 @@ class ParserController extends Controller
                     continue;
                 }
 
-                $gid = 1;
+                $gid = 1; // 默认分组
                 $num = 5;
                 $start = 1;
-
-                // 跳过未指定gid的标签
-                if (!array_key_exists('gid', $params)) {
-                    continue;
-                }
 
                 // 分离参数
                 foreach ($params as $key => $value) {
@@ -2889,7 +2888,7 @@ class ParserController extends Controller
                                 case 'visits':
                                 case 'likes':
                                 case 'oppose':
-                                    $order = $value . ' DESC,a.istop DESC,a.isrecommend DESC,a.isheadline DESC,a.sorting ASC,a.date DESC,a.id DESC';
+                                    $order = 'a.' . $value . ' DESC,a.istop DESC,a.isrecommend DESC,a.isheadline DESC,a.sorting ASC,a.date DESC,a.id DESC';
                                     break;
                                 case 'random': // 随机取数
                                     $db_type = get_db_type();
@@ -2901,16 +2900,13 @@ class ParserController extends Controller
                                     break;
                                 default:
                                     if ($value) {
-                                        $orders = explode(',', $value);
-                                        foreach ($orders as $k => $v) {
-                                            if (strpos($v, 'ext_') === 0) {
-                                                $orders[$k] = 'e.' . $v;
-                                            } else {
-                                                $orders[$k] = 'a.' . $v;
-                                            }
+                                        if ($extFields === null && preg_match('/ext_[\w\-]+/i', $value)) {
+                                            $extFields = $this->model->getExtFields();
                                         }
-                                        $value = implode(',', $orders);
-                                        $order = $value . ',a.istop DESC,a.isrecommend DESC,a.isheadline DESC,a.sorting ASC,a.date DESC,a.id DESC';
+                                        $orderExtFields = $extFields !== null ? $extFields : array();
+                                        if ($custom = resolve_content_order_custom($value, $this->allowed_fields, $orderExtFields)) {
+                                            $order = $custom . ',a.istop DESC,a.isrecommend DESC,a.isheadline DESC,a.sorting ASC,a.date DESC,a.id DESC';
+                                        }
                                     }
                             }
                             break;
@@ -3748,6 +3744,11 @@ class ParserController extends Controller
             case 'description':
                 $content = str_replace($search, $this->adjustLabelData($params, $data->description, $label, true), $content); // 占位替换
                 break;
+            case 'visits':
+                if (isset($data->id, $data->visits)) {
+                    $content = str_replace($search, $this->adjustLabelData($params, VisitsCounter::getDisplayVisits($data->id, (int) $data->visits), $label), $content);
+                }
+                break;
             default:
                 if (isset($data->$label)) {
                     $fieldVal = $data->$label;
@@ -3993,6 +3994,15 @@ class ParserController extends Controller
                     $content = str_replace($search, $this->adjustLabelData($params, $data->description, null, true), $content);
                 } else {
                     $content = str_replace($search, '{pboot:sitedescription}', $content);
+                }
+                break;
+            case 'visits':
+                if (isset($data->id, $data->visits)) {
+                    // visits_is_display：详情已通过 incrAndGetVisits 折算，勿再叠加 pending
+                    $visits = ! empty($data->visits_is_display)
+                        ? (int) $data->visits
+                        : VisitsCounter::getDisplayVisits($data->id, (int) $data->visits);
+                    $content = str_replace($search, $this->adjustLabelData($params, $visits), $content);
                 }
                 break;
             default:

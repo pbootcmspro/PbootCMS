@@ -10,6 +10,7 @@ namespace app\admin\controller;
 
 use core\basic\Controller;
 use app\admin\model\IndexModel;
+use app\common\VisitsCounter;
 
 class IndexController extends Controller
 {
@@ -266,7 +267,13 @@ class IndexController extends Controller
     // 清理缓存（常规保留 runtime/image 缩略图；仅 delall 全量清理）
     public function clearCache()
     {
-        $rs = purge_runtime_cache(RUN_PATH, 'all', get('delall'));
+        $delall = get('delall');
+        // delall 会删除 runtime/data，归库失败必须中止，避免待刷访问量被抹掉
+        if ($delall && ! VisitsCounter::flushAll()) {
+            $this->log('清理缓存前归库访问量失败，已中止全量清理！');
+            alert_back('清理缓存前归库访问量失败，已中止全量清理以避免丢失计数！', 0);
+        }
+        $rs = purge_runtime_cache(RUN_PATH, 'all', $delall);
         cache_config(); // 清理缓存后立即生成新的配置
         if ($rs) {
             if (extension_loaded('Zend OPcache')) {
@@ -283,7 +290,13 @@ class IndexController extends Controller
     // 清理系统缓存（常规保留 runtime/image 与 cache；仅 delall 全量清理）
     public function clearOnlySysCache()
     {
-        $rs = purge_runtime_cache(RUN_PATH, 'sys', get('delall'));
+        $delall = get('delall');
+        // delall 会删除 runtime/data，归库失败必须中止，避免待刷访问量被抹掉
+        if ($delall && ! VisitsCounter::flushAll()) {
+            $this->log('清理缓存前归库访问量失败，已中止全量清理！');
+            alert_back('清理缓存前归库访问量失败，已中止全量清理以避免丢失计数！', 0);
+        }
+        $rs = purge_runtime_cache(RUN_PATH, 'sys', $delall);
         cache_config(); // 清理缓存后立即生成新的配置
         if ($rs) {
             if (extension_loaded('Zend OPcache')) {

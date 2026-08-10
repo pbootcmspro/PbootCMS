@@ -1,11 +1,14 @@
 <div class="bd-callout bd-callout-info">
     <h4>友情链接标签</h4>
     <p>适用范围：全站任意地方均可使用</p>
-    <p>标签作用：用于依次输出指定分组的友情链接</p>
+    <p>标签作用：用于依次输出友情链接；未指定分组时默认输出分组1</p>
 </div>
 <h4>1、友情链接列表</h4>
 <p>
-    <code>{pboot:link  gid=* num=*}</code>
+    <code>{pboot:link gid=* num=* start=*}</code>
+</p>
+<p>
+    <code>{pboot:link num=10}</code>
 </p>
 <p>
     <code>&amp;lt;a href="[link:link]" title="[link:name]"&amp;gt;&amp;lt;img src="[link:logo]"&amp;gt;&amp;lt;/a&amp;gt;</code>
@@ -15,8 +18,9 @@
 </p>
 <div class="bd-callout bd-callout-danger">
     <p>控制参数：</p>
-    <p>gid=* 分组，必填，用于控制需要输出的友情链接分组</p>
+    <p>gid=* 分组，非必填，用于控制需要输出的友情链接分组，默认为1</p>
     <p>num=* 数量，非必填，用于控制需要输出的数量，默认为10个</p>
+    <p>start=* 起始位置，非必填，从1开始，默认为1；小于1或非数字时按1处理</p>
 </div>
 <h4 class="mt-3">2、可使用的列表标签</h4>
 <table class="table table-bordered table-light">

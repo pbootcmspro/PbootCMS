@@ -64,6 +64,8 @@ class ContentController extends Controller
 
             $this->assign('baidu_zz_token', $this->config('baidu_zz_token'));
             $this->assign('baidu_ks_token', $this->config('baidu_ks_token'));
+            $indexnow_key = get_effective_indexnow_key($this->config('indexnow_key'), $this->config('indexnow_key_location'));
+            $this->assign('indexnow_key', $indexnow_key);
 
             // 前端地址连接符判断
             $url_break_char = $this->config('url_break_char') ?: '_';
@@ -378,6 +380,7 @@ class ContentController extends Controller
                     } else {
                         alert_back('发生未知错误！');
                     }
+                    break;
                 case 'baiduks':
                     $list = post('list');
                     $urls = post('urls');
@@ -403,6 +406,49 @@ class ContentController extends Controller
                     } else {
                         alert_back('发生未知错误！');
                     }
+                    break;
+                case 'indexnow':
+                    $list = post('list');
+                    $urls = post('urls');
+                    if (!$list || !is_array($list) || !is_array($urls)) {
+                        alert_back('请选择要推送的内容！');
+                    }
+                    if (!$key = get_effective_indexnow_key($this->config('indexnow_key'), $this->config('indexnow_key_location'))) {
+                        alert_back('请先到系统配置中填写IndexNow推送密钥！');
+                    }
+
+                    $domain = get_http_url();
+                    $expected_host = get_http_host(true);
+                    $post_urls = array();
+                    foreach ($list as $value) {
+                        if (!isset($urls[$value])) { // 链接类型内容不输出推送地址
+                            continue;
+                        }
+                        $post_urls[] = build_indexnow_url($domain, $urls[$value]);
+                    }
+                    // 以服务端当前 host 为准，丢弃客户端隐藏域篡改的异域地址
+                    $post_urls = array_slice(filter_indexnow_urls($post_urls, $expected_host), 0, 10000); // 接口单次上限
+                    if (!$post_urls) {
+                        alert_back('所选内容中没有可推送的地址，链接类型内容不允许推送！');
+                    }
+
+                    $key_location = resolve_indexnow_key_location($key, $this->config('indexnow_key_location'), $post_urls);
+                    if (! indexnow_key_location_file_ready($key, $key_location)) {
+                        alert_back('密钥文件不存在或内容与推送密钥不一致，请先到系统配置保存IndexNow密钥，并检查网站根目录（或自定义密钥文件地址）写入权限！');
+                    }
+                    $rs = post_indexnow($key, $key_location, $post_urls, $expected_host);
+                    $msg = get_indexnow_msg($rs, count($post_urls));
+                    // ay_syslog.event 仅 varchar(200)，不能一次 implode 全部地址；按条记录并追加汇总
+                    foreach ($post_urls as $url) {
+                        $this->log('IndexNow推送：' . $url);
+                    }
+                    if (!$rs['errno'] && ($rs['code'] == 200 || $rs['code'] == 202)) {
+                        $this->log('IndexNow推送成功：共' . count($post_urls) . '条，' . $msg);
+                    } else {
+                        $this->log('IndexNow推送失败：共' . count($post_urls) . '条，' . $msg);
+                    }
+                    alert_back($msg);
+                    break;
             }
         }
 

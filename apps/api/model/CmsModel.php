@@ -8,6 +8,7 @@
  */
 namespace app\api\model;
 
+use app\common\VisitsCounter;
 use core\basic\Model;
 
 class CmsModel extends Model
@@ -407,11 +408,8 @@ class CmsModel extends Model
             ->join($join)
             ->decode()
             ->find();
-        if ($result) {
-            $data2 = array(
-                'visits' => '+=1'
-            );
-            parent::table('ay_content')->where("id={$result->id}")->update($data2);
+        if (is_object($result)) {
+            $result->visits = VisitsCounter::incrAndGetVisits($result->id, (int) $result->visits);
         }
         return $result;
     }
@@ -459,11 +457,8 @@ class CmsModel extends Model
             ->order('id DESC')
             ->decode()
             ->find();
-        if ($result) {
-            $data2 = array(
-                'visits' => '+=1'
-            );
-            parent::table('ay_content')->where("id={$result->id}")->update($data2);
+        if (is_object($result)) {
+            $result->visits = VisitsCounter::incrAndGetVisits($result->id, (int) $result->visits);
         }
         return $result;
     }

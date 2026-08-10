@@ -20,7 +20,11 @@ interface Builder
     // 开启事务
     public function beginTransaction();
 
-    // 提交事务
+    /**
+     * 提交事务
+     *
+     * @return bool 无进行中事务或提交成功为 true；仅 failSoft 模式下提交失败返回 false
+     */
     public function commitTransaction();
 
     // 执行SQL语句,接受完整SQL语句，返回结果集对象

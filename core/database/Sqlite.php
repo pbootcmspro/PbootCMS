@@ -15,6 +15,15 @@ class Sqlite implements Builder
 
     protected static $sqlite;
 
+    /** @var bool 软失败：SQL 错误时回滚并返回 false，不终止请求（仅 VisitsCounter 刷盘等场景） */
+    protected static $failSoft = false;
+
+    /** @var bool 最近一次软失败是否发生过 SQL 错误 */
+    protected static $failSoftError = false;
+
+    /** @var int 软失败作用域嵌套深度；错误标记保留到最外层退出才清 */
+    protected static $failSoftDepth = 0;
+
     protected $master;
 
     protected $slave;
@@ -26,7 +35,7 @@ class Sqlite implements Builder
     public function __destruct()
     {
         if ($this->begin) { // 存在待提交的事务时自动进行提交
-            $this->master->exec('commit;');
+            @$this->master->exec('commit;');
         }
     }
 
@@ -40,7 +49,7 @@ class Sqlite implements Builder
             $this->slave = $conn;
         }
         if (!$this->begin) {
-            $this->master->exec('begin;');
+            @$this->master->exec('begin;');
             $this->begin = true;
         }
     }
@@ -49,9 +58,16 @@ class Sqlite implements Builder
     public function commitTransaction()
     {
         if ($this->begin) {
-            $this->master->exec('commit;');
+            $ok = @$this->master->exec('commit;');
             $this->begin = false;
+            // 非 failSoft：保持历史行为，不因 commit 失败改返回值（调用方历来不检查）；
+            // 仅 failSoft 返回 false，供 VisitsCounter 等把增量退回本地待刷。
+            if ($ok === false && self::$failSoft) {
+                self::$failSoftError = true;
+                return false;
+            }
         }
+        return true;
     }
 
     // 获取单一实例，使用单一实例数据库连接类
@@ -61,6 +77,35 @@ class Sqlite implements Builder
             self::$sqlite = new self();
         }
         return self::$sqlite;
+    }
+
+    /**
+     * 开启/关闭软失败模式（支持嵌套引用计数）。
+     * 仅最外层开启时清错误标记；内层退出不关窗口、不清标记。
+     */
+    public static function setFailSoft($enabled)
+    {
+        if ($enabled) {
+            if (self::$failSoftDepth === 0) {
+                self::$failSoftError = false;
+            }
+            self::$failSoftDepth ++;
+            self::$failSoft = true;
+            return;
+        }
+        if (self::$failSoftDepth > 0) {
+            self::$failSoftDepth --;
+        }
+        if (self::$failSoftDepth === 0) {
+            self::$failSoft = false;
+            self::$failSoftError = false;
+        }
+    }
+
+    /** 软失败模式下是否发生过 SQL 错误（读后不清除，由最外层 setFailSoft(false) 重置） */
+    public static function hadFailSoftError()
+    {
+        return self::$failSoftError;
     }
 
     // 连接数据库，接受数据库连接参数，返回数据库连接对象
@@ -99,13 +144,21 @@ class Sqlite implements Builder
         switch ($type) {
             case 'master':
                 if (! $this->begin) { // 存在写入时自动开启显式事务，提高写入性能
-                    $this->master->exec('begin;');
+                    @$this->master->exec('begin;');
                     $this->begin = true;
                 }
-                $result = $this->master->exec($sql) or $this->error($sql, 'master');
+                $result = @$this->master->exec($sql);
+                if ($result === false) {
+                    $this->error($sql, 'master');
+                    return false;
+                }
                 break;
             case 'slave':
-                $result = $this->slave->query($sql) or $this->error($sql, 'slave');
+                $result = @$this->slave->query($sql);
+                if ($result === false) {
+                    $this->error($sql, 'slave');
+                    return false;
+                }
                 break;
         }
         return $result;
@@ -267,12 +320,22 @@ class Sqlite implements Builder
     // 显示执行错误
     protected function error($sql, $conn)
     {
-        $err = '错误：' . $this->$conn->lastErrorMsg();
+        $raw = $this->$conn->lastErrorMsg();
+        $err = '错误：' . $raw;
         if ($this->begin) { // 存在显式开启事务时进行回滚
-            $this->master->exec('rollback;');
+            @$this->master->exec('rollback;');
             $this->begin = false;
         }
-        // error('执行SQL发生错误！' . $err . '语句：' . $sql);
-        error('执行SQL发生错误！' . $err);
+        if (self::$failSoft) {
+            self::$failSoftError = true;
+            return;
+        }
+        // 详情只入日志；非调试模式对外仅给通用文案，避免暴露表名/列名/约束名
+        @error_log('[PbootCMS][sqlite] 执行SQL发生错误！错误：' . $raw . ' 语句：' . $sql);
+        if (Config::get('debug')) {
+            error('执行SQL发生错误！' . $err);
+        } else {
+            error('数据库执行错误，请稍后重试或联系管理员！');
+        }
     }
 }

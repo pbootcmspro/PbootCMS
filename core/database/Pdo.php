@@ -15,6 +15,15 @@ class Pdo implements Builder
 
     protected static $pdo;
 
+    /** @var bool 软失败：SQL 错误时回滚并返回 false，不终止请求（仅 VisitsCounter 刷盘等场景） */
+    protected static $failSoft = false;
+
+    /** @var bool 最近一次软失败是否发生过 SQL 错误 */
+    protected static $failSoftError = false;
+
+    /** @var int 软失败作用域嵌套深度；错误标记保留到最外层退出才清 */
+    protected static $failSoftDepth = 0;
+
     protected $master;
 
     protected $slave;
@@ -38,6 +47,35 @@ class Pdo implements Builder
             self::$pdo = new self();
         }
         return self::$pdo;
+    }
+
+    /**
+     * 开启/关闭软失败模式（支持嵌套引用计数）。
+     * 仅最外层开启时清错误标记；内层退出不关窗口、不清标记。
+     */
+    public static function setFailSoft($enabled)
+    {
+        if ($enabled) {
+            if (self::$failSoftDepth === 0) {
+                self::$failSoftError = false;
+            }
+            self::$failSoftDepth ++;
+            self::$failSoft = true;
+            return;
+        }
+        if (self::$failSoftDepth > 0) {
+            self::$failSoftDepth --;
+        }
+        if (self::$failSoftDepth === 0) {
+            self::$failSoft = false;
+            self::$failSoftError = false;
+        }
+    }
+
+    /** 软失败模式下是否发生过 SQL 错误（读后不清除，由最外层 setFailSoft(false) 重置） */
+    public static function hadFailSoftError()
+    {
+        return self::$failSoftError;
     }
 
     // 连接数据库，接受数据库连接参数，返回数据库连接对象
@@ -92,6 +130,10 @@ class Pdo implements Builder
                 }
                 break;
         }
+        // PHP 8+ 默认 ERRMODE_EXCEPTION，统一为 SILENT 以便 error() 走 failSoft
+        if ($conn instanceof \PDO) {
+            $conn->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_SILENT);
+        }
         return $conn;
     }
 
@@ -115,19 +157,26 @@ class Pdo implements Builder
     public function commitTransaction()
     {
         if ($this->begin) {
-            $this->master->commit();
+            $ok = $this->master->commit();
             $this->begin = false;
+            // 非 failSoft：保持历史行为，不因 commit 失败改返回值（调用方历来不检查）；
+            // 仅 failSoft 返回 false，供 VisitsCounter 等把增量退回本地待刷。
+            if (! $ok && self::$failSoft) {
+                self::$failSoftError = true;
+                return false;
+            }
         }
+        return true;
     }
 
     // 执行SQL语句,接受完整SQL语句，返回结果集对象
     public function query($sql, $type = 'master', $params = array())
     {
         $time_s = microtime(true);
+        $cfg = Config::get('database');
         switch ($type) {
             case 'master':
                 if (! $this->master) {
-                    $cfg = Config::get('database');
                     $this->master = $this->conn($cfg);
                     if ($cfg['type'] == 'pdo_mysql') {
                         $this->master->exec("SET sql_mode='NO_ENGINE_SUBSTITUTION'"); // MySql写入规避严格模式
@@ -156,6 +205,7 @@ class Pdo implements Builder
                     $result = $this->master->query($sql);
                     if ($result === false) {
                         $this->error($sql, 'master');
+                        return false;
                     }
                 }
                 break;
@@ -185,7 +235,11 @@ class Pdo implements Builder
                     }
                     $result = $stmt;
                 } else {
-                    $result = $this->slave->query($sql) or $this->error($sql, 'slave');
+                    $result = $this->slave->query($sql);
+                    if ($result === false) {
+                        $this->error($sql, 'slave');
+                        return false;
+                    }
                 }
                 break;
         }
@@ -337,11 +391,12 @@ class Pdo implements Builder
         $source = $stmt ?: $this->$conn;
         $errs = $source->errorInfo();
 
-        $err = '错误：' . (isset($errs[2]) ? $errs[2] : '未知错误');
+        $raw = isset($errs[2]) ? $errs[2] : '未知错误';
         // SQLSTATE 始终附加（若有）
         if (isset($errs[0]) && $errs[0]) {
-            $err .= ' [SQLSTATE:' . $errs[0] . ']';
+            $raw .= ' [SQLSTATE:' . $errs[0] . ']';
         }
+        $err = '错误：' . $raw;
 
         // 屏蔽XPATH相关错误信息，防止信息泄露
         if (preg_match('/XPATH/i', $err)) {
@@ -353,8 +408,17 @@ class Pdo implements Builder
             $this->$conn->rollBack();
             $this->begin = false;
         }
-        // error('执行SQL发生错误！' . $err . '语句：' . $sql);
-        error('执行SQL发生错误！' . $err);
+        if (self::$failSoft) {
+            self::$failSoftError = true;
+            return;
+        }
+        // 详情只入日志；非调试模式对外仅给通用文案，避免暴露表名/列名/约束名
+        @error_log('[PbootCMS][pdo] 执行SQL发生错误！错误：' . $raw . ' 语句：' . $sql);
+        if (Config::get('debug')) {
+            error('执行SQL发生错误！' . $err);
+        } else {
+            error('数据库执行错误，请稍后重试或联系管理员！');
+        }
     }
 
     //返回对象结果集

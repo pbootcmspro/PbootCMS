@@ -1030,7 +1030,7 @@ class Model
      *
      * @param string $type
      *            可选传递1,2,3返回不同格式数据数组
-     * @return string|boolean|string
+     * @return object|array|string|bool|null
      */
     final public function find($type = null)
     {
@@ -1742,5 +1742,4 @@ class Model
     }
 
 }
-
 

@@ -6,6 +6,9 @@ declare(strict_types=1);
  * @suite unit
  * @covers apps/home/controller/ParserController.php buildFilterWhere()
  * @covers core/function/handle.php resolve_search_field()
+ * @covers core/function/handle.php resolve_order_field()
+ * @covers core/function/handle.php resolve_content_order_custom()
+ * @covers core/function/handle.php order_requests_ext_field()
  * @covers core/function/handle.php content_query_fields()
  *
  * 回归目标：
@@ -217,4 +220,49 @@ return TestAssert::runSuite(function () {
 
     TestAssert::same('', resolve_search_field('isico', $allFields), '搜索路径拒绝幽灵名 isico');
     TestAssert::same('', resolve_search_field('ispics', $allFields), '搜索路径拒绝幽灵名 ispics');
+
+    echo "=== resolve_order_field() order 令牌解析 ===\n";
+
+    TestAssert::same('a.id', resolve_order_field('id'), 'id -> a.id');
+    TestAssert::same('a.id', resolve_order_field('ID'), 'ID -> a.id');
+    TestAssert::same('a.visits DESC', resolve_order_field('visits DESC'), 'visits DESC -> a.visits DESC');
+    TestAssert::same('a.visits DESC', resolve_order_field('VISITS desc'), 'VISITS desc -> a.visits DESC');
+    TestAssert::same('e.ext_color', resolve_order_field('ext_color', $allFields, $extFields), 'ext_color -> e.ext_color');
+    TestAssert::same('e.ext_color', resolve_order_field('EXT_COLOR', $allFields, $extFields), 'EXT_COLOR -> e.ext_color');
+    TestAssert::same('e.ext_color DESC', resolve_order_field('EXT_COLOR DESC', $allFields, $extFields), 'EXT_COLOR DESC -> e.ext_color DESC');
+    TestAssert::same('e.ext_color ASC', resolve_order_field('ext_color ASC', $allFields, $extFields), 'ext_color ASC -> e.ext_color ASC');
+    TestAssert::same('', resolve_order_field('EXT_COLOR DESC', $allFields, array()), '空白名单时带方向扩展字段被拒绝');
+    TestAssert::same('', resolve_order_field('ext_missing', $allFields, $extFields), '不存在的扩展字段被拒绝');
+    TestAssert::same('', resolve_order_field('ext_missing DESC', $allFields, $extFields), '不存在的扩展字段带方向被拒绝');
+    TestAssert::same('', resolve_order_field('asc'), 'asc 被拒绝（非列名）');
+    TestAssert::same('', resolve_order_field('desc'), 'desc 被拒绝（非列名）');
+    TestAssert::same('', resolve_order_field('price'), 'price 被拒绝（非白名单）');
+    TestAssert::same('', resolve_order_field(' ASC'), '纯 ASC 被拒绝');
+    TestAssert::same('', resolve_order_field('DESC'), '纯 DESC 被拒绝');
+    TestAssert::same('', resolve_order_field('a.title'), '预限定名被拒绝');
+    TestAssert::same('', resolve_order_field('random'), 'random 伪排序名被拒绝');
+    TestAssert::same('', resolve_order_field(''), '空字符串被拒绝');
+    TestAssert::same('', resolve_order_field(null), 'null 被拒绝');
+
+    echo "=== order_requests_ext_field() 预加载检测 ===\n";
+
+    TestAssert::true(order_requests_ext_field('EXT_COLOR'), '裸 EXT_COLOR 触发预加载');
+    TestAssert::true(order_requests_ext_field('EXT_COLOR DESC'), 'EXT_COLOR DESC 触发预加载');
+    TestAssert::true(order_requests_ext_field('ext_color ASC'), 'ext_color ASC 触发预加载');
+    TestAssert::true(order_requests_ext_field('EXT_COLOR DESC,date'), '带方向多令牌触发预加载');
+    TestAssert::true(order_requests_ext_field('ext_color,date'), '裸扩展字段多令牌触发预加载');
+    TestAssert::false(order_requests_ext_field('visits DESC'), '普通字段带方向不触发预加载');
+    TestAssert::false(order_requests_ext_field('asc'), 'asc 不触发预加载');
+    TestAssert::false(order_requests_ext_field('price'), 'price 不触发预加载');
+    TestAssert::false(order_requests_ext_field(''), '空字符串不触发预加载');
+
+    echo "=== resolve_content_order_custom() 多令牌 order ===\n";
+
+    TestAssert::same('a.visits,a.id', resolve_content_order_custom('visits,id'), 'visits,id 多令牌合法');
+    TestAssert::same('a.visits DESC,a.id ASC', resolve_content_order_custom('visits DESC,id ASC'), '带方向多令牌合法');
+    TestAssert::same('', resolve_content_order_custom('visits,bogus'), '部分非法令牌整体拒绝');
+    TestAssert::same('', resolve_content_order_custom('asc'), '单令牌 asc 整体拒绝');
+    TestAssert::same('e.ext_color,a.date', resolve_content_order_custom('EXT_COLOR,date', $allFields, $extFields), '扩展字段大小写不敏感');
+    TestAssert::same('e.ext_color DESC,a.date', resolve_content_order_custom('EXT_COLOR DESC,date', $allFields, $extFields), '扩展字段带方向多令牌合法');
+    TestAssert::same('', resolve_content_order_custom('EXT_COLOR DESC', $allFields, array()), '空白名单时带方向扩展字段整体拒绝');
 });

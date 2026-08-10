@@ -82,7 +82,17 @@ function get_user_os($osstr = null)
         }
     }
     
-    if (strpos($user_agent, 'windows nt 5.0')) {
+    // 必须先于windows判断：二合一UA形如 (PC; OpenHarmony 6.1; Windows NT 10.0)，带windows nt兼容填充
+    // 仅手机与平板按移动设备处理，PC/2in1/未知形态一律归为非移动，避免新形态出现时被误投喂手机版
+    if (strpos($user_agent, 'openharmony') !== false) {
+        if (strpos($user_agent, 'phone;') !== false) {
+            $user_os = 'HarmonyOS';
+        } elseif (strpos($user_agent, 'tablet;') !== false) {
+            $user_os = 'HarmonyOS Pad';
+        } else {
+            $user_os = 'HarmonyOS PC';
+        }
+    } elseif (strpos($user_agent, 'windows nt 5.0')) {
         $user_os = 'Windows 2000';
     } elseif (strpos($user_agent, 'windows nt 9')) {
         $user_os = 'Windows 9X';
@@ -517,6 +527,71 @@ function resolve_search_field($field, $allowedFields = null, $extFields = null)
         return 'a.' . $field;
     }
     return '';
+}
+
+// 判断 order 参数是否包含需要加载扩展字段白名单的 ext_* 令牌（允许可选 ASC/DESC）
+function order_requests_ext_field($rorder)
+{
+    return (bool) preg_match(
+        '/(?:^|,)\s*ext_[\w\-]+(?:\s+(?:ASC|DESC))?\s*(?:,|$)/i',
+        (string) $rorder
+    );
+}
+
+// 解析 order 令牌为安全的限定列名，非白名单字段返回空字符串
+// 普通字段补 a. 限定，真实扩展字段补 e. 限定，均保留白名单/表结构的规范拼写
+function resolve_order_field($field, $allowedFields = null, $extFields = null)
+{
+    if (! is_string($field)) {
+        return '';
+    }
+    $field = trim($field);
+    if ($field === '') {
+        return '';
+    }
+    $dir = '';
+    if (preg_match('/\s+(ASC|DESC)$/i', $field, $m)) {
+        $dir = ' ' . strtoupper($m[1]);
+        $field = trim(substr($field, 0, -strlen($m[0])));
+    }
+    if ($field === '') {
+        return '';
+    }
+    if (strpos($field, '.') !== false) {
+        return '';
+    }
+    if (preg_match('/^ext_[\w\-]+$/i', $field)) {
+        if (! is_array($extFields)) {
+            $extFields = array();
+        }
+        if ($field = canonical_allowlist_field($field, $extFields)) {
+            return 'e.' . $field . $dir;
+        }
+        return '';
+    }
+    if ($allowedFields === null) {
+        $allowedFields = content_query_fields();
+    }
+    if ($field = canonical_allowlist_field($field, $allowedFields)) {
+        return 'a.' . $field . $dir;
+    }
+    return '';
+}
+
+// 解析自定义 order 字符串（逗号分隔多令牌）；任一令牌非法则返回空字符串
+function resolve_content_order_custom($rorder, $allowedFields = null, $extFields = null)
+{
+    if (! is_string($rorder) || trim($rorder) === '') {
+        return '';
+    }
+    $orders = array();
+    foreach (explode(',', $rorder) as $v) {
+        if (! $column = resolve_order_field($v, $allowedFields, $extFields)) {
+            return '';
+        }
+        $orders[] = $column;
+    }
+    return implode(',', $orders);
 }
 
 // 转义 LIKE 元字符（配合 ESCAPE '!'，避免 %/_ 放大匹配；! 作转义符可跨 MySQL/SQLite）
@@ -1375,9 +1450,10 @@ function is_multi_array($array)
 function is_mobile()
 {
     $os = get_user_os();
-    if ($os == 'Android' || $os == 'iPhone' || $os == 'Windows Phone' || $os == 'iPad') {
+    if ($os == 'Android' || $os == 'iPhone' || $os == 'Windows Phone' || $os == 'iPad' || $os == 'HarmonyOS' || $os == 'HarmonyOS Pad') {
         return true;
     }
+    return false;
 }
 
 // 是否为POST请求

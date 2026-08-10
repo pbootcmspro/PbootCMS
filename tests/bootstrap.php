@@ -20,3 +20,4 @@ require TEST_ROOT . 'fixtures/security/PbootIfBypassPayloads.php';
 require TEST_ROOT . 'fixtures/security/IframeSanitizePayloads.php';
 require TEST_ROOT . 'fixtures/security/AreaInputPayloads.php';
 require TEST_ROOT . 'fixtures/security/TitleDescPayloads.php';
+require TEST_ROOT . 'fixtures/security/StatisticalSanitizePayloads.php';

@@ -86,7 +86,7 @@ CREATE TABLE `ay_config` (
   `description` varchar(30) NOT NULL COMMENT '描述文本',
   PRIMARY KEY (`id`),
   KEY `ay_config_name` (`name`)
-) ENGINE=MyISAM AUTO_INCREMENT=43 DEFAULT CHARSET=utf8;
+) ENGINE=MyISAM AUTO_INCREMENT=45 DEFAULT CHARSET=utf8;
 
 --
 -- 转存表中的数据 `ay_config`
@@ -135,7 +135,9 @@ INSERT INTO `ay_config` (`id`,`name`,`value`,`type`,`sorting`,`description`) VAL
 ('40','tpl_html_dir','html','2','255','模板HTML目录'),
 ('41','ip_deny','','2','255','IP黑名单'),
 ('42','ip_allow','','2','255','IP白名单'),
-('43','url_index_404','0','2','255','跳转404');
+('43','url_index_404','0','2','255','跳转404'),
+('44','tpl_html_cache','1','1','255','动态缓存开关'),
+('45','tpl_html_cache_time','900000000000','2','255','缓存有效期(秒)');
 
 -- --------------------------------------------------------
 
