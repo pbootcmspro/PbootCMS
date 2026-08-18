@@ -50,6 +50,9 @@
     <div class="alert alert-warning">
         <p>注意：Nginx中如果站点部署在二级目录，请对应修改重写规则， 如：二级目录为test则：rewrite ^/test/(.*)$ /test/index.php?p=$1 last;</p>
     </div>
+    <h4 class="mt-3">4、上传目录 MIME / nosniff（SVG、SVGZ、AVIF）</h4>
+    <p>Apache：源码包已提供 <code>rewrite/static-upload.htaccess</code>，程序会通过 <code>upload_ensure_htaccess()</code> 自动部署为 <code>static/upload/.htaccess</code>（首次上传、开启伪静态、在线升级成功后会补齐）。请确认站点允许目录级 <code>AllowOverride</code> 且启用了 <code>mod_mime</code>/<code>mod_headers</code>。</p>
+    <p>Nginx：不会读取 .htaccess，请将源码包 <code>rewrite/static-upload.nginx.conf</code> 中的片段并入站点配置，确保 <code>/static/upload/</code> 返回正确 Content-Type 与 <code>X-Content-Type-Options: nosniff</code>，并禁止执行上传目录内脚本。其中 <code>.svgz</code> 须带 <code>Content-Encoding: gzip</code>（片段内已单独 location），否则浏览器会把压缩字节当 XML 解析。</p>
 </div>
 <p>
     <br/>

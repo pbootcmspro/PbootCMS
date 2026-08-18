@@ -8,10 +8,10 @@
  */
 namespace app\home\controller;
 
-use core\basic\Controller;
+use app\common\HomeBaseController;
 use core\basic\Url;
 
-class SearchController extends Controller
+class SearchController extends HomeBaseController
 {
 
     protected $parser;

@@ -11,10 +11,10 @@ namespace app\home\controller;
 
 use app\home\model\ParserModel;
 use core\basic\Config;
-use core\basic\Controller;
+use app\common\HomeBaseController;
 use core\basic\Url;
 
-class IndexController extends Controller
+class IndexController extends HomeBaseController
 {
 
     protected $parser;
@@ -232,6 +232,24 @@ class IndexController extends Controller
         }
     }
 
+    /**
+     * 调用语言与当前语言不一致时自动切换
+     *
+     * 必须在首次渲染前调用：主题由渲染前置钩子按最终语言绑定一次，
+     * 此处只需保证语言在渲染前已是终态。
+     */
+    private function switchLg($acode)
+    {
+        if ($acode == get_lg() || Config::get('lgautosw') === '0') {
+            return;
+        }
+        $lgs = Config::get('lgs');
+        if (!is_array($lgs) || !isset($lgs[$acode]['theme'])) {
+            return;
+        }
+        cookie('lg', $acode);
+    }
+
     // 首页
     private function getIndexPage()
     {
@@ -249,9 +267,7 @@ class IndexController extends Controller
     {
 
         // 调用栏目语言与当前语言不一致时，自动切换语言
-        if ($sort->acode != get_lg() && Config::get('lgautosw') !== '0') {
-            cookie('lg', $sort->acode);
-        }
+        $this->switchLg($sort->acode);
         if (!$sort->listtpl) {
             error('请到后台设置分类栏目列表页模板！');
         }
@@ -276,9 +292,7 @@ class IndexController extends Controller
     {
 
         // 调用内容语言与当前语言不一致时，自动切换语言
-        if ($data->acode != get_lg() && Config::get('lgautosw') !== '0') {
-            cookie('lg', $data->acode);
-        }
+        $this->switchLg($data->acode);
 
         // 读取模板
         if (!$sort = $this->model->getSort($data->scode)) {
@@ -310,9 +324,7 @@ class IndexController extends Controller
     private function getAboutPage($sort)
     {
         // 调用栏目语言与当前语言不一致时，自动切换语言
-        if ($sort->acode != get_lg() && Config::get('lgautosw') !== '0') {
-            cookie('lg', $sort->acode);
-        }
+        $this->switchLg($sort->acode);
 
         // 读取数据
         if (!$data = $this->model->getAbout($sort->scode)) {

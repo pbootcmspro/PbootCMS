@@ -1579,6 +1579,11 @@ function get_server_info()
     $data['document_root'] = isset($_SERVER['DOCUMENT_ROOT']) ? $_SERVER['DOCUMENT_ROOT'] : DOC_PATH;
     // PHP版本
     $data['php_version'] = PHP_VERSION;
+    // 建议的最低PHP版本，仅用于后台提示文案
+    $data['php_min_version'] = '7.4';
+    // PHP版本是否低于建议的最低版本，仅用于后台展示提醒，不做任何拦截
+    // 用PHP_VERSION_ID整数比较，避免version_compare把7.4.0-dev、7.4.0RC1等预发布版误判为过低
+    $data['php_version_low'] = PHP_VERSION_ID < 70400;
     // 数据库驱动
     $data['db_driver'] = Config::get('database.type');
     // php配置文件
@@ -1593,14 +1598,30 @@ function get_server_info()
     $data['memory_limit'] = ini_get('memory_limit');
     // 检测gd扩展
     $data['gd'] = extension_loaded('gd') ? YES : NO;
-    // 图像后端：配置值、实际处理路径、Imagick 与能力矩阵（本阶段探测不接管）
+    // 图像后端：配置值、主路径 GD；AVIF 按能力择优（见 image_cap_avif）
     if (function_exists('image_backend_config')) {
         $matrix = image_capability_matrix();
         $im = isset($matrix['imagick']) && is_array($matrix['imagick']) ? $matrix['imagick'] : array();
         $data['image_backend_config'] = image_backend_config();
         $data['image_backend_effective'] = image_backend_effective();
         $data['imagick'] = ! empty($im['loaded']) ? YES : NO;
+        $data['imagick_usable'] = ! empty($im['usable']) ? YES : NO;
         $data['imagick_version'] = ! empty($im['version']) ? $im['version'] : '-';
+        $data['imagick_unusable_reason'] = (! empty($im['usable']) || empty($im['unusable_reason']))
+            ? '-'
+            : (string) $im['unusable_reason'];
+        $data['imagick_policy_status'] = function_exists('imagick_policy_registry_status')
+            ? imagick_policy_registry_status($im)
+            : '-';
+        $deepAt = ! empty($im['deep_probe_at']) ? (int) $im['deep_probe_at'] : 0;
+        if ($deepAt > 0) {
+            $runtime = ! empty($im['deep_probe_runtime_coders']) && is_array($im['deep_probe_runtime_coders'])
+                ? implode(',', $im['deep_probe_runtime_coders'])
+                : '无';
+            $data['imagick_deep_probe'] = date('Y-m-d H:i:s', $deepAt) . '；runtime 可读：' . $runtime;
+        } else {
+            $data['imagick_deep_probe'] = '未检测（可在下方按钮触发）';
+        }
         $data['image_cap_avif'] = 'GD：' . (! empty($matrix['avif']['gd']) ? YES : NO)
             . ' / Imagick：' . (! empty($matrix['avif']['imagick']) ? YES : NO);
         $data['image_cap_heic'] = 'GD：' . (! empty($matrix['heic']['gd']) ? YES : NO)
@@ -1613,7 +1634,11 @@ function get_server_info()
         $data['image_backend_config'] = 'auto';
         $data['image_backend_effective'] = 'gd';
         $data['imagick'] = NO;
+        $data['imagick_usable'] = NO;
         $data['imagick_version'] = '-';
+        $data['imagick_unusable_reason'] = '-';
+        $data['imagick_policy_status'] = '-';
+        $data['imagick_deep_probe'] = '-';
         $data['image_cap_avif'] = 'GD：' . NO . ' / Imagick：' . NO;
         $data['image_cap_heic'] = 'GD：' . NO . ' / Imagick：' . NO;
         $data['image_cap_animated_gif'] = 'GD：' . NO . ' / Imagick：' . NO;

@@ -236,6 +236,11 @@ class UpgradeController extends Controller
                 path_delete(RUN_PATH . '/cache');
                 path_delete(RUN_PATH . '/complile');
                 path_delete(RUN_PATH . '/config');
+
+                // 补齐上传目录安全规则（升级包可能只带 rewrite 模板）
+                if (function_exists('upload_ensure_htaccess')) {
+                    upload_ensure_htaccess(true);
+                }
                 
                 $this->log("系统更新成功!");
                 json(1, '系统更新成功！');
@@ -397,8 +402,8 @@ class UpgradeController extends Controller
         $cv = explode('.', $cv);
         $len = count($sv) > count($cv) ? count($sv) : count($cv);
         for ($i = 0; $i < $len; $i ++) {
-            $n1 = $sv[$i] or 0;
-            $n2 = $cv[$i] or 0;
+            $n1 = isset($sv[$i]) ? $sv[$i] : 0;
+            $n2 = isset($cv[$i]) ? $cv[$i] : 0;
             if ($n1 > $n2) {
                 return 1;
             } elseif ($n1 < $n2) {

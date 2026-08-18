@@ -76,7 +76,7 @@ layui.use(['element','upload','laydate','form'], function(){
   
   var sitedir=$('#sitedir').data('sitedir');
   var uploadurl = $("#preurl").data('preurl')+'/index/upload';
-  var imageExts = 'jpg|jpeg|png|gif|bmp|webp';
+  var imageExts = 'jpg|jpeg|png|gif|bmp|webp|svg|svgz|avif';
   
   //执行单图片实例
   var uploadInst = upload.render({
@@ -89,9 +89,9 @@ layui.use(['element','upload','laydate','form'], function(){
 	,exts: imageExts
     ,before: function(obj){ 
        //判断是否需要加水印
-       if($(this.item).hasClass('watermark')){
-	  	 uploadInst.config.url=uploadurl+'/watermark/1';//改变URL
-	   }
+       uploadInst.config.url = $(this.item).hasClass('watermark')
+	     ? uploadurl + '/watermark/1'
+	     : uploadurl;
 	   layer.load(); //上传loading
 	}
 	,done: function(res){
@@ -125,6 +125,46 @@ layui.use(['element','upload','laydate','form'], function(){
 	  .replace(/</g,'&lt;')
 	  .replace(/>/g,'&gt;');
   }
+  // pushFile 后 layui 内部 a.files 永不为 falsy，fileLength/allDone 第二批起失效，改自管批次收尾
+  function finalizeUploadBatch(inst){
+	if(inst._batchFinalized) return;
+	inst._batchFinalized = true;
+	var item = inst.item;
+	var des = $(item).data('des');
+	layer.closeAll('loading');
+	if(files != ''){
+	   if($('#'+des).val()){
+		   $('#'+des).val($('#'+des).val()+','+files);
+	   }else{
+		   $('#'+des).val(files);
+	   }
+	   // 仅 append 本次上传项，不重绘已有 input，避免覆盖用户手改标题
+	   if(des == 'pics'){
+		   $('#'+des+'_box').append(html);
+	   }else{
+		   $('#'+des+'_box').append(html2);
+	   }
+	   layer.msg('成功上传'+(inst._batchSuccess || 0)+'个文件！');
+	   files = '';
+	   html = '';
+	   html2 = '';
+	   uploadOrigNames = {};
+	   if(inst._uploadFiles){
+		   for(var k in inst._uploadFiles){ delete inst._uploadFiles[k]; }
+	   }
+	}else{
+	   uploadOrigNames = {};
+	   if(inst._uploadFiles){
+		   for(var k in inst._uploadFiles){ delete inst._uploadFiles[k]; }
+	   }
+	   layer.msg('全部上传失败！');
+	}
+  }
+  function tickUploadBatch(inst){
+	if(inst._batchPending <= 0){
+	   finalizeUploadBatch(inst);
+	}
+  }
   var uploadsInst = upload.render({
 	elem: '.uploads' //绑定元素
 	,url: uploadurl //上传接口
@@ -135,16 +175,22 @@ layui.use(['element','upload','laydate','form'], function(){
 	,exts: imageExts
 	,choose: function(obj){
 	   // 同步缓存 File.name；pushFile 后须在 done 中 delete，避免重复上传
-	   var chosen = this._uploadFiles = obj.pushFile();
+	   var inst = this;
+	   var chosen = inst._uploadFiles = obj.pushFile();
+	   inst._batchFinalized = false;
+	   inst._batchSuccess = 0;
+	   inst._batchPending = 0;
+	   // layui.each 仅 (obj, fn) 两参，无 scope；勿在回调里用 this 计数
 	   layui.each(chosen, function(index, file){
 		   uploadOrigNames[index] = (file && file.name) ? file.name : '';
+		   inst._batchPending++;
 	   });
 	}
 	,before: function(obj){ 
 	   //判断是否需要加水印
-       if($(this.item).hasClass('watermark')){
-	  	 uploadsInst.config.url=uploadurl+'/watermark/1';//改变URL
-	   }
+       uploadsInst.config.url = $(this.item).hasClass('watermark')
+	     ? uploadurl + '/watermark/1'
+	     : uploadurl;
 	   layer.load(); //上传loading
 	}
 	,done: function(res, index){
@@ -152,6 +198,7 @@ layui.use(['element','upload','laydate','form'], function(){
 		   delete this._uploadFiles[index];
 	   }
 	   if(res.code==1){
+		   this._batchSuccess = (this._batchSuccess || 0) + 1;
 		   if(files){
 			   files+=','+res.data[0];
 		   }else{
@@ -166,47 +213,23 @@ layui.use(['element','upload','laydate','form'], function(){
 	   }else{
 		   delete uploadOrigNames[index];
 		   layer.msg('有文件上传失败：'+res.data); 
-	   } 
+	   }
+	   this._batchPending--;
+	   tickUploadBatch(this);
 	}
   	,allDone: function(obj){
-  		var item = this.item;
-  	    var des=$(item).data('des');
-  	    
-  	    layer.closeAll('loading'); //关闭loading
-	    if(files!=''){
-	       if($('#'+des).val()){
-	    	   $('#'+des).val($('#'+des).val()+','+files); 
-	       }else{
-	    	   $('#'+des).val(files); 
-	       }
-	       // 仅 append 本次上传项，不重绘已有 input，避免覆盖用户手改标题
-	       if(des=='pics'){
-	    	   $('#'+des+'_box').append(html); 
-	       }else{
-	    	   $('#'+des+'_box').append(html2); 
-	       }
-	 	   layer.msg('成功上传'+obj.successful+'个文件！'); 
-	 	   files='';
-	 	   html='';
-	 	   html2='';
-	 	   uploadOrigNames={};
-	 	   if(this._uploadFiles){
-	 		   for(var k in this._uploadFiles){ delete this._uploadFiles[k]; }
-	 	   }
-	    }else{
-	 	   uploadOrigNames={};
-	 	   if(this._uploadFiles){
-	 		   for(var k in this._uploadFiles){ delete this._uploadFiles[k]; }
-	 	   }
-	 	   layer.msg('全部上传失败！'); 
-	    }
-	    
-	 }
+	   // layui fileLength 不可靠；仅 pending 已归零时作兜底，避免首批误触发
+	   tickUploadBatch(this);
+	}
 	,error: function(index){
 		if(this._uploadFiles){ delete this._uploadFiles[index]; }
 		delete uploadOrigNames[index];
-		layer.closeAll('loading'); //关闭loading
-		layer.msg('上传发生错误！'); 
+		this._batchPending--;
+		if(this._batchPending <= 0){
+		   finalizeUploadBatch(this);
+		}else{
+		   layer.msg('上传发生错误！');
+		}
 	}
   });
 	

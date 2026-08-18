@@ -12,6 +12,7 @@ if (!defined('TEST_ROOT')) {
 }
 
 require_once APP_PATH . '/common/HomeController.php';
+require_once APP_PATH . '/common/HomeBaseController.php';
 require_once APP_PATH . '/home/controller/IndexController.php';
 
 return TestAssert::runSuite(function () {

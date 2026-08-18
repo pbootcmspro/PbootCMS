@@ -1,0 +1,24 @@
+# 上传目录：正确 MIME + 禁止内容嗅探（审计 #25）
+# 部署目标：static/upload/.htaccess（upload_ensure_htaccess 自动同步）
+<IfModule mod_mime.c>
+  AddType image/svg+xml .svg
+  AddType image/svg+xml .svgz
+  AddType image/avif .avif
+  AddType image/webp .webp
+  AddEncoding gzip .svgz
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+</IfModule>
+
+# 禁止将上传目录当作脚本执行
+<FilesMatch "(?i)\.(php|phtml|php3|php4|php5|php7|php8|phps|phar|cgi|pl|asp|aspx|jsp)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>

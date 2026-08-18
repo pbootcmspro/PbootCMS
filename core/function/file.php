@@ -228,8 +228,8 @@ function dir_copy($src, $des, $son = 1)
 function upload_catalog_extensions()
 {
     return array(
-         // 图片（7）
-        'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'ico',
+         // 图片（10）
+        'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'ico', 'svg', 'svgz', 'avif',
         // 办公文档（15）
         'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'pdf', 'txt', 'md', 'xml', 'csv',
         'rtf', 'wps', 'et', 'dps',
@@ -274,6 +274,9 @@ function upload_config_extensions()
     );
     if ($exts === $legacy_default) {
         $exts[] = 'webp';
+        $exts[] = 'svg';
+        $exts[] = 'svgz';
+        $exts[] = 'avif';
     }
     return $exts;
 }
@@ -295,7 +298,7 @@ function ueditor_merge_upload_config($config)
     if (! $all) {
         return $config;
     }
-    $image_set = array('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp');
+    $image_set = array('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.svg', '.svgz', '.avif');
     $video_set = array(
         '.flv', '.swf', '.mkv', '.avi', '.rm', '.rmvb', '.mpeg', '.mpg',
         '.ogg', '.ogv', '.mov', '.wmv', '.mp4', '.webm', '.mp3', '.wav', '.mid'
@@ -456,6 +459,13 @@ function gd_load_image($path, $type)
                 $img = @imagecreatefromwebp($path);
                 break;
             }
+            if ($type == image_type_avif()) {
+                if (! gd_supports_avif()) {
+                    return array(false, '服务器不支持AVIF图片处理！');
+                }
+                $img = @imagecreatefromavif($path);
+                break;
+            }
             return array(false, '不允许的图片格式！');
     }
     if (! $img) {
@@ -480,6 +490,9 @@ function gd_save_image($img, $path, $type, $quality = 90)
         default:
             if ($type == image_type_webp() && gd_supports_webp()) {
                 return @imagewebp($img, $path, $quality);
+            }
+            if ($type == image_type_avif() && gd_supports_avif()) {
+                return @imageavif($img, $path, $quality);
             }
             return false;
     }
@@ -510,6 +523,34 @@ function gd_webp_gd_available()
     return gd_supports_webp();
 }
 
+// AVIF 图片类型常量（PHP 8.1+ 自带 IMAGETYPE_AVIF）
+function image_type_avif()
+{
+    return defined('IMAGETYPE_AVIF') ? IMAGETYPE_AVIF : 19;
+}
+
+// GD 是否支持 AVIF 读写
+function gd_supports_avif()
+{
+    if (! function_exists('imagecreatefromavif') || ! function_exists('imageavif') || ! function_exists('gd_info')) {
+        return false;
+    }
+    $info = gd_info();
+    if (! isset($info['AVIF Support'])) {
+        return false;
+    }
+    return ! empty($info['AVIF Support']);
+}
+
+// GD AVIF 是否可用（测试可通过 $GLOBALS['__test_gd_supports_avif'] 覆盖）
+function gd_avif_gd_available()
+{
+    if (array_key_exists('__test_gd_supports_avif', $GLOBALS)) {
+        return (bool) $GLOBALS['__test_gd_supports_avif'];
+    }
+    return gd_supports_avif();
+}
+
 /**
  * 清除图像后端能力探测缓存（测试或配置变更后可调用）
  */
@@ -519,21 +560,71 @@ function image_backend_clear_probe_cache()
 }
 
 /**
- * Imagick 能力探测（请求内缓存；测试可通过 $GLOBALS['__test_imagick_probe'] 覆盖）
+ * Imagick 白名单格式（读/写，唯一数据源）
  *
- * @return array loaded, version, formats, delegates, animated_gif
+ * @return array
  */
-function imagick_probe()
+function imagick_format_whitelist()
 {
-    if (array_key_exists('__test_imagick_probe', $GLOBALS)) {
-        return $GLOBALS['__test_imagick_probe'];
-    }
-    if (isset($GLOBALS['__imagick_probe_cache']) && is_array($GLOBALS['__imagick_probe_cache'])) {
-        return $GLOBALS['__imagick_probe_cache'];
-    }
+    return array('AVIF', 'HEIC', 'HEIF', 'GIF', 'JPEG', 'JPG', 'PNG', 'WEBP');
+}
 
-    $result = array(
+/**
+ * Imagick 白名单扩展名（小写，不含点；由 imagick_format_whitelist() 派生）
+ *
+ * @return array
+ */
+function imagick_extension_whitelist()
+{
+    return array('avif', 'heic', 'heif', 'gif', 'jpeg', 'jpg', 'png', 'webp');
+}
+
+/**
+ * 格式名是否在 Imagick 白名单内
+ *
+ * @param string $format
+ * @return bool
+ */
+function imagick_format_is_whitelisted($format)
+{
+    return in_array(strtoupper((string) $format), imagick_format_whitelist(), true);
+}
+
+/**
+ * Imagick 危险 coder 黑名单（ImageTragick 相关）
+ *
+ * 仅用于 queryFormats 注册表扫描与深度探测展示；真实输入防线是 imagick_validate_input() 白名单。
+ *
+ * @return array
+ */
+function imagick_coder_denylist()
+{
+    return array(
+        'MSVG', 'MVG', 'MSL', 'URL', 'HTTP', 'HTTPS', 'FTP', 'PS', 'EPS', 'PDF', 'EPHEMERAL',
+        'LABEL', 'CAPTION', 'CLIPBOARD', 'TEXT', 'SVG', 'SVGZ'
+    );
+}
+
+/**
+ * Imagick 拒绝的扩展名（小写，不含点）
+ *
+ * @return array
+ */
+function imagick_denied_extensions()
+{
+    return array('svg', 'svgz', 'pdf', 'ps', 'eps', 'mvg', 'msvg');
+}
+
+/**
+ * Imagick 探测结果默认结构
+ *
+ * @return array
+ */
+function imagick_probe_defaults()
+{
+    return array(
         'loaded' => false,
+        'usable' => false,
         'version' => '',
         'formats' => array(
             'AVIF' => false,
@@ -548,8 +639,1018 @@ function imagick_probe()
             'heic' => false,
             'webp' => false
         ),
-        'animated_gif' => false
+        'animated_gif' => false,
+        'registry_risk_coders' => array(),
+        'denied_coders' => array(),
+        'deep_probe_at' => 0,
+        'deep_probe_runtime_coders' => array(),
+        'min_version_ok' => false,
+        'resource_limits_applied' => false,
+        'policy_applied' => false,
+        'unusable_reason' => 'Imagick 扩展未加载'
     );
+}
+
+/**
+ * 解析 ImageMagick 版本号
+ *
+ * @param string $versionString
+ * @return array|null major, minor, patch, revision
+ */
+function imagick_parse_version_number($versionString)
+{
+    if (! preg_match('/ImageMagick\s+(\d+)\.(\d+)\.(\d+)(?:-(\d+))?/i', (string) $versionString, $m)) {
+        return null;
+    }
+    return array(
+        'major' => (int) $m[1],
+        'minor' => (int) $m[2],
+        'patch' => (int) $m[3],
+        'revision' => isset($m[4]) ? (int) $m[4] : 0
+    );
+}
+
+/**
+ * ImageMagick 是否满足 ImageTragick 安全基线（6.9.10-23 / 7.0.8-11+）
+ *
+ * @param string $versionString
+ * @return bool
+ */
+function imagick_version_meets_minimum($versionString)
+{
+    $v = imagick_parse_version_number($versionString);
+    if ($v === null) {
+        return false;
+    }
+    if ($v['major'] >= 7) {
+        if ($v['minor'] > 0) {
+            return true;
+        }
+        if ($v['minor'] === 0 && $v['patch'] > 8) {
+            return true;
+        }
+        if ($v['minor'] === 0 && $v['patch'] === 8 && $v['revision'] >= 11) {
+            return true;
+        }
+        return false;
+    }
+    if ($v['major'] === 6 && $v['minor'] === 9) {
+        if ($v['patch'] > 10) {
+            return true;
+        }
+        if ($v['patch'] === 10 && $v['revision'] >= 23) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * 查询 ImageMagick 已注册格式（仅 trust queryFormats('*') 全量结果）
+ *
+ * 不使用无参 queryFormats() 降级：部分环境仅返回 JPEG/PNG 子集，无法可靠探测危险 coder。
+ *
+ * @return array 大写格式名 => true
+ */
+function imagick_query_all_formats()
+{
+    if (array_key_exists('__test_imagick_query_formats', $GLOBALS)) {
+        $stub = $GLOBALS['__test_imagick_query_formats'];
+        if (! is_array($stub)) {
+            return array();
+        }
+        $formats = array();
+        foreach ($stub as $f) {
+            $formats[strtoupper((string) $f)] = true;
+        }
+        return $formats;
+    }
+    $formats = array();
+    if (! extension_loaded('imagick') || ! method_exists('Imagick', 'queryFormats')) {
+        return $formats;
+    }
+    $list = @\Imagick::queryFormats('*');
+    if (! is_array($list) || empty($list)) {
+        return $formats;
+    }
+    foreach ($list as $f) {
+        $formats[strtoupper((string) $f)] = true;
+    }
+    return $formats;
+}
+
+/**
+ * queryFormats 登记的危险 coder（fail-closed，不发起 readImage）
+ *
+ * @param array $allFormats imagick_query_all_formats() 结果
+ * @return array
+ */
+function imagick_detect_registry_risk_coders(array $allFormats)
+{
+    $found = array();
+    foreach (imagick_coder_denylist() as $coder) {
+        $upper = strtoupper($coder);
+        if (! empty($allFormats[$upper])) {
+            $found[] = $upper;
+        }
+    }
+    return $found;
+}
+
+/**
+ * 深度探测是否允许对该 coder 执行 readImage（仅 file 类，禁止网络/spec）
+ *
+ * @param string $coder
+ * @return bool
+ */
+function imagick_coder_deep_probe_eligible($coder)
+{
+    $spec = imagick_coder_probe_spec($coder);
+    return is_array($spec) && isset($spec['type']) && $spec['type'] === 'file';
+}
+
+/**
+ * 读取持久化的 Imagick 深度探测缓存（ay_config imagick_security_probe JSON）
+ *
+ * @return array|null version_hash（或升级前 version）, probed_at, runtime_coders, probe_mode
+ */
+function imagick_security_probe_read()
+{
+    if (array_key_exists('__test_imagick_security_probe', $GLOBALS)) {
+        $stub = $GLOBALS['__test_imagick_security_probe'];
+        return is_array($stub) ? $stub : null;
+    }
+    $raw = '';
+    if (class_exists('core\\basic\\Config', false)) {
+        $raw = (string) \core\basic\Config::get('imagick_security_probe');
+    }
+    if ($raw === '') {
+        return null;
+    }
+    $data = json_decode($raw, true);
+    return is_array($data) ? $data : null;
+}
+
+/**
+ * 深度探测缓存是否与当前 ImageMagick 版本匹配
+ *
+ * @param array $cache
+ * @param string $currentVersion
+ * @return bool
+ */
+function imagick_security_probe_cache_valid(array $cache, $currentVersion)
+{
+    if (empty($cache['probed_at']) || (string) $currentVersion === '') {
+        return false;
+    }
+    $currentVersion = (string) $currentVersion;
+    if (! empty($cache['version_hash'])) {
+        return (string) $cache['version_hash'] === md5($currentVersion);
+    }
+    // 兼容升级前已成功写入的短 version 串
+    return ! empty($cache['version']) && (string) $cache['version'] === $currentVersion;
+}
+
+/**
+ * 编码深度探测缓存 JSON（ay_config.value 为 varchar(200)）
+ *
+ * @param array $data
+ * @return string|false 超长或编码失败时 false
+ */
+function imagick_security_probe_encode(array $data)
+{
+    unset($data['version']);
+    $json = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($json === false || strlen($json) > 200) {
+        return false;
+    }
+    return $json;
+}
+
+/**
+ * 持久化深度探测结果至 ay_config 并刷新配置缓存
+ *
+ * @param array $data
+ * @return bool
+ */
+function imagick_security_probe_persist(array $data)
+{
+    $json = imagick_security_probe_encode($data);
+    if ($json === false || ! function_exists('model')) {
+        return false;
+    }
+    $model = model('admin.system.Config');
+    if (! $model) {
+        return false;
+    }
+    if ($model->checkConfig("name='imagick_security_probe'")) {
+        $ok = $model->modValue('imagick_security_probe', $json);
+    } else {
+        $ok = $model->addConfig(array(
+            'name' => 'imagick_security_probe',
+            'value' => $json,
+            'type' => 2,
+            'sorting' => 255,
+            'description' => 'Imagick 深度安全探测缓存（JSON）'
+        ));
+    }
+    if ($ok) {
+        path_delete(RUN_PATH . '/config');
+        if (function_exists('cache_config')) {
+            cache_config(true);
+        }
+    }
+    return (bool) $ok;
+}
+
+/**
+ * 危险 coder 运行时可读性探测规格（最小 payload，非 exploit）
+ *
+ * @param string $coder
+ * @return array|null type=file|spec, ext/bytes 或 value
+ */
+function imagick_coder_probe_spec($coder)
+{
+    switch (strtoupper((string) $coder)) {
+        case 'MVG':
+        case 'MSVG':
+            return array(
+                'type' => 'file',
+                'ext' => 'mvg',
+                'bytes' => "@begin mvg\n@end mvg\n"
+            );
+        case 'PDF':
+            return array(
+                'type' => 'file',
+                'ext' => 'pdf',
+                'bytes' => '%PDF-1.4 probe'
+            );
+        case 'PS':
+        case 'EPS':
+            return array(
+                'type' => 'file',
+                'ext' => 'ps',
+                'bytes' => '%!PS-Adobe-3.0 probe'
+            );
+        case 'SVG':
+        case 'SVGZ':
+            return array(
+                'type' => 'file',
+                'ext' => 'svg',
+                'bytes' => '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg"></svg>'
+            );
+        case 'HTTPS':
+        case 'HTTP':
+        case 'FTP':
+        case 'URL':
+            return array(
+                'type' => 'spec',
+                'value' => 'https://127.0.0.1/im-probe-' . uniqid('', true)
+            );
+        case 'MSL':
+            return array(
+                'type' => 'file',
+                'ext' => 'msl',
+                'bytes' => '<?xml version="1.0" encoding="UTF-8"?><msl:image></msl:image>'
+            );
+        case 'LABEL':
+            return array('type' => 'spec', 'value' => 'label:probe');
+        case 'CAPTION':
+            return array('type' => 'spec', 'value' => 'caption:probe');
+        case 'TEXT':
+            return array('type' => 'spec', 'value' => 'text:probe');
+        case 'CLIPBOARD':
+            return array('type' => 'spec', 'value' => 'clipboard:');
+        case 'EPHEMERAL':
+            return array('type' => 'spec', 'value' => 'ephemeral:probe');
+        default:
+            return null;
+    }
+}
+
+/**
+ * 探测危险 coder 是否仍可读（policy 禁用时 readImage 失败；IM7 queryFormats 仍可能登记）
+ *
+ * @param string $coder
+ * @return bool true=仍可读（不安全）
+ */
+function imagick_probe_coder_readable($coder)
+{
+    if (array_key_exists('__test_imagick_coder_readable', $GLOBALS)) {
+        $stub = $GLOBALS['__test_imagick_coder_readable'];
+        if (is_array($stub)) {
+            $key = strtoupper((string) $coder);
+            if (array_key_exists($key, $stub)) {
+                return (bool) $stub[$key];
+            }
+        }
+    }
+    if (! extension_loaded('imagick') || ! class_exists('Imagick', false)) {
+        return false;
+    }
+    $spec = imagick_coder_probe_spec($coder);
+    // 仅 file 类 coder 允许 readImage；网络/spec 类永不主动探测
+    if ($spec === null || ! isset($spec['type']) || $spec['type'] !== 'file') {
+        return false;
+    }
+    $probePath = '';
+    try {
+        if (! imagick_apply_security_policy()) {
+            return false;
+        }
+        $im = new \Imagick();
+        imagick_apply_instance_options($im);
+        $probePath = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'improbe_'
+            . uniqid('', true) . '.' . $spec['ext'];
+        if (@file_put_contents($probePath, $spec['bytes']) === false) {
+            return false;
+        }
+        @$im->readImage($probePath);
+        if (method_exists($im, 'clear')) {
+            $im->clear();
+        }
+        if (method_exists($im, 'destroy')) {
+            $im->destroy();
+        }
+        return true;
+    } catch (\Throwable $e) {
+        return false;
+    } finally {
+        if ($probePath !== '' && is_file($probePath)) {
+            @unlink($probePath);
+        }
+    }
+}
+
+/**
+ * 深度探测：file 类危险 coder 运行时可读（显式触发，非热路径）
+ *
+ * @param array|null $allFormats imagick_query_all_formats() 结果，可传入以避免重复查询
+ * @return array
+ */
+function imagick_detect_runtime_readable_coders($allFormats = null)
+{
+    if ($allFormats === null) {
+        $allFormats = imagick_query_all_formats();
+    }
+    $found = array();
+    foreach (imagick_coder_denylist() as $coder) {
+        $upper = strtoupper($coder);
+        if (empty($allFormats[$upper]) || ! imagick_coder_deep_probe_eligible($coder)) {
+            continue;
+        }
+        if (imagick_probe_coder_readable($coder)) {
+            $found[] = $upper;
+        }
+    }
+    return $found;
+}
+
+/**
+ * @deprecated 请用 imagick_detect_registry_risk_coders（热路径）或 imagick_detect_runtime_readable_coders（深度探测）
+ */
+function imagick_detect_denied_coders($allFormats = null)
+{
+    return imagick_detect_runtime_readable_coders($allFormats);
+}
+
+/**
+ * 进程级 Imagick 资源限制（请求内幂等；不能替代 policy.xml coder/delegate 禁用）
+ *
+ * @return bool
+ */
+function imagick_apply_security_policy()
+{
+    if (array_key_exists('__test_imagick_policy_applied', $GLOBALS)) {
+        return (bool) $GLOBALS['__test_imagick_policy_applied'];
+    }
+    static $applied = false;
+    static $ok = false;
+    if ($applied) {
+        return $ok;
+    }
+    $applied = true;
+    if (! extension_loaded('imagick') || ! class_exists('Imagick', false)) {
+        return false;
+    }
+    try {
+        $phpMem = parse_memory_limit_bytes();
+        $imMem = (int) min(256 * 1024 * 1024, $phpMem * 0.25);
+        if ($imMem < 32 * 1024 * 1024) {
+            $imMem = 32 * 1024 * 1024;
+        }
+        if (defined('Imagick::RESOURCETYPE_MEMORY')) {
+            @\Imagick::setResourceLimit(\Imagick::RESOURCETYPE_MEMORY, $imMem);
+        }
+        if (defined('Imagick::RESOURCETYPE_MAP')) {
+            @\Imagick::setResourceLimit(\Imagick::RESOURCETYPE_MAP, $imMem);
+        }
+        if (defined('Imagick::RESOURCETYPE_DISK')) {
+            @\Imagick::setResourceLimit(\Imagick::RESOURCETYPE_DISK, 512 * 1024 * 1024);
+        }
+        if (defined('Imagick::RESOURCETYPE_TIME')) {
+            @\Imagick::setResourceLimit(\Imagick::RESOURCETYPE_TIME, 120);
+        }
+        if (defined('Imagick::RESOURCETYPE_AREA')) {
+            @\Imagick::setResourceLimit(\Imagick::RESOURCETYPE_AREA, 64 * 1024 * 1024);
+        }
+        if (defined('Imagick::RESOURCETYPE_WIDTH')) {
+            @\Imagick::setResourceLimit(\Imagick::RESOURCETYPE_WIDTH, 8192);
+        }
+        if (defined('Imagick::RESOURCETYPE_HEIGHT')) {
+            @\Imagick::setResourceLimit(\Imagick::RESOURCETYPE_HEIGHT, 8192);
+        }
+        $tmp = new \Imagick();
+        imagick_apply_instance_options($tmp);
+        if (method_exists($tmp, 'clear')) {
+            $tmp->clear();
+        }
+        if (method_exists($tmp, 'destroy')) {
+            $tmp->destroy();
+        }
+        $ok = true;
+    } catch (\Throwable $e) {
+        $ok = false;
+    }
+    return $ok;
+}
+
+/**
+ * 实例级格式解析加固 setOption（纵深防御；不能禁用 coder/delegate，须配置 policy.xml）
+ *
+ * @param \Imagick $im
+ */
+function imagick_apply_instance_options($im)
+{
+    if (! is_object($im) || ! method_exists($im, 'setOption')) {
+        return;
+    }
+    $options = array(
+        'svg:xml-parse-huge' => 'false',
+        'pdf:use-cropbox' => 'false',
+        'ps:use-trimbox' => 'false',
+        'mvg:vector-graphics' => 'false'
+    );
+    foreach ($options as $key => $value) {
+        try {
+            @$im->setOption($key, $value);
+        } catch (\Throwable $e) {
+            // 部分 ImageMagick 版本不支持对应 option，忽略
+        }
+    }
+}
+
+/**
+ * 根据探测结果计算 usable / unusable_reason
+ *
+ * @param array $result
+ * @param array|null $allFormats imagick_query_all_formats() 结果；null 时内部查询一次
+ * @return array
+ */
+function imagick_probe_finalize(array $result, $allFormats = null)
+{
+    if (empty($result['loaded'])) {
+        $result['usable'] = false;
+        if (empty($result['unusable_reason'])) {
+            $result['unusable_reason'] = 'Imagick 扩展未加载';
+        }
+        return $result;
+    }
+
+    if ($allFormats === null) {
+        $allFormats = imagick_query_all_formats();
+    }
+    if (! is_array($allFormats)) {
+        $allFormats = array();
+    }
+    if (! empty($allFormats)) {
+        $result['registry_risk_coders'] = imagick_detect_registry_risk_coders($allFormats);
+    } else {
+        $result['registry_risk_coders'] = array();
+    }
+    // 向后兼容：denied_coders 与 registry_risk_coders 同义（热路径 fail-closed）
+    $result['denied_coders'] = $result['registry_risk_coders'];
+    $result['min_version_ok'] = imagick_version_meets_minimum(isset($result['version']) ? $result['version'] : '');
+    $result['resource_limits_applied'] = imagick_apply_security_policy();
+    // 向后兼容：policy_applied 仅表示资源限制已应用，不代表 policy.xml 已配置
+    $result['policy_applied'] = $result['resource_limits_applied'];
+
+    $versionStr = isset($result['version']) ? (string) $result['version'] : '';
+    $deepCache = imagick_security_probe_read();
+    if ($deepCache && imagick_security_probe_cache_valid($deepCache, $versionStr)) {
+        $result['deep_probe_at'] = (int) $deepCache['probed_at'];
+        $result['deep_probe_runtime_coders'] = isset($deepCache['runtime_coders']) && is_array($deepCache['runtime_coders'])
+            ? $deepCache['runtime_coders']
+            : array();
+    } else {
+        $result['deep_probe_at'] = 0;
+        $result['deep_probe_runtime_coders'] = array();
+    }
+
+    $reasons = array();
+    if (empty($allFormats)) {
+        $reasons[] = '无法确认 ImageMagick coder 注册表（queryFormats 无结果）';
+    }
+    if (empty($result['min_version_ok'])) {
+        $reasons[] = 'ImageMagick 版本低于安全基线（需 ≥6.9.10-23 或 ≥7.0.8-11）';
+    }
+    if (! empty($result['registry_risk_coders'])) {
+        $reasons[] = 'queryFormats 仍登记危险 coder，请在 policy.xml 中禁用：'
+            . implode(',', $result['registry_risk_coders']);
+    }
+    if (empty($result['formats']['JPEG']) || empty($result['formats']['PNG'])) {
+        $reasons[] = '缺少 JPEG/PNG 基础格式支持';
+    }
+    if (empty($result['resource_limits_applied'])) {
+        $reasons[] = 'Imagick 资源限制未能应用';
+    }
+
+    $result['usable'] = empty($reasons);
+    $result['unusable_reason'] = $result['usable'] ? '' : implode('；', $reasons);
+    return $result;
+}
+
+/**
+ * Imagick 是否通过安全门闸（extension_loaded ≠ usable）
+ *
+ * @return bool
+ */
+function imagick_is_usable()
+{
+    if (array_key_exists('__test_imagick_usable', $GLOBALS)) {
+        return (bool) $GLOBALS['__test_imagick_usable'];
+    }
+    $probe = imagick_probe();
+    return ! empty($probe['usable']);
+}
+
+/**
+ * Imagick 不可用的原因（空串表示可用）
+ *
+ * @return string
+ */
+function imagick_usable_reason()
+{
+    if (array_key_exists('__test_imagick_usable_reason', $GLOBALS)) {
+        return (string) $GLOBALS['__test_imagick_usable_reason'];
+    }
+    $probe = imagick_probe();
+    return isset($probe['unusable_reason']) ? (string) $probe['unusable_reason'] : '';
+}
+
+/**
+ * 检测文件头是否含 SVG/PDF/PS/MVG 等危险魔数
+ *
+ * @param string $head 文件头字节
+ * @return bool true=危险
+ */
+function imagick_detect_dangerous_magic($head)
+{
+    if ($head === '' || $head === false) {
+        return false;
+    }
+    $sample = strtolower(substr($head, 0, 512));
+    if (strncmp($head, '%PDF-', 5) === 0) {
+        return true;
+    }
+    if (strncmp($head, '%!PS', 4) === 0) {
+        return true;
+    }
+    if (strpos($sample, '<svg') !== false || strpos($sample, '<?xml') !== false) {
+        return true;
+    }
+    if (strpos($sample, '@begin') !== false && strpos($sample, 'mvg') !== false) {
+        return true;
+    }
+    return false;
+}
+
+/**
+ * 由文件头魔数识别白名单格式名（无法识别时返回 null）
+ *
+ * @param string $head 文件头字节
+ * @return string|null 大写格式名
+ */
+function imagick_magic_identify($head)
+{
+    if ($head === '' || $head === false || strlen($head) < 4) {
+        return null;
+    }
+    if (strncmp($head, 'GIF87a', 6) === 0 || strncmp($head, 'GIF89a', 6) === 0) {
+        return 'GIF';
+    }
+    if (strncmp($head, "\xFF\xD8\xFF", 3) === 0) {
+        return 'JPEG';
+    }
+    if (strlen($head) >= 8 && strncmp($head, "\x89PNG\r\n\x1a\n", 8) === 0) {
+        return 'PNG';
+    }
+    if (strlen($head) >= 12 && strncmp($head, 'RIFF', 4) === 0 && strncmp(substr($head, 8, 4), 'WEBP', 4) === 0) {
+        return 'WEBP';
+    }
+    if (strlen($head) >= 12 && substr($head, 4, 4) === 'ftyp') {
+        $avifBrands = array('avif', 'avis');
+        $heicBrands = array('heic', 'heix', 'hevc', 'hevx', 'heim', 'heis');
+        $heifBrands = array('mif1', 'msf1');
+        $brands = array();
+        $brands[] = strtolower(substr($head, 8, 4));
+        for ($i = 16; $i + 4 <= min(strlen($head), 64); $i += 4) {
+            $brands[] = strtolower(substr($head, $i, 4));
+        }
+        foreach ($brands as $brand) {
+            if (in_array($brand, $avifBrands, true)) {
+                return 'AVIF';
+            }
+            if (in_array($brand, $heicBrands, true)) {
+                return 'HEIC';
+            }
+            if (in_array($brand, $heifBrands, true)) {
+                return 'HEIF';
+            }
+        }
+    }
+    return null;
+}
+
+/**
+ * getimagesize() 的 IMAGETYPE_* 映射为白名单格式名
+ *
+ * @param int $type
+ * @return string|null
+ */
+function imagick_imagetype_to_format($type)
+{
+    $type = (int) $type;
+    switch ($type) {
+        case IMAGETYPE_GIF:
+            return 'GIF';
+        case IMAGETYPE_JPEG:
+            return 'JPEG';
+        case IMAGETYPE_PNG:
+            return 'PNG';
+    }
+    if ((int) $type === image_type_webp()) {
+        return 'WEBP';
+    }
+    if (defined('IMAGETYPE_AVIF') && $type === IMAGETYPE_AVIF) {
+        return 'AVIF';
+    }
+    if (defined('IMAGETYPE_HEIC') && $type === IMAGETYPE_HEIC) {
+        return 'HEIC';
+    }
+    if (defined('IMAGETYPE_HEIF') && $type === IMAGETYPE_HEIF) {
+        return 'HEIF';
+    }
+    return null;
+}
+
+/**
+ * IMAGETYPE_* 是否在 Imagick 白名单内
+ *
+ * @param int $type
+ * @return bool
+ */
+function imagick_type_is_whitelisted($type)
+{
+    $format = imagick_imagetype_to_format($type);
+    return $format !== null && imagick_format_is_whitelisted($format);
+}
+
+/**
+ * 白名单格式名对应的扩展名（小写）
+ *
+ * @param string $format
+ * @return array
+ */
+function imagick_format_to_extensions($format)
+{
+    switch (strtoupper((string) $format)) {
+        case 'JPEG':
+        case 'JPG':
+            return array('jpg', 'jpeg');
+        case 'PNG':
+            return array('png');
+        case 'GIF':
+            return array('gif');
+        case 'WEBP':
+            return array('webp');
+        case 'AVIF':
+            return array('avif');
+        case 'HEIC':
+            return array('heic');
+        case 'HEIF':
+            return array('heif');
+        default:
+            return array();
+    }
+}
+
+/**
+ * 两个白名单格式名是否可视为同一图像（JPEG/JPG、HEIC/HEIF 互通）
+ *
+ * @param string $formatA
+ * @param string $formatB
+ * @return bool
+ */
+function imagick_formats_compatible($formatA, $formatB)
+{
+    $a = strtoupper((string) $formatA);
+    $b = strtoupper((string) $formatB);
+    if ($a === $b) {
+        return true;
+    }
+    if (($a === 'JPEG' && $b === 'JPG') || ($a === 'JPG' && $b === 'JPEG')) {
+        return true;
+    }
+    if (($a === 'HEIC' && $b === 'HEIF') || ($a === 'HEIF' && $b === 'HEIC')) {
+        return true;
+    }
+    return false;
+}
+
+/**
+ * 扩展名是否与格式一致（HEIC/HEIF 扩展名互通）
+ *
+ * @param string $ext 小写扩展名
+ * @param string $format 大写格式名
+ * @return bool
+ */
+function imagick_extension_matches_format($ext, $format)
+{
+    $ext = strtolower((string) $ext);
+    if ($ext === '') {
+        return false;
+    }
+    if (in_array($ext, imagick_format_to_extensions($format), true)) {
+        return true;
+    }
+    $fmt = strtoupper((string) $format);
+    if (in_array($fmt, array('HEIC', 'HEIF'), true) && in_array($ext, array('heic', 'heif'), true)) {
+        return true;
+    }
+    return false;
+}
+
+/**
+ * getimagesize() 无法识别的格式是否允许仅凭魔数+扩展名放行
+ *
+ * @param string $format 大写格式名
+ * @return bool
+ */
+function imagick_format_opaque_to_php($format)
+{
+    return in_array(strtoupper((string) $format), array('HEIC', 'HEIF', 'AVIF'), true);
+}
+
+/**
+ * ImageMagick policy.xml 注册表状态摘要（供系统信息展示）
+ *
+ * @param array $probe imagick_probe() 结果
+ * @return string
+ */
+function imagick_policy_registry_status(array $probe)
+{
+    $risk = isset($probe['registry_risk_coders']) && is_array($probe['registry_risk_coders'])
+        ? $probe['registry_risk_coders']
+        : array();
+    if (empty($risk)) {
+        return '注册表无危险 coder（建议在 policy.xml 中显式禁用 URL/MSL/PDF/SVG 等 coder）';
+    }
+    return '仍有 ' . count($risk) . ' 个危险 coder 登记：' . implode(',', $risk) . '；请在 policy.xml 中禁用';
+}
+
+/**
+ * Imagick 输入校验（fail-closed 白名单；SVG/PDF/PS/MVG/URL 一律拒绝）
+ *
+ * @param string $path
+ * @param mixed $hintFormat 预留
+ * @return bool|string true=通过，string=错误信息
+ */
+function imagick_validate_input($path, $hintFormat = null)
+{
+    unset($hintFormat);
+    if ($path === '') {
+        return true;
+    }
+    if (preg_match('#^(https?|ftp)://#i', $path)) {
+        return 'Imagick 拒绝远程 URL 输入';
+    }
+    $ext = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
+    if ($ext !== '' && in_array($ext, imagick_denied_extensions(), true)) {
+        return 'Imagick 拒绝处理 ' . strtoupper($ext) . ' 格式';
+    }
+    $canonical = realpath($path);
+    if ($canonical === false || ! is_file($canonical) || ! is_readable($canonical)) {
+        return '图片文件不可读';
+    }
+    $head = @file_get_contents($canonical, false, null, 0, 512);
+    if ($head === false) {
+        return '图片文件不可读';
+    }
+    if (imagick_detect_dangerous_magic($head)) {
+        return 'Imagick 拒绝危险文件内容';
+    }
+    $magicFmt = imagick_magic_identify($head);
+    $info = @getimagesize($canonical);
+    if ($info && ! empty($info[2])) {
+        if (! imagick_type_is_whitelisted($info[2])) {
+            return 'Imagick 拒绝非白名单图片类型';
+        }
+        $typeFmt = imagick_imagetype_to_format($info[2]);
+        if ($typeFmt === null) {
+            return 'Imagick 无法确认图片类型，拒绝处理';
+        }
+        if ($ext === '' || ! in_array($ext, imagick_extension_whitelist(), true)) {
+            return 'Imagick 无法确认图片类型，拒绝处理';
+        }
+        if (! imagick_extension_matches_format($ext, $typeFmt)) {
+            return 'Imagick 无法确认图片类型，拒绝处理';
+        }
+        if ($magicFmt !== null) {
+            if (! imagick_format_is_whitelisted($magicFmt)) {
+                return 'Imagick 拒绝危险文件内容';
+            }
+            if (! imagick_formats_compatible($typeFmt, $magicFmt)) {
+                return 'Imagick 无法确认图片类型，拒绝处理';
+            }
+        }
+        return true;
+    }
+    $extOk = ($ext !== '' && in_array($ext, imagick_extension_whitelist(), true));
+    $magicOk = ($magicFmt !== null && imagick_format_is_whitelisted($magicFmt));
+    if (! $extOk || ! $magicOk) {
+        return 'Imagick 无法确认图片类型，拒绝处理';
+    }
+    if (! imagick_extension_matches_format($ext, $magicFmt)) {
+        return 'Imagick 无法确认图片类型，拒绝处理';
+    }
+    if (! imagick_format_opaque_to_php($magicFmt)) {
+        return 'Imagick 无法确认图片类型，拒绝处理';
+    }
+    return true;
+}
+
+/**
+ * Imagick 唯一工厂入口（禁止业务代码直接 new Imagick）
+ *
+ * @param string $path 本地路径，空串则仅创建空实例
+ * @param mixed $hintFormat 预留
+ * @return array array(?Imagick, string) 成功时 error 为空串
+ */
+function imagick_create($path = '', $hintFormat = null)
+{
+    if (! imagick_is_usable()) {
+        $reason = imagick_usable_reason();
+        if ($reason === '') {
+            $reason = '未知原因';
+        }
+        return array(null, 'Imagick 不可用：' . $reason);
+    }
+    if (! imagick_apply_security_policy()) {
+        return array(null, 'Imagick 资源限制未能应用');
+    }
+    if ($path !== '' && preg_match('#^(https?|ftp)://#i', $path)) {
+        $valid = imagick_validate_input($path, $hintFormat);
+        return array(null, $valid === true ? 'Imagick 拒绝远程 URL 输入' : (string) $valid);
+    }
+    $canonical = '';
+    if ($path !== '') {
+        $canonical = realpath($path);
+        if ($canonical === false) {
+            return array(null, '图片文件不可读');
+        }
+    }
+    $valid = imagick_validate_input($canonical !== '' ? $canonical : $path, $hintFormat);
+    if ($valid !== true) {
+        return array(null, (string) $valid);
+    }
+    try {
+        $im = new \Imagick();
+        imagick_apply_instance_options($im);
+        if ($canonical !== '') {
+            $fh = @fopen($canonical, 'rb');
+            if ($fh === false) {
+                return array(null, '图片文件不可读');
+            }
+            try {
+                if (method_exists($im, 'readImageFile')) {
+                    $im->readImageFile($fh);
+                } else {
+                    $im->readImage($canonical);
+                }
+            } finally {
+                fclose($fh);
+            }
+        }
+        return array($im, '');
+    } catch (\Throwable $e) {
+        return array(null, 'Imagick 初始化失败');
+    }
+}
+
+/**
+ * coalesceImages 前资源守卫（动图帧数/像素面积）
+ *
+ * @param \Imagick $im
+ * @return string|null null=通过，string=拒绝原因
+ */
+function imagick_guard_before_coalesce($im)
+{
+    if (! is_object($im) || ! method_exists($im, 'getNumberImages')) {
+        return '无效的 Imagick 实例';
+    }
+    $maxFrames = 100;
+    if (array_key_exists('__test_imagick_max_gif_frames', $GLOBALS)) {
+        $maxFrames = (int) $GLOBALS['__test_imagick_max_gif_frames'];
+    }
+    $frames = (int) $im->getNumberImages();
+    if ($frames > $maxFrames) {
+        return 'GIF 帧数超过限制（' . $frames . '>' . $maxFrames . '）';
+    }
+    $maxArea = 64 * 1024 * 1024;
+    for ($i = 0; $i < $frames; $i++) {
+        $im->setIteratorIndex($i);
+        $w = (int) $im->getImageWidth();
+        $h = (int) $im->getImageHeight();
+        if ($w <= 0 || $h <= 0) {
+            continue;
+        }
+        if ($w > 8192 || $h > 8192) {
+            return 'GIF 单帧尺寸超过限制';
+        }
+        if ((float) $w * (float) $h > $maxArea) {
+            return 'GIF 单帧像素面积超过限制';
+        }
+    }
+    $im->setIteratorIndex(0);
+    return null;
+}
+
+/**
+ * 执行 Imagick 深度安全探测（file 类 coder readImage，禁止网络请求）
+ *
+ * @return array|null version_hash, probed_at, runtime_coders, probe_mode；无 Imagick 时 null
+ */
+function imagick_probe_deep_run()
+{
+    if (! extension_loaded('imagick') || ! class_exists('Imagick', false)) {
+        return null;
+    }
+    $version = '';
+    try {
+        if (method_exists('Imagick', 'getVersion')) {
+            $ver = \Imagick::getVersion();
+            if (is_array($ver) && ! empty($ver['versionString'])) {
+                $version = (string) $ver['versionString'];
+            } elseif (is_string($ver)) {
+                $version = $ver;
+            }
+        }
+    } catch (\Throwable $e) {
+        return null;
+    }
+    $formats = imagick_query_all_formats();
+    return array(
+        'version_hash' => md5($version),
+        'probed_at' => time(),
+        'runtime_coders' => imagick_detect_runtime_readable_coders($formats),
+        'probe_mode' => 'file_only'
+    );
+}
+
+/**
+ * 深度探测并持久化至 ay_config（管理员显式触发）
+ *
+ * @return array|null 探测结果；失败时 null
+ */
+function imagick_probe_deep_and_persist()
+{
+    $data = imagick_probe_deep_run();
+    if ($data === null) {
+        return null;
+    }
+    image_backend_clear_probe_cache();
+    if (! imagick_security_probe_persist($data)) {
+        return null;
+    }
+    return $data;
+}
+
+/**
+ * Imagick 能力探测（请求内缓存；仅内省 + registry fail-closed，不主动 readImage）
+ *
+ * @return array loaded, usable, version, formats, delegates, animated_gif, denied_coders, ...
+ */
+function imagick_probe()
+{
+    if (array_key_exists('__test_imagick_probe', $GLOBALS)) {
+        return $GLOBALS['__test_imagick_probe'];
+    }
+    if (isset($GLOBALS['__imagick_probe_cache']) && is_array($GLOBALS['__imagick_probe_cache'])) {
+        return $GLOBALS['__imagick_probe_cache'];
+    }
+
+    $result = imagick_probe_defaults();
 
     if (! extension_loaded('imagick') || ! class_exists('Imagick', false)) {
         $GLOBALS['__imagick_probe_cache'] = $result;
@@ -557,6 +1658,8 @@ function imagick_probe()
     }
 
     $result['loaded'] = true;
+    $result['unusable_reason'] = '';
+    $formats = array();
     try {
         if (method_exists('Imagick', 'getVersion')) {
             $ver = \Imagick::getVersion();
@@ -567,15 +1670,7 @@ function imagick_probe()
             }
         }
 
-        $formats = array();
-        if (method_exists('Imagick', 'queryFormats')) {
-            $list = @\Imagick::queryFormats();
-            if (is_array($list)) {
-                foreach ($list as $f) {
-                    $formats[strtoupper((string) $f)] = true;
-                }
-            }
-        }
+        $formats = imagick_query_all_formats();
         foreach (array_keys($result['formats']) as $name) {
             $result['formats'][$name] = ! empty($formats[$name]);
         }
@@ -601,6 +1696,7 @@ function imagick_probe()
         // 探测失败时保留 loaded=true、其余能力为 false，避免中断后台页
     }
 
+    $result = imagick_probe_finalize($result, $formats);
     $GLOBALS['__imagick_probe_cache'] = $result;
     return $result;
 }
@@ -620,7 +1716,8 @@ function image_capability_matrix()
     }
 
     $im = imagick_probe();
-    $gdAvif = function_exists('imagecreatefromavif') && function_exists('imageavif');
+    $imUsable = ! empty($im['usable']);
+    $gdAvif = gd_supports_avif();
     $matrix = array(
         'gd' => array(
             'loaded' => extension_loaded('gd'),
@@ -635,19 +1732,19 @@ function image_capability_matrix()
         'imagick' => $im,
         'avif' => array(
             'gd' => $gdAvif,
-            'imagick' => ! empty($im['formats']['AVIF'])
+            'imagick' => $imUsable && ! empty($im['formats']['AVIF'])
         ),
         'heic' => array(
             'gd' => false,
-            'imagick' => ! empty($im['formats']['HEIC'])
+            'imagick' => $imUsable && ! empty($im['formats']['HEIC'])
         ),
         'animated_gif' => array(
             'gd' => false,
-            'imagick' => ! empty($im['animated_gif'])
+            'imagick' => $imUsable && ! empty($im['animated_gif'])
         ),
         'webp' => array(
             'gd' => gd_supports_webp(),
-            'imagick' => ! empty($im['formats']['WEBP'])
+            'imagick' => $imUsable && ! empty($im['formats']['WEBP'])
         )
     );
 
@@ -674,14 +1771,15 @@ function image_backend_config()
 }
 
 /**
- * 高层窄分派意图：返回 gd|imagick（不改 gd_load_image 语义、不做多态）
+ * 高层窄分派：返回 gd|imagick（不改 gd_load_image 语义、不做多态）
  *
- * 本阶段 Imagick 仅探测不接管：auto 恒为 gd；prefer_imagick 在扩展可用时返回 imagick（供后续接缝），
- * 现有缩放/水印/重编码路径仍只走 GD，零行为变化。gd_only 为逃生阀强制 GD。
- * 注意：系统信息「实际处理」请用 image_backend_effective()，勿把本函数返回值当成已接管。
+ * AVIF：按能力择优。gd_only 强制 GD（不能解码则由调用方降级）；
+ * prefer_imagick 在 Imagick 安全可用且支持 AVIF 时走 imagick，否则 GD；
+ * auto 优先 GD，GD 不能时收 Imagick。
+ * 其余格式仍 phase-1：prefer_imagick 仅记录意图，实际仍走 GD。
  *
- * @param string $op 操作名（resize/watermark/reencode/info 等，本阶段预留）
- * @param mixed $type 图片类型（本阶段预留）
+ * @param string $op 操作名（resize/watermark/reencode/info）
+ * @param mixed $type 图片类型或扩展名
  * @return string gd|imagick
  */
 function image_backend_for($op, $type = null)
@@ -689,36 +1787,50 @@ function image_backend_for($op, $type = null)
     if (array_key_exists('__test_image_backend_for', $GLOBALS)) {
         return (string) $GLOBALS['__test_image_backend_for'];
     }
-    // $op / $type 预留：后续按操作与格式能力矩阵择优 Imagick
-    unset($op, $type);
+    unset($op);
 
     $mode = image_backend_config();
     if ($mode === 'gd_only') {
         return 'gd';
     }
-    if ($mode === 'prefer_imagick') {
-        $probe = imagick_probe();
-        if (! empty($probe['loaded'])) {
+
+    if (image_type_arg_is_avif($type)) {
+        $matrix = image_capability_matrix();
+        $gdOk = gd_avif_gd_available();
+        $imOk = ! empty($matrix['avif']['imagick']);
+        if ($mode === 'prefer_imagick') {
+            return $imOk ? 'imagick' : 'gd';
+        }
+        if ($gdOk) {
+            return 'gd';
+        }
+        if ($imOk) {
             return 'imagick';
         }
         return 'gd';
     }
-    // auto：本阶段仍默认 GD（Imagick 不接管）
+
+    if ($mode === 'prefer_imagick') {
+        $probe = imagick_probe();
+        if (! empty($probe['usable'])) {
+            return 'imagick';
+        }
+        return 'gd';
+    }
     return 'gd';
 }
 
 /**
  * 当前实际处理路径（供系统信息页展示）
  *
- * 与 image_backend_for() 的「分派意图」区分：本阶段缩放/水印/重编码仍只走 GD，
- * 即便配置为 prefer_imagick 且扩展可用，此处仍返回 gd，避免「生效=imagick」误导。
- * 后续某条路径真正接管后再按实际实现返回 imagick。
+ * 与 image_backend_for() 的「分派意图」区分：JPEG/PNG 等主路径仍走 GD；
+ * 仅 AVIF 在能力允许时走 Imagick，系统信息主路径仍报 gd，能力见 image_cap_avif。
  *
  * @return string gd|imagick
  */
 function image_backend_effective()
 {
-    // 本阶段无 Imagick 接管实现；gd_only / auto / prefer_imagick 的实际处理均为 GD
+    // 主路径仍为 GD；AVIF 择优见 image_backend_for('reencode', 'avif')
     return 'gd';
 }
 
@@ -874,6 +1986,9 @@ function gd_can_post_process_image($path)
     if ($info[2] == image_type_webp() && ! gd_webp_gd_available()) {
         return array(false, '当前环境不支持 WebP 缩放/水印，已保留原图');
     }
+    if ($info[2] == image_type_avif() && ! gd_avif_gd_available()) {
+        return array(false, '当前环境不支持 AVIF 缩放/水印，已保留原图');
+    }
     // GD 不支持多帧 GIF，动画必须跳过重编码/缩放/水印以免压成静态图
     if ((int) $info[2] === IMAGETYPE_GIF && is_animated_gif($path)) {
         return array(false, '动画GIF已保留原图（跳过缩放/水印）');
@@ -881,7 +1996,7 @@ function gd_can_post_process_image($path)
     return array(true, '');
 }
 
-// 上传后处理跳过原因（供 UEditor 等展示提示）
+// 上传后处理跳过原因（供单测断言 WebP/GIF 等保留原图路径）
 function upload_post_process_last_notice()
 {
     return isset($GLOBALS['_upload_post_process_notice']) ? (string) $GLOBALS['_upload_post_process_notice'] : '';
@@ -902,6 +2017,9 @@ function image_create_from_file($path, $type)
         default:
             if ($type == image_type_webp()) {
                 return gd_supports_webp() ? @imagecreatefromwebp($path) : false;
+            }
+            if ($type == image_type_avif()) {
+                return gd_supports_avif() ? @imagecreatefromavif($path) : false;
             }
             return false;
     }
@@ -924,14 +2042,17 @@ function image_save_to_file($img, $path, $type, $img_quality = 90)
             if ($type == image_type_webp()) {
                 return gd_supports_webp() ? imagewebp($img, $path, $img_quality) : false;
             }
+            if ($type == image_type_avif()) {
+                return gd_supports_avif() ? imageavif($img, $path, $img_quality) : false;
+            }
             return imagejpeg($img, $path, $img_quality);
     }
 }
 
-// 为缩放/裁剪画布按类型正确设置透明通道（PNG/WebP 保留完整 Alpha，GIF 沿用调色板透明色）
+// 为缩放/裁剪画布按类型正确设置透明通道（PNG/WebP/AVIF 保留完整 Alpha，GIF 沿用调色板透明色）
 function gd_prepare_canvas_transparency($canvas, $type, $src_img = null)
 {
-    if ($type == IMAGETYPE_PNG || $type == image_type_webp()) {
+    if ($type == IMAGETYPE_PNG || $type == image_type_webp() || $type == image_type_avif()) {
         // 关闭混合、开启存储 Alpha，用带 Alpha 的全透明色填充，保留半透明边缘
         imagealphablending($canvas, false);
         imagesavealpha($canvas, true);
@@ -952,6 +2073,624 @@ function gd_prepare_canvas_transparency($canvas, $type, $src_img = null)
     }
 }
 
+// 判断路径扩展名是否为 SVG/SVGZ
+function is_svg_upload_path($path)
+{
+    $ext = strtolower(pathinfo((string) $path, PATHINFO_EXTENSION));
+    return $ext === 'svg' || $ext === 'svgz';
+}
+
+// 判断路径扩展名是否为 AVIF
+function is_avif_upload_path($path)
+{
+    return strtolower(pathinfo((string) $path, PATHINFO_EXTENSION)) === 'avif';
+}
+
+/** GD/Imagick 均无法处理 AVIF 时的拒收文案（调用方负责删已落盘文件） */
+function avif_unsupported_error()
+{
+    return '当前环境不支持 AVIF 图片处理！';
+}
+
+// 上传后是否需走图片后处理（栅格 / SVG 净化 / AVIF 校验）
+function upload_should_post_process_image($path)
+{
+    return is_image($path) || is_svg_upload_path($path) || is_avif_upload_path($path);
+}
+
+// 上传图片响应 MIME（供契约测试与 rewrite 规则对照）
+function upload_image_content_type($ext)
+{
+    $ext = strtolower(ltrim((string) $ext, '.'));
+    $map = array(
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'png' => 'image/png',
+        'gif' => 'image/gif',
+        'bmp' => 'image/bmp',
+        'webp' => 'image/webp',
+        'ico' => 'image/x-icon',
+        'svg' => 'image/svg+xml',
+        'svgz' => 'image/svg+xml',
+        'avif' => 'image/avif'
+    );
+    return isset($map[$ext]) ? $map[$ext] : '';
+}
+
+/**
+ * 上传资源安全响应头映射（纯函数，供单测与 rewrite 规则对照）
+ *
+ * @param string $ext
+ * @return array 关联数组，如 Content-Type => image/svg+xml
+ */
+function upload_security_headers_map($ext)
+{
+    $map = array(
+        'X-Content-Type-Options' => 'nosniff'
+    );
+    $ext = strtolower(ltrim((string) $ext, '.'));
+    $ctype = upload_image_content_type($ext);
+    if ($ctype !== '') {
+        $map = array('Content-Type' => $ctype) + $map;
+    }
+    if ($ext === 'svgz') {
+        $map['Content-Encoding'] = 'gzip';
+    }
+    return $map;
+}
+
+// 上传目录 Apache 规则模板路径
+function upload_htaccess_template_path()
+{
+    if (! defined('ROOT_PATH')) {
+        return '';
+    }
+    return ROOT_PATH . 'rewrite/static-upload.htaccess';
+}
+
+// 上传目录实际部署的 .htaccess 路径
+function upload_htaccess_deploy_path()
+{
+    if (! defined('DOC_PATH') || ! defined('STATIC_DIR')) {
+        return '';
+    }
+    return rtrim(str_replace('\\', '/', DOC_PATH . STATIC_DIR . '/upload'), '/') . '/.htaccess';
+}
+
+// 校验上传目录 htaccess 内容是否含 MIME/nosniff 关键规则
+function upload_htaccess_content_is_valid($content)
+{
+    if (! is_string($content) || $content === '') {
+        return false;
+    }
+    return strpos($content, 'image/svg+xml') !== false
+        && strpos($content, 'image/avif') !== false
+        && strpos($content, 'X-Content-Type-Options') !== false
+        && stripos($content, 'nosniff') !== false;
+}
+
+/**
+ * 确保 static/upload/.htaccess 已从 rewrite 模板部署（缺文件才写入）
+ *
+ * @param bool $repair true 时覆盖已存在但不含 MIME/nosniff 的文件（升级/开启伪静态）
+ * @return bool 已有有效规则、已部署，或已有自定义文件（热路径不覆盖）
+ */
+function upload_ensure_htaccess($repair = false)
+{
+    $dest = upload_htaccess_deploy_path();
+    $src = upload_htaccess_template_path();
+    if ($dest === '' || $src === '') {
+        return false;
+    }
+    if (! is_file($dest)) {
+        unset($GLOBALS['__upload_htaccess_ensured']);
+    }
+    if (! $repair && ! empty($GLOBALS['__upload_htaccess_ensured'])) {
+        return true;
+    }
+    if (is_file($dest)) {
+        $cur = @file_get_contents($dest);
+        if (upload_htaccess_content_is_valid($cur)) {
+            $GLOBALS['__upload_htaccess_ensured'] = true;
+            return true;
+        }
+        if (! $repair) {
+            // 已有文件但不含关键规则：视为站点自定义，热路径不覆盖
+            $GLOBALS['__upload_htaccess_ensured'] = true;
+            return true;
+        }
+    }
+    if (! is_file($src) || ! is_readable($src)) {
+        return false;
+    }
+    $tpl = @file_get_contents($src);
+    if (! upload_htaccess_content_is_valid($tpl)) {
+        return false;
+    }
+    $dir = dirname($dest);
+    if (! is_dir($dir)) {
+        if (! function_exists('check_dir') || ! check_dir($dir, true)) {
+            return false;
+        }
+    }
+    $ok = @file_put_contents($dest, $tpl) !== false;
+    if ($ok) {
+        $GLOBALS['__upload_htaccess_ensured'] = true;
+    }
+    return $ok;
+}
+
+// AVIF 文件头嗅探（getimagesize 不可用时兜底）
+function avif_file_looks_valid($path)
+{
+    if (! is_file($path) || ! is_readable($path)) {
+        return false;
+    }
+    $info = @getimagesize($path);
+    if ($info && ! empty($info[2]) && (int) $info[2] === (int) image_type_avif()) {
+        return true;
+    }
+    $fh = @fopen($path, 'rb');
+    if (! $fh) {
+        return false;
+    }
+    $head = @fread($fh, 64);
+    @fclose($fh);
+    if ($head === false || strlen($head) < 12) {
+        return false;
+    }
+    return imagick_magic_identify($head) === 'AVIF';
+}
+
+// SVGZ 限量解压（大小与压缩比）；成功 array($xml, true)，失败 array($err, false)
+function svgz_decompress_limited($path, $max_bytes = 2097152, $max_ratio = 100)
+{
+    if (! is_file($path) || ! is_readable($path)) {
+        return array('SVGZ文件不可读！', false);
+    }
+    $in_len = (int) filesize($path);
+    if ($in_len <= 0) {
+        return array('SVGZ文件无效！', false);
+    }
+    if ($in_len > $max_bytes) {
+        return array('SVGZ文件过大！', false);
+    }
+    $max_out = (int) min($max_bytes, max($in_len, $in_len * $max_ratio));
+    if (! function_exists('gzopen')) {
+        return array('服务器不支持SVGZ解压！', false);
+    }
+    $zh = @gzopen($path, 'rb');
+    if (! $zh) {
+        return array('SVGZ解压失败！', false);
+    }
+    $out = '';
+    while (! gzeof($zh)) {
+        $chunk = @gzread($zh, 8192);
+        if ($chunk === false) {
+            gzclose($zh);
+            return array('SVGZ解压失败！', false);
+        }
+        if ($chunk === '') {
+            break;
+        }
+        $out .= $chunk;
+        if (strlen($out) > $max_out) {
+            gzclose($zh);
+            return array('SVGZ解压后过大！', false);
+        }
+    }
+    gzclose($zh);
+    $out_len = strlen($out);
+    if ($out_len === 0) {
+        return array('SVGZ解压结果为空！', false);
+    }
+    if ($in_len > 0 && ($out_len / $in_len) > $max_ratio) {
+        return array('SVGZ压缩比过高！', false);
+    }
+    return array($out, true);
+}
+
+// 判断 URL/引用是否允许出现在 SVG 中（仅同文档 fragment）
+function svg_href_is_safe($value)
+{
+    $value = trim((string) $value);
+    if ($value === '' || $value === '#') {
+        return true;
+    }
+    // 仅允许 #id 片段，拒绝 javascript:/data:/http(s):/相对外链
+    if ($value[0] === '#' && strpos($value, ':') === false) {
+        return (bool) preg_match('/^#[A-Za-z_][\w.-]*$/', $value);
+    }
+    return false;
+}
+
+// url(...) 内部引用是否安全（仅同文档 #id）
+function svg_css_url_inner_is_safe($inner)
+{
+    $inner = trim((string) $inner);
+    $inner = trim($inner, "\"'");
+    $inner = trim($inner);
+    return svg_href_is_safe($inner) && $inner !== '' && isset($inner[0]) && $inner[0] === '#';
+}
+
+// 属性值是否含有不安全的 url(...)（fill/filter/clip-path/mask/marker/style 等）
+function svg_attr_value_has_unsafe_url($val)
+{
+    $val = (string) $val;
+    if (! preg_match('/url\s*\(/i', $val)) {
+        return false;
+    }
+    // 匹配 url("...") / url('...') / url(...)
+    if (! preg_match_all('/url\s*\(\s*(?:([\'"])(.*?)\1|([^)]*?))\s*\)/is', $val, $matches, PREG_SET_ORDER)) {
+        // 存在 url( 但无法完整解析，视为不安全
+        return true;
+    }
+    foreach ($matches as $m) {
+        $inner = isset($m[3]) && $m[3] !== '' ? $m[3] : (isset($m[2]) ? $m[2] : '');
+        if (! svg_css_url_inner_is_safe($inner)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// 输出中是否仍残留非同文档 fragment 的 url(...)
+function svg_output_has_unsafe_url($out)
+{
+    $out = (string) $out;
+    if (! preg_match('/url\s*\(/i', $out)) {
+        return false;
+    }
+    // 任一 url( 后不是可选引号+# 即视为外部/危险引用
+    if (preg_match('/url\s*\(\s*[\'"]?\s*[^#\s\'")]/i', $out)) {
+        return true;
+    }
+    if (! preg_match_all('/url\s*\(\s*(?:([\'"])(.*?)\1|([^)]*?))\s*\)/is', $out, $matches, PREG_SET_ORDER)) {
+        return true;
+    }
+    foreach ($matches as $m) {
+        $inner = isset($m[3]) && $m[3] !== '' ? $m[3] : (isset($m[2]) ? $m[2] : '');
+        if (! svg_css_url_inner_is_safe($inner)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// 移除 DOM 属性（兼容命名空间 xlink:href）
+function svg_dom_remove_attr(DOMElement $el, DOMAttr $attr)
+{
+    if ($attr->namespaceURI) {
+        $el->removeAttributeNS($attr->namespaceURI, $attr->localName ? $attr->localName : $attr->name);
+    } else {
+        $el->removeAttribute($attr->name);
+    }
+}
+
+// 净化 SVG 字符串：剥离脚本、事件、外部引用与逃逸载荷；成功 array($xml, true)，失败 array($err, false)
+function sanitize_svg_string($xml)
+{
+    $xml = (string) $xml;
+    if ($xml === '') {
+        return array('SVG内容为空！', false);
+    }
+    // 拒绝实体/DOCTYPE 逃逸
+    if (preg_match('/<!ENTITY/i', $xml) || preg_match('/<!DOCTYPE/i', $xml)) {
+        return array('SVG含有不安全的文档类型声明！', false);
+    }
+    if (! class_exists('DOMDocument', false)) {
+        return array('服务器缺少DOM扩展，无法净化SVG！', false);
+    }
+
+    $previous = libxml_use_internal_errors(true);
+    $disableEntities = null;
+    if (PHP_VERSION_ID < 80000 && function_exists('libxml_disable_entity_loader')) {
+        $disableEntities = libxml_disable_entity_loader(true);
+    }
+
+    $dom = new DOMDocument();
+    $dom->preserveWhiteSpace = true;
+    $dom->formatOutput = false;
+    $loaded = @$dom->loadXML($xml, LIBXML_NONET);
+    if (PHP_VERSION_ID < 80000 && $disableEntities !== null) {
+        libxml_disable_entity_loader($disableEntities);
+    }
+    libxml_clear_errors();
+    libxml_use_internal_errors($previous);
+
+    if (! $loaded || ! $dom->documentElement) {
+        return array('SVG解析失败！', false);
+    }
+
+    $root = $dom->documentElement;
+    if (strtolower($root->localName ? $root->localName : $root->nodeName) !== 'svg') {
+        return array('不是有效的SVG根元素！', false);
+    }
+
+    $denyTags = array(
+        'script', 'foreignobject', 'iframe', 'object', 'embed', 'applet',
+        'form', 'input', 'button', 'textarea', 'select', 'option',
+        'link', 'meta', 'base', 'handler', 'listener', 'style',
+        'set', 'animate', 'animatemotion', 'animatetransform', 'animatecolor', 'mpath'
+    );
+    $hrefLocalNames = array('href', 'src', 'action', 'formaction', 'data', 'poster');
+
+    $remove = array();
+    $nodes = $dom->getElementsByTagName('*');
+    // 倒序收集危险节点，避免 live NodeList 索引错乱
+    for ($i = $nodes->length - 1; $i >= 0; $i --) {
+        $el = $nodes->item($i);
+        if (! $el instanceof DOMElement) {
+            continue;
+        }
+        $tag = strtolower($el->localName ? $el->localName : $el->nodeName);
+        if (in_array($tag, $denyTags, true)) {
+            $remove[] = $el;
+            continue;
+        }
+        if (! $el->hasAttributes()) {
+            continue;
+        }
+        $attrs = array();
+        foreach ($el->attributes as $attr) {
+            $attrs[] = $attr;
+        }
+        foreach ($attrs as $attr) {
+            $local = strtolower($attr->localName ? $attr->localName : $attr->name);
+            $qualified = strtolower($attr->name);
+            $val = $attr->value;
+            // 事件属性
+            if (strpos($local, 'on') === 0 || strpos($qualified, 'on') === 0) {
+                svg_dom_remove_attr($el, $attr);
+                continue;
+            }
+            // 样式表达式
+            if ($local === 'style' && preg_match('/expression\s*\(/i', $val)) {
+                svg_dom_remove_attr($el, $attr);
+                continue;
+            }
+            // 全属性 url(...)：仅允许同文档 url(#id)（覆盖 fill/filter/clip-path/mask/marker/style 等）
+            if (svg_attr_value_has_unsafe_url($val)) {
+                svg_dom_remove_attr($el, $attr);
+                continue;
+            }
+            $isHref = in_array($local, $hrefLocalNames, true)
+                || $qualified === 'xlink:href'
+                || substr($qualified, -5) === ':href';
+            if ($isHref && ! svg_href_is_safe($val)) {
+                svg_dom_remove_attr($el, $attr);
+                continue;
+            }
+            // 危险协议
+            if (preg_match('/^\s*(javascript|vbscript|data)\s*:/i', $val)) {
+                svg_dom_remove_attr($el, $attr);
+            }
+        }
+    }
+    foreach ($remove as $el) {
+        if ($el->parentNode) {
+            $el->parentNode->removeChild($el);
+        }
+    }
+
+    // 禁止 use 元素拉取外部资源：无安全 href 则删除
+    $uses = $dom->getElementsByTagName('use');
+    $useRemove = array();
+    for ($i = 0; $i < $uses->length; $i ++) {
+        $use = $uses->item($i);
+        if (! $use instanceof DOMElement) {
+            continue;
+        }
+        $href = $use->getAttribute('href');
+        if ($href === '' && $use->hasAttributeNS('http://www.w3.org/1999/xlink', 'href')) {
+            $href = $use->getAttributeNS('http://www.w3.org/1999/xlink', 'href');
+        }
+        if ($href === '' || ! svg_href_is_safe($href)) {
+            $useRemove[] = $use;
+        }
+    }
+    foreach ($useRemove as $el) {
+        if ($el->parentNode) {
+            $el->parentNode->removeChild($el);
+        }
+    }
+
+    // 空壳 image（无安全资源）一并删除
+    $images = $dom->getElementsByTagName('image');
+    $imgRemove = array();
+    for ($i = 0; $i < $images->length; $i ++) {
+        $img = $images->item($i);
+        if (! $img instanceof DOMElement) {
+            continue;
+        }
+        $href = $img->getAttribute('href');
+        if ($href === '' && $img->hasAttributeNS('http://www.w3.org/1999/xlink', 'href')) {
+            $href = $img->getAttributeNS('http://www.w3.org/1999/xlink', 'href');
+        }
+        if ($href === '' || ! svg_href_is_safe($href)) {
+            $imgRemove[] = $img;
+        }
+    }
+    foreach ($imgRemove as $el) {
+        if ($el->parentNode) {
+            $el->parentNode->removeChild($el);
+        }
+    }
+
+    $out = $dom->saveXML($dom->documentElement);
+    if ($out === false || $out === '') {
+        return array('SVG净化输出失败！', false);
+    }
+    // 二次确认无脚本/危险协议残留（忽略 xmlns 中的 http）
+    if (preg_match('/<\s*script\b/i', $out) || preg_match('/\bon[a-z]+\s*=/i', $out)) {
+        return array('SVG仍含有危险脚本内容！', false);
+    }
+    if (preg_match('/(?:href|xlink:href|src)\s*=\s*([\'"])\s*(?:https?:|javascript:|data:)/i', $out)) {
+        return array('SVG仍含有外部或危险引用！', false);
+    }
+    if (svg_output_has_unsafe_url($out)) {
+        return array('SVG仍含有外部或危险引用！', false);
+    }
+    if (preg_match('/<\s*(?:set|animate|animatemotion|animatetransform|animatecolor|mpath|style)\b/i', $out)) {
+        return array('SVG仍含有不安全的动画或样式内容！', false);
+    }
+    return array('<?xml version="1.0" encoding="UTF-8"?>' . "\n" . $out, true);
+}
+
+// 净化已落盘的 SVG/SVGZ；SVGZ 解压后写回净化内容（保持 .svgz 则再压缩）
+function sanitize_uploaded_svg($path)
+{
+    if (! is_file($path) || ! is_readable($path)) {
+        return 'SVG文件不可读！';
+    }
+    $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+    if ($ext === 'svgz') {
+        list($xml, $ok) = svgz_decompress_limited($path);
+        if ($ok !== true) {
+            return is_string($xml) ? $xml : 'SVGZ解压失败！';
+        }
+    } else {
+        $xml = @file_get_contents($path);
+        if ($xml === false) {
+            return 'SVG读取失败！';
+        }
+        if (strlen($xml) > 2097152) {
+            return 'SVG文件过大！';
+        }
+    }
+
+    list($clean, $ok) = sanitize_svg_string($xml);
+    if ($ok !== true) {
+        return is_string($clean) ? $clean : 'SVG净化失败！';
+    }
+
+    if ($ext === 'svgz') {
+        if (! function_exists('gzencode')) {
+            return '服务器不支持SVGZ压缩！';
+        }
+        $gz = gzencode($clean, 9);
+        if ($gz === false) {
+            return 'SVGZ回写压缩失败！';
+        }
+        if (@file_put_contents($path, $gz) === false) {
+            return 'SVGZ保存失败！';
+        }
+    } else {
+        if (@file_put_contents($path, $clean) === false) {
+            return 'SVG保存失败！';
+        }
+    }
+    return true;
+}
+
+
+/**
+ * $type 是否表示 AVIF（IMAGETYPE_、扩展名、路径）
+ *
+ * @param mixed $type
+ * @return bool
+ */
+function image_type_arg_is_avif($type)
+{
+    if ($type === null || $type === '') {
+        return false;
+    }
+    if (is_string($type)) {
+        $t = strtolower(ltrim($type, '.'));
+        if ($t === 'avif' || $t === 'avis') {
+            return true;
+        }
+        if (strpos($type, '/') !== false || strpos($type, '\\') !== false) {
+            return is_avif_upload_path($type);
+        }
+        return false;
+    }
+    return (int) $type === (int) image_type_avif();
+}
+
+/**
+ * Imagick 处理 AVIF（仅经 imagick_create）：重编码 + 可选缩放；水印跳过并给出提示
+ *
+ * @param string $path
+ * @param bool $watermark
+ * @param mixed $max_width
+ * @param mixed $max_height
+ * @param int $quality
+ * @return bool|string true 或错误描述
+ */
+function imagick_post_process_avif($path, $watermark = false, $max_width = null, $max_height = null, $quality = 90)
+{
+    list($im, $err) = imagick_create($path);
+    if ($im === null) {
+        return $err !== '' ? $err : 'Imagick 无法处理该图片！';
+    }
+    try {
+        if (! $max_width && class_exists('core\\basic\\Config', false)) {
+            $max_width = \core\basic\Config::get('upload.max_width') ?: 999999999;
+        }
+        if (! $max_height && class_exists('core\\basic\\Config', false)) {
+            $max_height = \core\basic\Config::get('upload.max_height') ?: 999999999;
+        }
+        $width = (int) $im->getImageWidth();
+        $height = (int) $im->getImageHeight();
+        $max_width = (int) ($max_width ?: 999999999);
+        $max_height = (int) ($max_height ?: 999999999);
+        if ($width > 0 && $height > 0 && ($width > $max_width || $height > $max_height)) {
+            if ($max_width && $max_height) {
+                $scale = min($max_width / $width, $max_height / $height);
+            } elseif ($max_width) {
+                $scale = $max_width / $width;
+            } else {
+                $scale = $max_height / $height;
+            }
+            if ($scale < 1) {
+                $nw = max(1, (int) floor($scale * $width));
+                $nh = max(1, (int) floor($scale * $height));
+                if (method_exists($im, 'thumbnailImage')) {
+                    $im->thumbnailImage($nw, $nh, true);
+                }
+            }
+        }
+        if (method_exists($im, 'setImageFormat')) {
+            $im->setImageFormat('AVIF');
+        }
+        if (method_exists($im, 'setImageCompressionQuality')) {
+            $im->setImageCompressionQuality((int) $quality);
+        }
+        $tmp = $path . '.imagick-avif.tmp';
+        $ok = false;
+        if (method_exists($im, 'writeImage')) {
+            $ok = (bool) @$im->writeImage($tmp);
+        }
+        if (! $ok || ! is_file($tmp) || filesize($tmp) < 12) {
+            @unlink($tmp);
+            return 'Imagick AVIF 保存失败！';
+        }
+        if (! @rename($tmp, $path)) {
+            $copied = @copy($tmp, $path);
+            @unlink($tmp);
+            if (! $copied) {
+                return 'Imagick AVIF 保存失败！';
+            }
+        }
+        if ($watermark) {
+            $GLOBALS['_upload_post_process_notice'] = '当前环境 AVIF 由 Imagick 处理，已跳过水印';
+        }
+        return true;
+    } catch (\Throwable $e) {
+        return 'Imagick 处理 AVIF 失败！';
+    } finally {
+        if (is_object($im)) {
+            if (method_exists($im, 'clear')) {
+                @$im->clear();
+            }
+            if (method_exists($im, 'destroy')) {
+                @$im->destroy();
+            }
+        }
+    }
+}
+
 // 判断文件是否是图片
 function is_image($path)
 {
@@ -967,7 +2706,8 @@ function is_image($path)
         IMAGETYPE_JPEG,
         IMAGETYPE_PNG,
         IMAGETYPE_BMP,
-        image_type_webp()
+        image_type_webp(),
+        image_type_avif()
     );
     return in_array($info[2], $types, true);
 }
@@ -986,6 +2726,9 @@ function reencode_image($path, $img_quality = 90)
     if ($type == image_type_webp() && ! gd_webp_gd_available()) {
         return true;
     }
+    if ($type == image_type_avif() && ! gd_avif_gd_available()) {
+        return true;
+    }
     // 动画 GIF：GD 只能读写首帧，跳过重编码以保留动图；结构不合法则拒绝
     if ((int) $type === IMAGETYPE_GIF && is_animated_gif($path)) {
         return gif_structure_is_safe($path) ? true : 'GIF文件结构不合法！';
@@ -998,8 +2741,8 @@ function reencode_image($path, $img_quality = 90)
     if ($img === false) {
         return $err;
     }
-    // PNG/WebP 保存前显式保留 Alpha，避免透明区域被写成黑底
-    if ($type == IMAGETYPE_PNG || $type == image_type_webp()) {
+    // PNG/WebP/AVIF 保存前显式保留 Alpha，避免透明区域被写成黑底
+    if ($type == IMAGETYPE_PNG || $type == image_type_webp() || $type == image_type_avif()) {
         imagealphablending($img, false);
         imagesavealpha($img, true);
     }
@@ -1012,7 +2755,39 @@ function reencode_image($path, $img_quality = 90)
 function upload_post_process_image($abs_path, $watermark = null, $graceful = false)
 {
     unset($GLOBALS['_upload_post_process_notice']);
-    if (! is_file($abs_path) || ! is_image($abs_path)) {
+    if ($watermark === null) {
+        $watermark = class_exists('core\\basic\\Config', false)
+            ? (bool) Config::get('watermark_open')
+            : false;
+    } else {
+        $watermark = (bool) $watermark;
+    }
+    if (! is_file($abs_path)) {
+        return true;
+    }
+    // SVG/SVGZ 为主动内容：必须净化，不走任何图像后端栅格化
+    if (is_svg_upload_path($abs_path)) {
+        return sanitize_uploaded_svg($abs_path);
+    }
+    // AVIF：魔数校验；按能力择优 GD / Imagick；都不可用则拒收（调用方删文件）
+    if (is_avif_upload_path($abs_path)) {
+        if (! avif_file_looks_valid($abs_path)) {
+            return '不是有效的AVIF图片！';
+        }
+        $backend = image_backend_for('reencode', 'avif');
+        if ($backend === 'imagick') {
+            $imRe = imagick_post_process_avif($abs_path, $watermark);
+            if ($imRe === true) {
+                return true;
+            }
+            if (! gd_avif_gd_available() || ! is_image($abs_path)) {
+                return avif_unsupported_error();
+            }
+        } elseif (! is_image($abs_path) || ! gd_avif_gd_available()) {
+            return avif_unsupported_error();
+        }
+    }
+    if (! is_image($abs_path)) {
         return true;
     }
     // 动画 GIF 跳过 GD 前先做结构校验（跳过重编码会失去剥离附加数据能力）
@@ -1031,9 +2806,6 @@ function upload_post_process_image($abs_path, $watermark = null, $graceful = fal
     }
     if (($re = resize_img($abs_path, $abs_path)) !== true) {
         return $re;
-    }
-    if ($watermark === null) {
-        $watermark = (bool) Config::get('watermark_open');
     }
     if ($watermark) {
         $wm = watermark_img($abs_path);
@@ -1095,6 +2867,7 @@ function upload_detect_post_max_exceeded()
  */
 function upload($input_name, $file_ext = null, $max_width = null, $max_height = null, $watermark = false)
 {
+    unset($GLOBALS['_upload_post_process_notice']);
     if (upload_detect_post_max_exceeded()) {
         return '表单数据超过 post_max_size 限制';
     }
@@ -1158,6 +2931,8 @@ function handle_upload($file, $temp, $array_ext_allow, $max_width, $max_height, 
 {
     // 定义主存储路径
     $save_path = DOC_PATH . STATIC_DIR . '/upload';
+    // 确保上传目录 Apache MIME/nosniff/禁脚本规则已部署
+    upload_ensure_htaccess();
     
     $array_ext_allow = filter_upload_ext_allow($array_ext_allow);
     if (! $array_ext_allow) {
@@ -1175,7 +2950,10 @@ function handle_upload($file, $temp, $array_ext_allow, $max_width, $max_height, 
         'jpeg',
         'gif',
         'bmp',
-        'webp'
+        'webp',
+        'avif',
+        'svg',
+        'svgz'
     );
     $file = array(
         'ppt',
@@ -1207,6 +2985,36 @@ function handle_upload($file, $temp, $array_ext_allow, $max_width, $max_height, 
     
     // 图片：重编码剥离伪装内容，再缩放/水印
     if (in_array($file_ext, $image, true)) {
+        // SVG/SVGZ：主动内容，必须净化
+        if ($file_ext === 'svg' || $file_ext === 'svgz') {
+            $re = sanitize_uploaded_svg($file_path);
+            if ($re !== true) {
+                @unlink($file_path);
+                return $re;
+            }
+            return $save_file;
+        }
+        // AVIF：魔数校验；按能力择优
+        if ($file_ext === 'avif') {
+            if (! avif_file_looks_valid($file_path)) {
+                @unlink($file_path);
+                return '不是有效的AVIF图片！';
+            }
+            $backend = image_backend_for('reencode', 'avif');
+            if ($backend === 'imagick') {
+                $imRe = imagick_post_process_avif($file_path, (bool) $watermark, $max_width, $max_height);
+                if ($imRe === true) {
+                    return $save_file;
+                }
+                if (! gd_avif_gd_available() || ! is_image($file_path)) {
+                    @unlink($file_path);
+                    return avif_unsupported_error();
+                }
+            } elseif (! is_image($file_path) || ! gd_avif_gd_available()) {
+                @unlink($file_path);
+                return avif_unsupported_error();
+            }
+        }
         // 动画 GIF：校验结构后跳过 GD，避免压平为静态图
         if ($file_ext === 'gif' && is_animated_gif($file_path) && ! gif_structure_is_safe($file_path)) {
             @unlink($file_path);
@@ -1214,6 +3022,9 @@ function handle_upload($file, $temp, $array_ext_allow, $max_width, $max_height, 
         }
         list($can_process, $skip_msg) = gd_can_post_process_image($file_path);
         if (! $can_process) {
+            if ($skip_msg !== '') {
+                $GLOBALS['_upload_post_process_notice'] = $skip_msg;
+            }
             return $save_file;
         }
         if (($re = reencode_image($file_path)) !== true) {
@@ -1315,7 +3126,7 @@ function resize_img($src_image, $out_image = null, $max_width = null, $max_heigh
             return '创建缩放画布失败！';
         }
         
-        if ($type == IMAGETYPE_GIF || $type == IMAGETYPE_PNG || $type == image_type_webp()) {
+        if ($type == IMAGETYPE_GIF || $type == IMAGETYPE_PNG || $type == image_type_webp() || $type == image_type_avif()) {
             gd_prepare_canvas_transparency($new_img, $type, $img);
         }
         if (! @imagecopyresampled($new_img, $img, 0, 0, 0, 0, $new_width, $new_height, $width, $height)) {
@@ -1406,7 +3217,7 @@ function cut_img($src_image, $out_image = null, $new_width = null, $new_height =
     }
 
     // 按类型正确处理透明通道，避免黑底/白边/透明失真
-    if ($type == IMAGETYPE_GIF || $type == IMAGETYPE_PNG || $type == image_type_webp()) {
+    if ($type == IMAGETYPE_GIF || $type == IMAGETYPE_PNG || $type == image_type_webp() || $type == image_type_avif()) {
         gd_prepare_canvas_transparency($new_img, $type, $img);
     }
 
@@ -1590,7 +3401,7 @@ function watermark_img($src_image, $out_image = null, $position = null, $waterma
         // GIF：按源透明色铺底，开启混合以便透明像素透出底色；勿用 Alpha 白底（imagegif 会压成不透明浅色）
         gd_prepare_canvas_transparency($out, $type1, $img1);
         imagealphablending($out, true);
-    } elseif ($type1 == IMAGETYPE_PNG || $type1 == image_type_webp()) {
+    } elseif ($type1 == IMAGETYPE_PNG || $type1 == image_type_webp() || $type1 == image_type_avif()) {
         imagealphablending($out, false);
         imagesavealpha($out, true);
         $transparent = imagecolorallocatealpha($out, 255, 255, 255, 127);
@@ -1602,7 +3413,7 @@ function watermark_img($src_image, $out_image = null, $position = null, $waterma
         gd_free_image($out);
         return '合成原图失败！';
     }
-    if ($type1 == IMAGETYPE_PNG || $type1 == image_type_webp()) {
+    if ($type1 == IMAGETYPE_PNG || $type1 == image_type_webp() || $type1 == image_type_avif()) {
         imagealphablending($out, true);
     }
     if (! @imagecopyresized($out, $img2, $x, max(0, $y - 10), 0, 0, $new_width, $new_height, $width2, $height2)) {

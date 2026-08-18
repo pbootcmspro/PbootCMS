@@ -254,6 +254,10 @@ class ConfigController extends Controller
                     copy(ROOT_PATH . '/rewrite/.htaccess', ROOT_PATH . '/.htaccess');
                 }
             }
+            // 同步部署上传目录 MIME/nosniff 规则（审计 #25）
+            if (function_exists('upload_ensure_htaccess')) {
+                upload_ensure_htaccess(true);
+            }
         }
         
         // 模板目录修改

@@ -14,10 +14,15 @@ use core\view\Paging;
 class Controller
 {
 
+    // 解析模板前的钩子，子类可重写以完成主题等渲染前置绑定
+    protected function beforeParser($file)
+    {}
+
     // 显示模板
     final protected function display($file)
     {
         $view = View::getInstance();
+        $this->beforeParser($file);
         $content = $view->parser($file);
         $content = $this->runtime($content);
         echo $this->gzip($content);
@@ -28,6 +33,7 @@ class Controller
     final protected function parser($file)
     {
         $view = View::getInstance();
+        $this->beforeParser($file);
         return $view->parser($file);
     }
 

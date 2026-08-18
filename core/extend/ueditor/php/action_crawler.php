@@ -52,16 +52,11 @@ foreach ($source as $imgUrl) {
     
     if ($info['state'] === 'SUCCESS') {
         $full_path = upload_resolve_public_path($info['url']);
-        if (is_image($full_path)) {
+        if (upload_should_post_process_image($full_path)) {
             $re = upload_post_process_image($full_path, null, true);
             if ($re !== true) {
                 @unlink($full_path);
                 $info['state'] = $re;
-            } else {
-                $notice = upload_post_process_last_notice();
-                if ($notice !== '') {
-                    $info['warning'] = $notice;
-                }
             }
         }
     }

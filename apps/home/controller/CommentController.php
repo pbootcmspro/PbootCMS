@@ -8,11 +8,11 @@
  */
 namespace app\home\controller;
 
-use core\basic\Controller;
+use app\common\HomeBaseController;
 use app\home\model\ParserModel;
 use core\basic\Url;
 
-class CommentController extends Controller
+class CommentController extends HomeBaseController
 {
 
     protected $parser;

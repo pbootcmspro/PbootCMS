@@ -75,7 +75,7 @@ $up = new Uploader($fieldName, $config, $base64);
 $rs = $up->getFileInfo();
 if ($rs['state'] === 'SUCCESS') {
     $full_path = upload_resolve_public_path($rs['url']);
-    if (is_image($full_path)) {
+    if (upload_should_post_process_image($full_path)) {
         $re = upload_post_process_image($full_path, null, true);
         if ($re !== true) {
             @unlink($full_path);
@@ -87,11 +87,6 @@ if ($rs['state'] === 'SUCCESS') {
                 'type' => $rs['type'],
                 'size' => $rs['size']
             ));
-        }
-        $notice = upload_post_process_last_notice();
-        if ($notice !== '') {
-            $rs['warning'] = $notice;
-            return json_encode($rs);
         }
     }
 }

@@ -86,8 +86,12 @@
 				      	<td>{$server->server_software}</td>
 				     </tr>
 				     <tr>
-				      	<th>PHP版</th>
-				      	<td>{$server->php_version}</td>
+				      	<th>PHP版本</th>
+				      	<td>{$server->php_version}
+				      		{if([$server->php_version_low])}
+				      		<span class="layui-badge layui-bg-orange">建议升级到 {$server->php_min_version}+</span>
+				      		{/if}
+				      	</td>
 				     </tr>
 				     <tr>
 				      	<th>数据库驱动</th>

@@ -22,7 +22,12 @@ exit(TestAssert::runSuite(function () {
         unset(
             $GLOBALS['__test_imagick_probe'],
             $GLOBALS['__test_image_capability_matrix'],
-            $GLOBALS['__test_image_backend_for']
+            $GLOBALS['__test_image_backend_for'],
+            $GLOBALS['__test_imagick_usable'],
+            $GLOBALS['__test_imagick_usable_reason'],
+            $GLOBALS['__test_imagick_policy_applied'],
+            $GLOBALS['__test_imagick_query_formats'],
+            $GLOBALS['__test_gd_supports_avif']
         );
         image_backend_clear_probe_cache();
         ConfigStub::reset();
@@ -32,6 +37,7 @@ exit(TestAssert::runSuite(function () {
     // --- 无 Imagick：探测安全返回 ---
     $GLOBALS['__test_imagick_probe'] = array(
         'loaded' => false,
+        'usable' => false,
         'version' => '',
         'formats' => array(
             'AVIF' => false,
@@ -46,7 +52,11 @@ exit(TestAssert::runSuite(function () {
             'heic' => false,
             'webp' => false
         ),
-        'animated_gif' => false
+        'animated_gif' => false,
+        'denied_coders' => array(),
+        'min_version_ok' => false,
+        'policy_applied' => false,
+        'unusable_reason' => 'Imagick 扩展未加载'
     );
     $probeEmpty = imagick_probe();
     TestAssert::false(! empty($probeEmpty['loaded']), 'imagick_probe loaded=false when extension absent (stub)');
@@ -57,6 +67,7 @@ exit(TestAssert::runSuite(function () {
     // --- 有 Imagick：能力矩阵正确 ---
     $GLOBALS['__test_imagick_probe'] = array(
         'loaded' => true,
+        'usable' => true,
         'version' => 'ImageMagick 7.1.0 stub',
         'formats' => array(
             'AVIF' => true,
@@ -71,7 +82,11 @@ exit(TestAssert::runSuite(function () {
             'heic' => true,
             'webp' => true
         ),
-        'animated_gif' => true
+        'animated_gif' => true,
+        'denied_coders' => array(),
+        'min_version_ok' => true,
+        'policy_applied' => true,
+        'unusable_reason' => ''
     );
     image_backend_clear_probe_cache();
     $matrix = image_capability_matrix();
@@ -109,11 +124,61 @@ exit(TestAssert::runSuite(function () {
     TestAssert::same('gd', image_backend_effective(), 'effective is gd under gd_only');
 
     ConfigStub::set(array('image_backend' => 'prefer_imagick'));
-    TestAssert::same('imagick', image_backend_for('info', null), 'prefer_imagick + loaded => intent imagick');
-    TestAssert::same('gd', image_backend_effective(), 'prefer_imagick + loaded => effective still gd (no takeover)');
+    TestAssert::same('imagick', image_backend_for('info', null), 'prefer_imagick + usable => intent imagick');
+    TestAssert::same('gd', image_backend_effective(), 'prefer_imagick + usable => effective still gd (no takeover)');
+
+    // --- AVIF 能力择优（#46）：仅 AVIF 真正按矩阵分派 ---
+    $GLOBALS['__test_gd_supports_avif'] = false;
+    image_backend_clear_probe_cache();
+    ConfigStub::set(array('image_backend' => 'auto'));
+    TestAssert::same('imagick', image_backend_for('reencode', 'avif'), 'auto AVIF: GD no / Imagick yes => imagick');
+    TestAssert::same('gd', image_backend_for('resize', IMAGETYPE_JPEG), 'auto JPEG still gd while AVIF would use imagick');
+
+    ConfigStub::set(array('image_backend' => 'gd_only'));
+    TestAssert::same('gd', image_backend_for('reencode', 'avif'), 'gd_only AVIF forces gd even if Imagick can');
+
+    ConfigStub::set(array('image_backend' => 'prefer_imagick'));
+    TestAssert::same('imagick', image_backend_for('reencode', 'avif'), 'prefer_imagick AVIF => imagick');
+
+    $GLOBALS['__test_gd_supports_avif'] = true;
+    image_backend_clear_probe_cache();
+    ConfigStub::set(array('image_backend' => 'auto'));
+    TestAssert::same('gd', image_backend_for('reencode', 'avif'), 'auto AVIF: GD yes => gd');
+    ConfigStub::set(array('image_backend' => 'prefer_imagick'));
+    TestAssert::same('imagick', image_backend_for('reencode', 'avif'), 'prefer_imagick AVIF prefers imagick even if GD ok');
+    unset($GLOBALS['__test_gd_supports_avif']);
+    ConfigStub::set(array('image_backend' => 'prefer_imagick'));
+
+    $GLOBALS['__test_imagick_probe'] = array(
+        'loaded' => true,
+        'usable' => false,
+        'version' => 'ImageMagick 7.1.0 stub',
+        'formats' => array(
+            'AVIF' => true,
+            'HEIC' => true,
+            'GIF' => true,
+            'WEBP' => true,
+            'JPEG' => true,
+            'PNG' => true
+        ),
+        'delegates' => array(
+            'avif' => true,
+            'heic' => true,
+            'webp' => true
+        ),
+        'animated_gif' => true,
+        'denied_coders' => array('MVG'),
+        'registry_risk_coders' => array('MVG'),
+        'min_version_ok' => true,
+        'policy_applied' => true,
+        'unusable_reason' => 'queryFormats 仍登记危险 coder，请在 policy.xml 中禁用：MVG'
+    );
+    image_backend_clear_probe_cache();
+    TestAssert::same('gd', image_backend_for('info', null), 'prefer_imagick + loaded but unusable => gd');
 
     $GLOBALS['__test_imagick_probe'] = array(
         'loaded' => false,
+        'usable' => false,
         'version' => '',
         'formats' => array(
             'AVIF' => false,
@@ -128,11 +193,20 @@ exit(TestAssert::runSuite(function () {
             'heic' => false,
             'webp' => false
         ),
-        'animated_gif' => false
+        'animated_gif' => false,
+        'denied_coders' => array(),
+        'min_version_ok' => false,
+        'policy_applied' => false,
+        'unusable_reason' => 'Imagick 扩展未加载'
     );
     image_backend_clear_probe_cache();
     TestAssert::same('gd', image_backend_for('info', null), 'prefer_imagick without imagick => gd');
     TestAssert::same('gd', image_backend_effective(), 'effective remains gd without imagick');
+    $GLOBALS['__test_gd_supports_avif'] = false;
+    image_backend_clear_probe_cache();
+    ConfigStub::set(array('image_backend' => 'auto'));
+    TestAssert::same('gd', image_backend_for('reencode', 'avif'), 'auto AVIF both unavailable => gd (caller degrades)');
+    unset($GLOBALS['__test_gd_supports_avif']);
 
     // --- 零行为变化：prefer_imagick 下缩放仍走现有 GD 路径 ---
     if (function_exists('imagecreatetruecolor')
@@ -151,7 +225,8 @@ exit(TestAssert::runSuite(function () {
                 // 恢复「Imagick 可用」桩，确认即使意图为 imagick 也不影响 GD 缩放
                 $GLOBALS['__test_imagick_probe'] = array(
                     'loaded' => true,
-                    'version' => 'IM-resize-stub',
+                    'usable' => true,
+                    'version' => 'ImageMagick 7.1.0 IM-resize-stub',
                     'formats' => array(
                         'AVIF' => false,
                         'HEIC' => false,
@@ -165,7 +240,11 @@ exit(TestAssert::runSuite(function () {
                         'heic' => false,
                         'webp' => false
                     ),
-                    'animated_gif' => true
+                    'animated_gif' => true,
+                    'denied_coders' => array(),
+                    'min_version_ok' => true,
+                    'policy_applied' => true,
+                    'unusable_reason' => ''
                 );
                 image_backend_clear_probe_cache();
                 ConfigStub::set(array('image_backend' => 'prefer_imagick'));
@@ -185,7 +264,8 @@ exit(TestAssert::runSuite(function () {
     unset($GLOBALS['__test_imagick_probe']);
     $GLOBALS['__test_imagick_probe'] = array(
         'loaded' => true,
-        'version' => 'IM-test-1.0',
+        'usable' => true,
+        'version' => 'ImageMagick 7.1.0 IM-test-1.0',
         'formats' => array(
             'AVIF' => true,
             'HEIC' => false,
@@ -199,7 +279,11 @@ exit(TestAssert::runSuite(function () {
             'heic' => false,
             'webp' => true
         ),
-        'animated_gif' => true
+        'animated_gif' => true,
+        'denied_coders' => array(),
+        'min_version_ok' => true,
+        'policy_applied' => true,
+        'unusable_reason' => ''
     );
     image_backend_clear_probe_cache();
     ConfigStub::set(array('image_backend' => 'prefer_imagick', 'database' => array('type' => 'sqlite')));
@@ -223,13 +307,16 @@ exit(TestAssert::runSuite(function () {
     TestAssert::true(isset($server->image_backend_config), 'server has image_backend_config');
     TestAssert::true(isset($server->image_backend_effective), 'server has image_backend_effective');
     TestAssert::true(isset($server->imagick), 'server has imagick');
+    TestAssert::true(isset($server->imagick_usable), 'server has imagick_usable');
     TestAssert::true(isset($server->imagick_version), 'server has imagick_version');
+    TestAssert::true(isset($server->imagick_deep_probe), 'server has imagick_deep_probe');
+    TestAssert::true(isset($server->imagick_policy_status), 'server has imagick_policy_status');
     TestAssert::true(isset($server->image_cap_avif), 'server has image_cap_avif');
     TestAssert::true(isset($server->image_cap_heic), 'server has image_cap_heic');
     TestAssert::true(isset($server->image_cap_animated_gif), 'server has image_cap_animated_gif');
     TestAssert::same('prefer_imagick', $server->image_backend_config, 'server config prefer_imagick');
     TestAssert::same('gd', $server->image_backend_effective, 'server effective still gd under prefer_imagick');
-    TestAssert::same('IM-test-1.0', $server->imagick_version, 'server imagick version from probe');
+    TestAssert::same('ImageMagick 7.1.0 IM-test-1.0', $server->imagick_version, 'server imagick version from probe');
     TestAssert::true(strpos((string) $server->image_cap_avif, 'Imagick') !== false, 'AVIF cap string mentions Imagick');
 
     // auto 配置下实际处理同样为 gd（不二次调用 get_server_info，避免 YES/NO 常量重定义）

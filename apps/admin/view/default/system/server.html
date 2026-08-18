@@ -47,8 +47,12 @@
 						  </tr>	  
 						  
 						  <tr>
-						     <th>PHP版</th>
-						     <td>{$server->php_version}</td>
+						     <th>PHP版本</th>
+						     <td>{$server->php_version}
+						     	{if([$server->php_version_low])}
+						     	<span class="layui-badge layui-bg-orange">建议升级到 {$server->php_min_version}+</span>
+						     	{/if}
+						     </td>
 						 </tr>
 						
 						<tr>
@@ -84,18 +88,35 @@
 
 						<tr>
 						     <th>图像后端配置</th>
-						     <td>配置：{$server->image_backend_config}；实际处理：{$server->image_backend_effective}（本阶段缩放/水印仍走 GD）</td>
+						     <td>配置：{$server->image_backend_config}；主路径：{$server->image_backend_effective}（JPEG/PNG 等走 GD；AVIF 见下方能力矩阵，按可用后端择优）</td>
 						</tr>
 
 						<tr>
 						     <th>Imagick支持</th>
-						     <td>{$server->imagick}（{$server->imagick_version}）</td>
+						     <td>已加载：{$server->imagick}（{$server->imagick_version}）；安全可用：{$server->imagick_usable}{if($server->imagick_unusable_reason!='-')}（{$server->imagick_unusable_reason}）{/if}</td>
+						</tr>
+
+						<tr>
+						     <th>Imagick policy 状态</th>
+						     <td>{$server->imagick_policy_status}</td>
+						</tr>
+
+						<tr>
+						     <th>Imagick 深度检测</th>
+						     <td>
+						          {$server->imagick_deep_probe}
+						          <form action="{url./admin/Site/imagickProbe}" method="post" style="display:inline;margin-left:8px;">
+						               <input type="hidden" name="formcheck" value="{$formcheck}">
+						               <button type="submit" class="layui-btn layui-btn-xs layui-btn-normal">重新检测</button>
+						          </form>
+						          <span style="color:#999;margin-left:6px;">（仅 file 类 coder，不发起网络请求）</span>
+						     </td>
 						</tr>
 
 						<tr>
 						     <th>图像能力矩阵</th>
 						     <td>
-						          （仅探测，不代表已接管处理）
+						          (仅探测，不代表已接管处理)
 						          AVIF：{$server->image_cap_avif}；
 						          HEIC：{$server->image_cap_heic}；
 						          动图GIF：{$server->image_cap_animated_gif}；

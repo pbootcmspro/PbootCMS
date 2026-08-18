@@ -14,6 +14,14 @@ use core\basic\Config;
 class HomeController extends Controller
 {
 
+    // 手机版主题后缀，渲染前置绑定主题时与当前语言主题拼接
+    private static $themeSuffix = '';
+
+    public static function getThemeSuffix()
+    {
+        return self::$themeSuffix;
+    }
+
     public function __construct()
     {
         // 自动缓存基础信息
@@ -89,10 +97,10 @@ class HomeController extends Controller
             cookie('lg', get_default_lg());
         }
         
-        // 手机自适应主题
+        // 手机自适应主题，此处只记录后缀，主题在渲染前置钩子中按最终语言绑定一次
         if ($this->config('open_wap')) {
             if ($this->config('wap_domain') && $this->config('wap_domain') == get_http_host()) {
-                $this->setTheme(get_theme() . '/wap'); // 已绑域名并且一致则自动手机版本
+                self::$themeSuffix = '/wap'; // 已绑域名并且一致则自动手机版本
             } elseif (is_mobile() && $this->config('wap_domain') && $this->config('wap_domain') != get_http_host()) {
                 if (is_https()) {
                     $pre = 'https://';
@@ -102,12 +110,12 @@ class HomeController extends Controller
                 header('Location:' . $pre . $this->config('wap_domain') . URL, true, 302); // 手机访问并且绑定了域名，但是访问域名不一致则跳转
                 exit();
             } elseif (is_mobile()) { // 其他情况手机访问则自动手机版本
-                $this->setTheme(get_theme() . '/wap');
+                self::$themeSuffix = '/wap';
             } else { // 其他情况，电脑版本
-                $this->setTheme(get_theme());
+                self::$themeSuffix = '';
             }
         } else { // 未开启手机，则一律电脑版本
-            $this->setTheme(get_theme());
+            self::$themeSuffix = '';
         }
     }
 }

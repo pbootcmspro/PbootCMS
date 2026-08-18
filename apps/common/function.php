@@ -226,19 +226,23 @@ function get_default_lg()
 function get_lg()
 {
     $lg = cookie('lg');
-    if (! $lg || ! preg_match('/^[\w\-]+$/', $lg)) {
+    $lgs = Config::get('lgs');
+    if (! $lg || ! preg_match('/^[\w\-]+$/', $lg) || (is_array($lgs) && ! isset($lgs[$lg]))) {
         $lg = get_default_lg();
         cookie('lg', $lg);
     }
     return $lg;
 }
 
-// 获取当前语言主题
+// 获取当前语言主题，未取到时回退默认主题，避免返回空值后被静默当作default
 function get_theme()
 {
     $lgs = Config::get('lgs');
     $lg = get_lg();
-    return $lgs[$lg]['theme'];
+    if (isset($lgs[$lg]['theme'])) {
+        return $lgs[$lg]['theme'];
+    }
+    return 'default';
 }
 
 // 推送百度

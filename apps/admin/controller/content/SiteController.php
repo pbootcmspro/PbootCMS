@@ -78,5 +78,23 @@ class SiteController extends Controller
         $this->assign('server', get_server_info());
         $this->display('system/server.html');
     }
+
+    // Imagick 深度安全探测（显式触发，非热路径）
+    public function imagickProbe()
+    {
+        if (! $_POST) {
+            return;
+        }
+        if (! function_exists('imagick_probe_deep_and_persist')) {
+            error('Imagick 探测功能不可用！', - 1);
+        }
+        $result = imagick_probe_deep_and_persist();
+        if ($result === null) {
+            error('Imagick 深度探测失败，请确认扩展已加载且数据库可写！', - 1);
+        }
+        $runtime = empty($result['runtime_coders']) ? '无' : implode(',', $result['runtime_coders']);
+        $this->log('Imagick 深度安全探测完成，runtime 可读 coder：' . $runtime);
+        success('深度探测完成，runtime 可读 coder：' . $runtime, - 1);
+    }
 }
 
