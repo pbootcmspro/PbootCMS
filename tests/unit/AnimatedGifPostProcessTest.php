@@ -77,11 +77,14 @@ exit(TestAssert::runSuite(function () {
     TestAssert::same(2, $scanAnim['frames'], 'scan reports 2 frames');
     TestAssert::true($scanAnim['safe'], 'scan marks clean animated GIF safe');
 
+    $GLOBALS['__test_imagick_can_animated_gif'] = false;
     list($canAnim, $msgAnim) = gd_can_post_process_image($animPath);
-    TestAssert::false($canAnim, 'gd_can_post_process_image skips animated GIF');
+    TestAssert::false($canAnim, 'gd_can_post_process_image skips animated GIF without Imagick');
     TestAssert::contains($msgAnim, 'GIF', 'skip message mentions GIF');
+    unset($GLOBALS['__test_imagick_can_animated_gif']);
 
-    echo "=== reencode / post-process preserve frames ===\n";
+    echo "=== reencode / post-process preserve frames (GD-only path) ===\n";
+    $GLOBALS['__test_imagick_can_animated_gif'] = false;
     TestAssert::same(true, reencode_image($animPath), 'reencode_image skips animated GIF');
     TestAssert::same($hashBefore, md5_file($animPath), 'reencode_image leaves file unchanged');
     TestAssert::same($framesBefore, $frameCount($animPath), 'frame count unchanged after reencode skip');
@@ -91,7 +94,7 @@ exit(TestAssert::runSuite(function () {
     TestAssert::same($hashBefore, md5_file($animPath), 'post-process leaves animated file unchanged');
     TestAssert::same($framesBefore, $frameCount($animPath), 'frame count unchanged after post-process');
 
-    echo "=== resize / cut / watermark preserve frames ===\n";
+    echo "=== resize / cut / watermark preserve frames (GD-only path) ===\n";
     $resized = $tmpdir . DIRECTORY_SEPARATOR . 'anim_resized.gif';
     TestAssert::same(true, resize_img($animPath, $resized, 8, 8), 'resize_img copies animated GIF');
     TestAssert::same($hashBefore, md5_file($resized), 'resize output matches original bytes');
@@ -101,11 +104,14 @@ exit(TestAssert::runSuite(function () {
     TestAssert::same(true, cut_img($animPath, $cut, 8, 8), 'cut_img copies animated GIF');
     TestAssert::same($hashBefore, md5_file($cut), 'cut output matches original bytes');
     TestAssert::same($framesBefore, $frameCount($cut), 'cut keeps frames');
+    unset($GLOBALS['__test_imagick_can_animated_gif']);
 
     ConfigStub::set(array('watermark_open' => 1, 'watermark_text' => 'T', 'watermark_pic' => ''));
+    unset($GLOBALS['_upload_post_process_notice']);
     $wmOut = $tmpdir . DIRECTORY_SEPARATOR . 'anim_wm.gif';
     TestAssert::same(true, watermark_img($animPath, $wmOut, 1), 'watermark_img skips animated GIF');
     TestAssert::same($hashBefore, md5_file($wmOut), 'watermark output matches original bytes');
+    TestAssert::contains(upload_post_process_last_notice(), '水印', 'watermark skip sets notice');
     ConfigStub::reset();
 
     echo "=== multi-frame without GCE still animated ===\n";
@@ -190,6 +196,27 @@ exit(TestAssert::runSuite(function () {
     TestAssert::false(gif_structure_is_safe($gifarPath), 'gif_structure_is_safe rejects GIFAR-style payload');
     TestAssert::same('GIF文件结构不合法！', reencode_image($gifarPath), 'reencode_image rejects GIFAR-style animated GIF');
     TestAssert::same('GIF文件结构不合法！', upload_post_process_image($gifarPath, false, true), 'post-process rejects GIFAR-style animated GIF');
+
+    echo "=== upload notice helpers ===\n";
+    unset($GLOBALS['_upload_post_process_notice']);
+    upload_append_post_process_notice('提示一');
+    upload_append_post_process_notice('提示二');
+    TestAssert::contains(upload_post_process_last_notice(), '提示一', 'append preserves first notice');
+    TestAssert::contains(upload_post_process_last_notice(), '提示二', 'append adds second notice');
+    $packed = upload_build_success_result(array('/a.gif', '/b.gif'));
+    TestAssert::same('/a.gif', $packed[0], 'build result keeps first path at index 0');
+    TestAssert::same('/b.gif', $packed[1], 'build result keeps second path at index 1');
+    TestAssert::same('提示一；提示二', $packed['notice'], 'build result attaches notice key without breaking paths');
+    unset($GLOBALS['_upload_post_process_notice']);
+    $plain = upload_build_success_result(array('/only.jpg'));
+    TestAssert::same(array('/only.jpg'), $plain, 'build result plain array when no notice');
+    unset($GLOBALS['_upload_post_process_notice']);
+    upload_append_post_process_notice(str_repeat('长', 300));
+    upload_append_post_process_notice(str_repeat('文', 300));
+    $truncated = upload_post_process_last_notice();
+    TestAssert::contains($truncated, '长', 'append truncates instead of dropping when over limit');
+    TestAssert::true((function_exists('mb_strlen') ? mb_strlen($truncated) : strlen($truncated)) <= 512, 'append result stays within limit');
+    TestAssert::same(upload_truncate_notice(str_repeat('x', 600)), upload_truncate_notice(str_repeat('x', 600)), 'truncate helper is stable');
 
     @unlink($animPath);
     @unlink($resized);

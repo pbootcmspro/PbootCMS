@@ -45,11 +45,17 @@ function homeurl($url, $suffix = null, $qs = null)
  * @param string $_string内容
  * @param string $_url跳转地址
  * @param number $_time时间
+ * @param int|null $_status HTTP 状态码；null 时 HTML 默认 404、JSON/AJAX 默认 200（避免前端 success/done 丢弃业务错误文案）
  */
-function error($string, $jump_url = null, $time = 2)
+function error($string, $jump_url = null, $time = 2, $status = null)
 {
     @ob_clean();
-    http_response_code(404);
+    $is_ajax = is_ajax();
+    $as_json = Config::get('return_data_type') == 'json' || $is_ajax;
+    if ($status === null) {
+        $status = $is_ajax ? 200 : 404;
+    }
+    http_response_code($status);
     if (! $string)
         $string = '未知错误！';
     
@@ -61,7 +67,7 @@ function error($string, $jump_url = null, $time = 2)
     } elseif ($jump_url == '-1') {
         $jump_url = null;
     }
-    if (Config::get('return_data_type') == 'json' || is_ajax()) { // 接口模型返回格式数据
+    if ($as_json) { // 接口模型返回格式数据
         Response::json(0, strip_tags($string), $jump_url);
     } else {
         $err_tpl = CORE_PATH . '/template/error.html';
@@ -768,7 +774,7 @@ function _404($string, $jump_url = null, $time = 2)
         echo parse_info_tpl($file_404, $string, $jump_url, $time);
         exit();
     } else {
-        error($string, $jump_url, $time);
+        error($string, $jump_url, $time, 404);
     }
 }
 

@@ -103,5 +103,10 @@ if ($rs['state'] === 'SUCCESS') {
  * )
  */
 
+$notice = upload_post_process_last_notice();
+if ($notice !== '') {
+    $rs['warning'] = $notice;
+}
+
 /* 返回数据 */
-return json_encode($up->getFileInfo());
+return json_encode($rs);

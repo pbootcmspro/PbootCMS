@@ -34,7 +34,7 @@ class HomeController extends Controller
         // 站点关闭检测
         if (! ! $close_site = Config::get('close_site')) {
             $close_site_note = Config::get('close_site_note');
-            error($close_site_note ?: '本站维护中，请稍后再访问，带来不便，敬请谅解！');
+            error($close_site_note ?: '本站维护中，请稍后再访问，带来不便，敬请谅解！', null, 2, 503);
         }
 
         // 自动跳转HTTPS
@@ -62,7 +62,7 @@ class HomeController extends Controller
             $ip_deny = Config::get('ip_deny', true);
             foreach ($ip_deny as $key => $value) {
                 if (network_match($user_ip, $value)) {
-                    error('本站启用了黑名单功能，您的IP(' . $user_ip . ')不允许访问！');
+                    error('本站启用了黑名单功能，您的IP(' . $user_ip . ')不允许访问！', null, 2, 403);
                 }
             }
             // ip白名单
@@ -75,7 +75,7 @@ class HomeController extends Controller
             
             // 如果设置了白名单，IP不在白名单内，则阻止访问
             if ($ip_allow && ! isset($allow)) {
-                error('本站启用了白名单功能，您的IP(' . $user_ip . ')不在允许范围！');
+                error('本站启用了白名单功能，您的IP(' . $user_ip . ')不在允许范围！', null, 2, 403);
             }
         }
         

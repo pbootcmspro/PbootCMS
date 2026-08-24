@@ -439,6 +439,13 @@ exit(TestAssert::runSuite(function () {
             {
                 return (int) $this->frames[$this->idx][1];
             }
+
+            public function getImagePage()
+            {
+                $w = (int) $this->frames[$this->idx][0];
+                $h = (int) $this->frames[$this->idx][1];
+                return array('width' => $w, 'height' => $h, 'x' => 0, 'y' => 0);
+            }
         };
     };
 
@@ -451,14 +458,20 @@ exit(TestAssert::runSuite(function () {
     );
     unset($GLOBALS['__test_imagick_max_gif_frames']);
 
+    $GLOBALS['__test_imagick_gif_decode_budget_ratio'] = 0.001;
+    $GLOBALS['__test_imagick_resource_limit_memory'] = 1024 * 1024;
+    $GLOBALS['__test_imagick_resource_limit_map'] = 1024 * 1024;
     TestAssert::true(
-        is_string(imagick_guard_before_coalesce($makeGifMock(array(array(9000, 100))))),
-        'oversized width rejected'
+        is_string(imagick_guard_before_coalesce($makeGifMock(array(array(1000, 1000))))),
+        'decode volume over budget rejected'
     );
     TestAssert::true(
-        is_string(imagick_guard_before_coalesce($makeGifMock(array(array(9000, 9000))))),
-        'oversized area rejected'
+        is_string(imagick_guard_before_coalesce($makeGifMock(array(array(10, 10))), 1000, 1000)),
+        'guard uses getimagesize canvas over frame patch size'
     );
+    unset($GLOBALS['__test_imagick_gif_decode_budget_ratio']);
+    unset($GLOBALS['__test_imagick_resource_limit_memory']);
+    unset($GLOBALS['__test_imagick_resource_limit_map']);
 
     TestAssert::true(
         is_string(imagick_guard_before_coalesce(new stdClass())),

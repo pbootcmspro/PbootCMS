@@ -22,14 +22,21 @@ return TestAssert::runSuite(function () {
     TestAssert::contains($fileFn, 'function sanitize_svg_string(', 'sanitize_svg_string defined');
     TestAssert::contains($fileFn, 'function sanitize_uploaded_svg(', 'sanitize_uploaded_svg defined');
     TestAssert::contains($fileFn, 'function svgz_decompress_limited(', 'svgz_decompress_limited defined');
-    TestAssert::contains($fileFn, 'function svg_attr_value_has_unsafe_url(', 'svg_attr_value_has_unsafe_url defined');
-    TestAssert::contains($fileFn, 'function svg_output_has_unsafe_url(', 'svg_output_has_unsafe_url defined');
+    TestAssert::contains($fileFn, 'function svg_href_is_safe(', 'svg_href_is_safe defined');
+    TestAssert::contains($fileFn, 'function svg_prepare_xml_for_sanitize(', 'svg_prepare_xml_for_sanitize defined');
+    // 后台可信上传：不做 CSS 内容级改写（避免合法样式被归一化写回致变黑）
+    TestAssert::true(strpos($fileFn, 'function svg_css_normalize_for_url_check(') === false, 'css normalize helper removed');
+    TestAssert::true(strpos($fileFn, 'function svg_sanitize_style_text(') === false, 'style text rewriter removed');
+    TestAssert::true(strpos($fileFn, 'function svg_attr_value_has_unsafe_url(') === false, 'attr css url scanner removed');
+    TestAssert::true(strpos($fileFn, 'function svg_output_has_unsafe_url(') === false, 'output css url scanner removed');
     TestAssert::contains($fileFn, 'function gd_supports_avif(', 'gd_supports_avif defined');
     TestAssert::contains($fileFn, 'function upload_security_headers_map(', 'upload_security_headers_map defined');
     TestAssert::true(strpos($fileFn, 'function upload_send_security_headers(') === false, 'upload_send_security_headers removed');
     TestAssert::true(strpos($fileFn, 'function upload_emit_public_file(') === false, 'upload_emit_public_file removed');
     TestAssert::true(strpos($fileFn, 'function upload_json_extra(') === false, 'upload_json_extra removed');
     TestAssert::contains($fileFn, "'set', 'animate'", 'svg denyTags blocks SMIL');
+    TestAssert::true(strpos($fileFn, "'listener', 'style'") === false, 'style not blanket-denied with listener');
+    TestAssert::contains($fileFn, '<style> 文本原样保留', 'style text preserved verbatim');
     TestAssert::contains($fileFn, 'function imagick_post_process_avif(', 'imagick_post_process_avif defined');
     TestAssert::contains($fileFn, 'function avif_unsupported_error(', 'avif_unsupported_error defined');
     TestAssert::contains($fileFn, 'function image_type_arg_is_avif(', 'image_type_arg_is_avif defined');
@@ -42,11 +49,13 @@ return TestAssert::runSuite(function () {
     $upload = file_get_contents(CORE_PATH . '/extend/ueditor/php/action_upload.php');
     TestAssert::contains($upload, 'upload_should_post_process_image($full_path)', 'action_upload processes SVG/AVIF');
     TestAssert::contains($upload, '@unlink($full_path)', 'action_upload deletes on post-process fail');
-    TestAssert::true(strpos($upload, "['warning']") === false, 'action_upload does not attach warning');
+    TestAssert::contains($upload, 'upload_post_process_last_notice()', 'action_upload reads post-process notice');
+    TestAssert::contains($upload, "['warning']", 'action_upload attaches warning when notice set');
     $crawler = file_get_contents(CORE_PATH . '/extend/ueditor/php/action_crawler.php');
     TestAssert::contains($crawler, 'upload_should_post_process_image($full_path)', 'action_crawler processes SVG/AVIF');
     TestAssert::contains($crawler, '@unlink($full_path)', 'action_crawler deletes on post-process fail');
-    TestAssert::true(strpos($crawler, "['warning']") === false, 'action_crawler does not attach warning');
+    TestAssert::contains($crawler, 'upload_post_process_last_notice()', 'action_crawler reads post-process notice');
+    TestAssert::contains($crawler, "['warning']", 'action_crawler attaches warning when notice set');
 
     echo "=== upload .htaccess MIME + nosniff (deployed path) ===\n";
 

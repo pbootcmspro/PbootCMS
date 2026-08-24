@@ -39,7 +39,7 @@ class MemberController extends HomeBaseController
         // 执行登录验证
         if ($_POST) {
             if ($this->config('login_status') === '0') {
-                error('系统已经关闭登录功能，请到后台开启再试！');
+                error('系统已经关闭登录功能，请到后台开启再试！', null, 2, 403);
             }
             
             // 验证码验证
@@ -118,7 +118,7 @@ class MemberController extends HomeBaseController
         // 执行注册
         if ($_POST) {
             if ($this->config('register_status') === '0') {
-                error('系统已经关闭注册功能，请到后台开启再试！');
+                error('系统已经关闭注册功能，请到后台开启再试！', null, 2, 403);
             }
             
             if (time() - session('lastreg') < 10) {
@@ -245,7 +245,7 @@ class MemberController extends HomeBaseController
                     alert_location('注册成功，请等待管理员审核！', Url::home('member/login'), 1);
                 }
             } else {
-                error('会员注册失败！', - 1);
+                alert_back('会员注册失败！');
             }
         } else {
             $content = parent::parser($this->htmldir . 'member/register.html'); // 框架标签解析
@@ -418,7 +418,7 @@ class MemberController extends HomeBaseController
             if ($this->model->modUser($data)) {
                 alert_location('修改成功！', Url::home('member/umodify'), 1);
             } else {
-                error('资料修改失败！', - 1);
+                alert_back('资料修改失败！');
             }
         } else {
             $content = parent::parser($this->htmldir . 'member/umodify.html'); // 框架标签解析

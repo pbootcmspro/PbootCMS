@@ -1549,41 +1549,456 @@ function imagick_create($path = '', $hintFormat = null)
 }
 
 /**
- * coalesceImages 前资源守卫（动图帧数/像素面积）
+ * Imagick 每像素字节数（按 quantum depth 保守估算）
+ *
+ * @return int
+ */
+function imagick_bytes_per_pixel()
+{
+    static $bpp = null;
+    if ($bpp !== null) {
+        return $bpp;
+    }
+    $bpp = 16;
+    if (! extension_loaded('imagick') || ! class_exists('Imagick', false)) {
+        return $bpp;
+    }
+    try {
+        if (method_exists('Imagick', 'getQuantumDepth')) {
+            $qd = \Imagick::getQuantumDepth();
+            if (is_array($qd)) {
+                if (isset($qd['quantumDepthLong'])) {
+                    $depth = (int) $qd['quantumDepthLong'];
+                } elseif (isset($qd[0])) {
+                    $depth = (int) $qd[0];
+                } else {
+                    $depth = 16;
+                }
+            } else {
+                $depth = (int) $qd;
+            }
+            if ($depth <= 8) {
+                return $bpp = 4;
+            }
+            if ($depth <= 16) {
+                return $bpp = 8;
+            }
+        }
+    } catch (\Throwable $e) {
+    }
+    return $bpp;
+}
+
+/**
+ * @return int
+ */
+function imagick_resource_limit_memory()
+{
+    if (array_key_exists('__test_imagick_resource_limit_memory', $GLOBALS)) {
+        return (int) $GLOBALS['__test_imagick_resource_limit_memory'];
+    }
+    if (defined('Imagick::RESOURCETYPE_MEMORY') && method_exists('Imagick', 'getResourceLimit')) {
+        return (int) \Imagick::getResourceLimit(\Imagick::RESOURCETYPE_MEMORY);
+    }
+    return 256 * 1024 * 1024;
+}
+
+/**
+ * @return int
+ */
+function imagick_resource_limit_map()
+{
+    if (array_key_exists('__test_imagick_resource_limit_map', $GLOBALS)) {
+        return (int) $GLOBALS['__test_imagick_resource_limit_map'];
+    }
+    if (defined('Imagick::RESOURCETYPE_MAP') && method_exists('Imagick', 'getResourceLimit')) {
+        return (int) \Imagick::getResourceLimit(\Imagick::RESOURCETYPE_MAP);
+    }
+    return 256 * 1024 * 1024;
+}
+
+/**
+ * 动画 GIF coalesce 解码体积预算比例（相对 MEMORY+MAP）
+ *
+ * @return float
+ */
+function imagick_gif_decode_budget_ratio()
+{
+    if (array_key_exists('__test_imagick_gif_decode_budget_ratio', $GLOBALS)) {
+        return (float) $GLOBALS['__test_imagick_gif_decode_budget_ratio'];
+    }
+    $ratio = (float) Config::get('upload.imagick_gif_decode_budget_ratio');
+    if ($ratio <= 0 || $ratio > 1) {
+        $ratio = 0.8;
+    }
+    return $ratio;
+}
+
+/**
+ * 畸形/fuzz 输入帧数上限
+ *
+ * @return int
+ */
+function imagick_gif_max_frames()
+{
+    if (array_key_exists('__test_imagick_max_gif_frames', $GLOBALS)) {
+        return (int) $GLOBALS['__test_imagick_max_gif_frames'];
+    }
+    $max = (int) Config::get('upload.imagick_gif_max_frames');
+    if ($max <= 0) {
+        $max = 2000;
+    }
+    return $max;
+}
+
+/**
+ * GIF 逻辑画布尺寸（Logical Screen Descriptor；coalesce 前各帧可能小于画布）
  *
  * @param \Imagick $im
+ * @param int|null $canvas_w getimagesize 宽（优先）
+ * @param int|null $canvas_h getimagesize 高（优先）
+ * @return array{0:int,1:int}
+ */
+function imagick_gif_canvas_size($im, $canvas_w = null, $canvas_h = null)
+{
+    $cw = (int) $canvas_w;
+    $ch = (int) $canvas_h;
+    if ($cw > 0 && $ch > 0) {
+        return array($cw, $ch);
+    }
+    if (is_object($im) && method_exists($im, 'getImagePage')) {
+        if (method_exists($im, 'setIteratorIndex')) {
+            $im->setIteratorIndex(0);
+        }
+        $page = $im->getImagePage();
+        $cw = isset($page['width']) ? (int) $page['width'] : 0;
+        $ch = isset($page['height']) ? (int) $page['height'] : 0;
+        if ($cw > 0 && $ch > 0) {
+            return array($cw, $ch);
+        }
+    }
+    $maxW = 0;
+    $maxH = 0;
+    if (is_object($im) && method_exists($im, 'getNumberImages') && method_exists($im, 'setIteratorIndex')) {
+        $frames = (int) $im->getNumberImages();
+        for ($i = 0; $i < $frames; $i++) {
+            $im->setIteratorIndex($i);
+            $maxW = max($maxW, (int) $im->getImageWidth());
+            $maxH = max($maxH, (int) $im->getImageHeight());
+        }
+        $im->setIteratorIndex(0);
+    }
+    if ($maxW > 0 && $maxH > 0) {
+        return array($maxW, $maxH);
+    }
+    return array(0, 0);
+}
+
+/**
+ * coalesceImages 前资源守卫（解码体积预算 + 畸形帧数上限）
+ *
+ * @param \Imagick $im
+ * @param int|null $canvas_w getimagesize 逻辑画布宽（优先）
+ * @param int|null $canvas_h getimagesize 逻辑画布高（优先）
  * @return string|null null=通过，string=拒绝原因
  */
-function imagick_guard_before_coalesce($im)
+function imagick_guard_before_coalesce($im, $canvas_w = null, $canvas_h = null)
 {
     if (! is_object($im) || ! method_exists($im, 'getNumberImages')) {
         return '无效的 Imagick 实例';
     }
-    $maxFrames = 100;
-    if (array_key_exists('__test_imagick_max_gif_frames', $GLOBALS)) {
-        $maxFrames = (int) $GLOBALS['__test_imagick_max_gif_frames'];
-    }
     $frames = (int) $im->getNumberImages();
+    $maxFrames = imagick_gif_max_frames();
     if ($frames > $maxFrames) {
-        return 'GIF 帧数超过限制（' . $frames . '>' . $maxFrames . '）';
+        return 'GIF 帧数异常（' . $frames . '>' . $maxFrames . '）';
     }
-    $maxArea = 64 * 1024 * 1024;
-    for ($i = 0; $i < $frames; $i++) {
-        $im->setIteratorIndex($i);
-        $w = (int) $im->getImageWidth();
-        $h = (int) $im->getImageHeight();
-        if ($w <= 0 || $h <= 0) {
-            continue;
-        }
-        if ($w > 8192 || $h > 8192) {
-            return 'GIF 单帧尺寸超过限制';
-        }
-        if ((float) $w * (float) $h > $maxArea) {
-            return 'GIF 单帧像素面积超过限制';
-        }
+    list($cw, $ch) = imagick_gif_canvas_size($im, $canvas_w, $canvas_h);
+    if ($cw <= 0 || $ch <= 0) {
+        return 'GIF 画布尺寸无效';
     }
-    $im->setIteratorIndex(0);
+    $bytesPerPx = imagick_bytes_per_pixel();
+    $budget = (int) (imagick_gif_decode_budget_ratio()
+        * (imagick_resource_limit_memory() + imagick_resource_limit_map()));
+    $decodeBytes = (float) $frames * (float) $cw * (float) $ch * (float) $bytesPerPx;
+    if ($decodeBytes > $budget) {
+        return 'GIF 解码体积超过内存预算';
+    }
+    if (method_exists($im, 'setIteratorIndex')) {
+        $im->setIteratorIndex(0);
+    }
     return null;
+}
+
+/**
+ * 当前环境 Imagick 是否支持动画 GIF 处理（coalesce/optimizeImageLayers 可用）
+ */
+function imagick_can_animated_gif()
+{
+    if (array_key_exists('__test_imagick_can_animated_gif', $GLOBALS)) {
+        return (bool) $GLOBALS['__test_imagick_can_animated_gif'];
+    }
+    static $result = null;
+    if ($result !== null) {
+        return $result;
+    }
+    if (! imagick_is_usable()) {
+        return $result = false;
+    }
+    if (image_backend_config() === 'gd_only') {
+        return $result = false;
+    }
+    $result = method_exists('Imagick', 'coalesceImages')
+           && method_exists('Imagick', 'optimizeImageLayers');
+    return $result;
+}
+
+/**
+ * 写出动画 GIF（临时文件 + 校验，避免就地覆盖截断原图）
+ *
+ * @param \Imagick $optimized
+ * @param string $out
+ * @return true|string true=成功, string=错误信息
+ */
+function imagick_write_animated_gif($optimized, $out)
+{
+    if (! empty($GLOBALS['__test_imagick_gif_force_write_fail'])) {
+        return '动画GIF缩放写出失败！';
+    }
+    $tmp = $out . '.imagick-gif.tmp';
+    $ok = (bool) @$optimized->writeImages($tmp, true);
+    if (! $ok || ! is_file($tmp) || ! is_animated_gif($tmp)) {
+        @unlink($tmp);
+        return '动画GIF缩放写出失败！';
+    }
+    if (! @rename($tmp, $out)) {
+        $copied = @copy($tmp, $out);
+        @unlink($tmp);
+        if (! $copied) {
+            return '动画GIF缩放写出失败！';
+        }
+    }
+    return true;
+}
+
+/**
+ * Imagick 动画 GIF 缩放（coalesce → 逐帧 resize → optimizeImageLayers）
+ *
+ * @param int|null $canvas_w getimagesize 逻辑画布宽
+ * @param int|null $canvas_h getimagesize 逻辑画布高
+ * @return true|string|false true=成功, string=错误信息, false=降级信号（调用方走 GD 兜底）
+ */
+function imagick_resize_animated_gif($src, $out, $max_w, $max_h, $canvas_w = null, $canvas_h = null)
+{
+    if (! imagick_can_animated_gif()) {
+        return false;
+    }
+
+    list($im, $err) = imagick_create($src, 'GIF');
+    if ($im === null) {
+        if ($err !== '') {
+            upload_append_post_process_notice(imagick_notice_from_create_error($err));
+        }
+        return false;
+    }
+
+    $guard = imagick_guard_before_coalesce($im, $canvas_w, $canvas_h);
+    if ($guard !== null) {
+        $im->clear();
+        $im->destroy();
+        // 超限跳过 coalesce，降级 copy 保留原图（等同无 Imagick 行为），勿把 guard 字符串当致命错误上抛
+        upload_append_post_process_notice('动画GIF超限已跳过缩放，已保留原图（' . $guard . '）');
+        return false;
+    }
+
+    list($w, $h) = imagick_gif_canvas_size($im, $canvas_w, $canvas_h);
+    if ($w <= 0 || $h <= 0) {
+        $im->clear();
+        $im->destroy();
+        return 'GIF 画布尺寸无效！';
+    }
+    if ($w <= $max_w && $h <= $max_h) {
+        $im->clear();
+        $im->destroy();
+        check_dir(dirname($out), true);
+        if ($src !== $out) {
+            if (! copy($src, $out)) {
+                return '缩放图片时拷贝到目的地址失败！';
+            }
+        }
+        return true;
+    }
+
+    $scale = min($max_w / $w, $max_h / $h, 1.0);
+    $nw = max(1, (int) floor($scale * $w));
+    $nh = max(1, (int) floor($scale * $h));
+
+    try {
+        $coalesced = $im->coalesceImages();
+    } catch (\Throwable $e) {
+        $im->clear();
+        $im->destroy();
+        return false;
+    }
+    $im->clear();
+    $im->destroy();
+
+    $optimized = null;
+    try {
+        foreach ($coalesced as $frame) {
+            $frame->resizeImage($nw, $nh, defined('Imagick::FILTER_LANCZOS')
+                ? \Imagick::FILTER_LANCZOS : 15, 1);
+            $frame->setImagePage($nw, $nh, 0, 0);
+        }
+
+        $optimized = method_exists($coalesced, 'optimizeImageLayers')
+            ? $coalesced->optimizeImageLayers()
+            : $coalesced;
+        if ($optimized !== $coalesced) {
+            $coalesced->clear();
+            $coalesced->destroy();
+        }
+
+        check_dir(dirname($out), true);
+        if (method_exists($optimized, 'setFormat')) {
+            $optimized->setFormat('gif');
+        } elseif (method_exists($optimized, 'setImageFormat')) {
+            $optimized->setImageFormat('gif');
+        }
+        $written = imagick_write_animated_gif($optimized, $out);
+        $optimized->clear();
+        $optimized->destroy();
+
+        if ($written !== true) {
+            return $written;
+        }
+        return true;
+    } catch (\Throwable $e) {
+        if (isset($coalesced) && is_object($coalesced)) {
+            $coalesced->clear();
+            $coalesced->destroy();
+        }
+        if (isset($optimized) && is_object($optimized)) {
+            $optimized->clear();
+            $optimized->destroy();
+        }
+        @unlink($out . '.imagick-gif.tmp');
+        return false;
+    }
+}
+
+/**
+ * Imagick 动画 GIF 居中裁剪（coalesce → 逐帧 cropThumbnail → optimizeImageLayers）
+ *
+ * @param int|null $canvas_w getimagesize 逻辑画布宽
+ * @param int|null $canvas_h getimagesize 逻辑画布高
+ * @return true|string|false
+ */
+function imagick_cut_animated_gif($src, $out, $new_w, $new_h, $canvas_w = null, $canvas_h = null)
+{
+    if (! imagick_can_animated_gif()) {
+        return false;
+    }
+
+    list($im, $err) = imagick_create($src, 'GIF');
+    if ($im === null) {
+        if ($err !== '') {
+            upload_append_post_process_notice(imagick_notice_from_create_error($err));
+        }
+        return false;
+    }
+
+    $guard = imagick_guard_before_coalesce($im, $canvas_w, $canvas_h);
+    if ($guard !== null) {
+        $im->clear();
+        $im->destroy();
+        upload_append_post_process_notice('动画GIF超限已跳过裁剪，已保留原图（' . $guard . '）');
+        return false;
+    }
+
+    list($cw, $ch) = imagick_gif_canvas_size($im, $canvas_w, $canvas_h);
+    if ($cw <= 0 || $ch <= 0) {
+        $im->clear();
+        $im->destroy();
+        return 'GIF 画布尺寸无效！';
+    }
+
+    $nw = max(1, (int) $new_w);
+    $nh = max(1, (int) $new_h);
+
+    try {
+        $coalesced = $im->coalesceImages();
+    } catch (\Throwable $e) {
+        $im->clear();
+        $im->destroy();
+        return false;
+    }
+    $im->clear();
+    $im->destroy();
+
+    $optimized = null;
+    try {
+        foreach ($coalesced as $frame) {
+            if (method_exists($frame, 'cropThumbnailImage')) {
+                $frame->cropThumbnailImage($nw, $nh);
+            } else {
+                $fw = (int) $frame->getImageWidth();
+                $fh = (int) $frame->getImageHeight();
+                if ($fw / $fh > $nw / $nh) {
+                    $cropH = $fh;
+                    $cropW = max(1, (int) round($fh * ($nw / $nh)));
+                } else {
+                    $cropW = $fw;
+                    $cropH = max(1, (int) round($fw * ($nh / $nw)));
+                }
+                $cropW = min($cropW, $fw);
+                $cropH = min($cropH, $fh);
+                $x = (int) floor(($fw - $cropW) / 2);
+                $y = (int) floor(($fh - $cropH) / 2);
+                $frame->cropImage($cropW, $cropH, $x, $y);
+                if (method_exists($frame, 'scaleImage')) {
+                    $frame->scaleImage($nw, $nh);
+                } elseif (method_exists($frame, 'resizeImage')) {
+                    $frame->resizeImage($nw, $nh, defined('Imagick::FILTER_LANCZOS')
+                        ? \Imagick::FILTER_LANCZOS : 15, 1);
+                }
+            }
+            $frame->setImagePage($nw, $nh, 0, 0);
+        }
+
+        $optimized = method_exists($coalesced, 'optimizeImageLayers')
+            ? $coalesced->optimizeImageLayers()
+            : $coalesced;
+        if ($optimized !== $coalesced) {
+            $coalesced->clear();
+            $coalesced->destroy();
+        }
+
+        check_dir(dirname($out), true);
+        if (method_exists($optimized, 'setFormat')) {
+            $optimized->setFormat('gif');
+        } elseif (method_exists($optimized, 'setImageFormat')) {
+            $optimized->setImageFormat('gif');
+        }
+        $written = imagick_write_animated_gif($optimized, $out);
+        $optimized->clear();
+        $optimized->destroy();
+
+        if ($written !== true) {
+            return $written;
+        }
+        return true;
+    } catch (\Throwable $e) {
+        if (isset($coalesced) && is_object($coalesced)) {
+            $coalesced->clear();
+            $coalesced->destroy();
+        }
+        if (isset($optimized) && is_object($optimized)) {
+            $optimized->clear();
+            $optimized->destroy();
+        }
+        @unlink($out . '.imagick-gif.tmp');
+        return false;
+    }
 }
 
 /**
@@ -1989,8 +2404,11 @@ function gd_can_post_process_image($path)
     if ($info[2] == image_type_avif() && ! gd_avif_gd_available()) {
         return array(false, '当前环境不支持 AVIF 缩放/水印，已保留原图');
     }
-    // GD 不支持多帧 GIF，动画必须跳过重编码/缩放/水印以免压成静态图
+    // 动画 GIF：Imagick 可用时允许缩放（resize_img 内部走 Imagick），否则跳过
     if ((int) $info[2] === IMAGETYPE_GIF && is_animated_gif($path)) {
+        if (imagick_can_animated_gif()) {
+            return array(true, '');
+        }
         return array(false, '动画GIF已保留原图（跳过缩放/水印）');
     }
     return array(true, '');
@@ -2000,6 +2418,80 @@ function gd_can_post_process_image($path)
 function upload_post_process_last_notice()
 {
     return isset($GLOBALS['_upload_post_process_notice']) ? (string) $GLOBALS['_upload_post_process_notice'] : '';
+}
+
+/**
+ * imagick_create 错误转用户可见提示（详细原因写日志）
+ *
+ * @param string $err
+ * @return string
+ */
+function imagick_notice_from_create_error($err)
+{
+    $err = (string) $err;
+    if ($err !== '') {
+        error_log('imagick_create: ' . $err);
+    }
+    return '动图处理暂不可用，已保留原图';
+}
+
+/**
+ * 截断后处理提示至指定长度（多文件合并等场景）
+ *
+ * @param string $msg
+ * @param int $max
+ * @return string
+ */
+function upload_truncate_notice($msg, $max = 512)
+{
+    $msg = (string) $msg;
+    if ($msg === '') {
+        return '';
+    }
+    $max = max(1, (int) $max);
+    $len = function_exists('mb_strlen') ? mb_strlen($msg) : strlen($msg);
+    if ($len <= $max) {
+        return $msg;
+    }
+    $suffix = '...';
+    $cut = $max - (function_exists('mb_strlen') ? mb_strlen($suffix) : strlen($suffix));
+    if ($cut < 1) {
+        $cut = 1;
+    }
+    return function_exists('mb_substr') ? mb_substr($msg, 0, $cut) . $suffix : substr($msg, 0, $cut) . $suffix;
+}
+
+// 追加后处理提示（不覆盖已有 notice，供动图水印跳过等场景）
+function upload_append_post_process_notice($msg)
+{
+    $msg = (string) $msg;
+    if ($msg === '') {
+        return;
+    }
+    $prev = upload_post_process_last_notice();
+    $next = $prev !== '' ? $prev . '；' . $msg : $msg;
+    $next = upload_truncate_notice($next);
+    if ($next === '') {
+        return;
+    }
+    $GLOBALS['_upload_post_process_notice'] = $next;
+}
+
+/**
+ * 上传成功返回值：无 notice 时保持路径数组；有 notice 时在保留数字索引路径的同时附加 notice 键
+ *
+ * @param array $paths
+ * @return array
+ */
+function upload_build_success_result(array $paths)
+{
+    $notice = upload_post_process_last_notice();
+    if ($notice === '') {
+        return $paths;
+    }
+    $result = $paths;
+    $result['notice'] = $notice;
+    return $result;
 }
 
 // 从文件创建 GD 图像资源
@@ -2062,9 +2554,16 @@ function gd_prepare_canvas_transparency($canvas, $type, $src_img = null)
         // GIF 无 Alpha 通道，只有单一透明色索引；重采样到真彩画布时调色板透明语义会丢失，
         // 因此把源图透明色作为画布透明色填充，源图透明区域重采样后仍等于该颜色即保持透明。
         $trans_index = ($src_img !== null) ? imagecolortransparent($src_img) : -1;
-        if ($trans_index >= 0) {
-            $tc = imagecolorsforindex($src_img, $trans_index);
-            $bg = imagecolorallocate($canvas, $tc['red'], $tc['green'], $tc['blue']);
+        $palette_total = ($src_img !== null) ? (int) imagecolorstotal($src_img) : 0;
+        // 量化后 GIF 可能把透明色标成 255，而调色板只有 0..254（imagecolorstotal=255）
+        $usable_trans = ($src_img !== null && $trans_index >= 0 && $palette_total > 0 && $trans_index < $palette_total);
+        if ($usable_trans) {
+            $tc = @imagecolorsforindex($src_img, $trans_index);
+            if (is_array($tc) && isset($tc['red'], $tc['green'], $tc['blue'])) {
+                $bg = imagecolorallocate($canvas, $tc['red'], $tc['green'], $tc['blue']);
+            } else {
+                $bg = imagecolorallocate($canvas, 255, 255, 255);
+            }
         } else {
             $bg = imagecolorallocate($canvas, 255, 255, 255);
         }
@@ -2304,59 +2803,6 @@ function svg_href_is_safe($value)
     return false;
 }
 
-// url(...) 内部引用是否安全（仅同文档 #id）
-function svg_css_url_inner_is_safe($inner)
-{
-    $inner = trim((string) $inner);
-    $inner = trim($inner, "\"'");
-    $inner = trim($inner);
-    return svg_href_is_safe($inner) && $inner !== '' && isset($inner[0]) && $inner[0] === '#';
-}
-
-// 属性值是否含有不安全的 url(...)（fill/filter/clip-path/mask/marker/style 等）
-function svg_attr_value_has_unsafe_url($val)
-{
-    $val = (string) $val;
-    if (! preg_match('/url\s*\(/i', $val)) {
-        return false;
-    }
-    // 匹配 url("...") / url('...') / url(...)
-    if (! preg_match_all('/url\s*\(\s*(?:([\'"])(.*?)\1|([^)]*?))\s*\)/is', $val, $matches, PREG_SET_ORDER)) {
-        // 存在 url( 但无法完整解析，视为不安全
-        return true;
-    }
-    foreach ($matches as $m) {
-        $inner = isset($m[3]) && $m[3] !== '' ? $m[3] : (isset($m[2]) ? $m[2] : '');
-        if (! svg_css_url_inner_is_safe($inner)) {
-            return true;
-        }
-    }
-    return false;
-}
-
-// 输出中是否仍残留非同文档 fragment 的 url(...)
-function svg_output_has_unsafe_url($out)
-{
-    $out = (string) $out;
-    if (! preg_match('/url\s*\(/i', $out)) {
-        return false;
-    }
-    // 任一 url( 后不是可选引号+# 即视为外部/危险引用
-    if (preg_match('/url\s*\(\s*[\'"]?\s*[^#\s\'")]/i', $out)) {
-        return true;
-    }
-    if (! preg_match_all('/url\s*\(\s*(?:([\'"])(.*?)\1|([^)]*?))\s*\)/is', $out, $matches, PREG_SET_ORDER)) {
-        return true;
-    }
-    foreach ($matches as $m) {
-        $inner = isset($m[3]) && $m[3] !== '' ? $m[3] : (isset($m[2]) ? $m[2] : '');
-        if (! svg_css_url_inner_is_safe($inner)) {
-            return true;
-        }
-    }
-    return false;
-}
-
 // 移除 DOM 属性（兼容命名空间 xlink:href）
 function svg_dom_remove_attr(DOMElement $el, DOMAttr $attr)
 {
@@ -2367,16 +2813,40 @@ function svg_dom_remove_attr(DOMElement $el, DOMAttr $attr)
     }
 }
 
-// 净化 SVG 字符串：剥离脚本、事件、外部引用与逃逸载荷；成功 array($xml, true)，失败 array($err, false)
+// 解析前处理 DOCTYPE：剥离标准 W3C SVG PUBLIC 声明，拒绝 ENTITY/内部子集/未知 DOCTYPE
+function svg_prepare_xml_for_sanitize($xml)
+{
+    $xml = (string) $xml;
+    if (preg_match('/<!ENTITY/i', $xml)) {
+        return array('SVG含有不安全的文档类型声明！', false);
+    }
+    // 含 [ 内部子集的 DOCTYPE 可定义 ENTITY，一律拒绝
+    if (preg_match('/<!DOCTYPE[^>]*\[/is', $xml)) {
+        return array('SVG含有不安全的文档类型声明！', false);
+    }
+    // Illustrator / 格式转换等工具常见的 W3C SVG PUBLIC DOCTYPE（无内部子集）
+    $xml = preg_replace(
+        '/<!DOCTYPE\s+svg\s+PUBLIC\s+"-\/\/W3C\/\/DTD SVG[^"]*"\s+"[^"]*"\s*>/i',
+        '',
+        $xml
+    );
+    if (preg_match('/<!DOCTYPE/i', $xml)) {
+        return array('SVG含有不安全的文档类型声明！', false);
+    }
+    return array($xml, true);
+}
+
+// 净化 SVG 字符串：危险元素/属性黑名单；<style> 与展示属性原样保留（后台可信上传，优先正常显示）
+// 成功 array($xml, true)，失败 array($err, false)
 function sanitize_svg_string($xml)
 {
     $xml = (string) $xml;
     if ($xml === '') {
         return array('SVG内容为空！', false);
     }
-    // 拒绝实体/DOCTYPE 逃逸
-    if (preg_match('/<!ENTITY/i', $xml) || preg_match('/<!DOCTYPE/i', $xml)) {
-        return array('SVG含有不安全的文档类型声明！', false);
+    list($xml, $prepared) = svg_prepare_xml_for_sanitize($xml);
+    if ($prepared !== true) {
+        return array(is_string($xml) ? $xml : 'SVG含有不安全的文档类型声明！', false);
     }
     if (! class_exists('DOMDocument', false)) {
         return array('服务器缺少DOM扩展，无法净化SVG！', false);
@@ -2410,7 +2880,7 @@ function sanitize_svg_string($xml)
     $denyTags = array(
         'script', 'foreignobject', 'iframe', 'object', 'embed', 'applet',
         'form', 'input', 'button', 'textarea', 'select', 'option',
-        'link', 'meta', 'base', 'handler', 'listener', 'style',
+        'link', 'meta', 'base', 'handler', 'listener',
         'set', 'animate', 'animatemotion', 'animatetransform', 'animatecolor', 'mpath'
     );
     $hrefLocalNames = array('href', 'src', 'action', 'formaction', 'data', 'poster');
@@ -2428,6 +2898,7 @@ function sanitize_svg_string($xml)
             $remove[] = $el;
             continue;
         }
+        // <style> 文本原样保留：不做注释剥离、转义解码或 CSS 改写
         if (! $el->hasAttributes()) {
             continue;
         }
@@ -2444,13 +2915,8 @@ function sanitize_svg_string($xml)
                 svg_dom_remove_attr($el, $attr);
                 continue;
             }
-            // 样式表达式
+            // 旧 IE 表达式（极窄兜底）；fill/stroke/filter/style 等展示属性原值保留
             if ($local === 'style' && preg_match('/expression\s*\(/i', $val)) {
-                svg_dom_remove_attr($el, $attr);
-                continue;
-            }
-            // 全属性 url(...)：仅允许同文档 url(#id)（覆盖 fill/filter/clip-path/mask/marker/style 等）
-            if (svg_attr_value_has_unsafe_url($val)) {
                 svg_dom_remove_attr($el, $attr);
                 continue;
             }
@@ -2521,18 +2987,15 @@ function sanitize_svg_string($xml)
     if ($out === false || $out === '') {
         return array('SVG净化输出失败！', false);
     }
-    // 二次确认无脚本/危险协议残留（忽略 xmlns 中的 http）
+    // 二次确认无脚本/危险协议/SMIL 残留（不对 CSS 文本做内容级扫描）
     if (preg_match('/<\s*script\b/i', $out) || preg_match('/\bon[a-z]+\s*=/i', $out)) {
         return array('SVG仍含有危险脚本内容！', false);
     }
     if (preg_match('/(?:href|xlink:href|src)\s*=\s*([\'"])\s*(?:https?:|javascript:|data:)/i', $out)) {
         return array('SVG仍含有外部或危险引用！', false);
     }
-    if (svg_output_has_unsafe_url($out)) {
-        return array('SVG仍含有外部或危险引用！', false);
-    }
-    if (preg_match('/<\s*(?:set|animate|animatemotion|animatetransform|animatecolor|mpath|style)\b/i', $out)) {
-        return array('SVG仍含有不安全的动画或样式内容！', false);
+    if (preg_match('/<\s*(?:set|animate|animatemotion|animatetransform|animatecolor|mpath)\b/i', $out)) {
+        return array('SVG仍含有不安全的动画内容！', false);
     }
     return array('<?xml version="1.0" encoding="UTF-8"?>' . "\n" . $out, true);
 }
@@ -2674,7 +3137,7 @@ function imagick_post_process_avif($path, $watermark = false, $max_width = null,
             }
         }
         if ($watermark) {
-            $GLOBALS['_upload_post_process_notice'] = '当前环境 AVIF 由 Imagick 处理，已跳过水印';
+            upload_append_post_process_notice('当前环境 AVIF 由 Imagick 处理，已跳过水印');
         }
         return true;
     } catch (\Throwable $e) {
@@ -2797,7 +3260,7 @@ function upload_post_process_image($abs_path, $watermark = null, $graceful = fal
     list($can_process, $skip_msg) = gd_can_post_process_image($abs_path);
     if (! $can_process) {
         if ($skip_msg !== '') {
-            $GLOBALS['_upload_post_process_notice'] = $skip_msg;
+            upload_append_post_process_notice($skip_msg);
         }
         return true;
     }
@@ -2893,11 +3356,16 @@ function upload($input_name, $file_ext = null, $max_width = null, $max_height = 
     }
     
     $array_save_file = array();
+    $upload_notices = array();
     if (is_array($files['tmp_name'])) { // 多文件情况
         $file_count = count($files['tmp_name']);
         for ($i = 0; $i < $file_count; $i ++) {
             if (! $files['error'][$i]) {
                 $upfile = handle_upload($files['name'][$i], $files['tmp_name'][$i], $array_ext_allow, $max_width, $max_height, $watermark);
+                $file_notice = upload_post_process_last_notice();
+                if ($file_notice !== '') {
+                    $upload_notices[] = $file_notice;
+                }
                 if (strrpos($upfile, '/') > 0) {
                     $array_save_file[] = $upfile;
                 } else {
@@ -2910,6 +3378,10 @@ function upload($input_name, $file_ext = null, $max_width = null, $max_height = 
     } else { // 单文件情况
         if (! $files['error']) {
             $upfile = handle_upload($files['name'], $files['tmp_name'], $array_ext_allow, $max_width, $max_height, $watermark);
+            $file_notice = upload_post_process_last_notice();
+            if ($file_notice !== '') {
+                $upload_notices[] = $file_notice;
+            }
             if (strrpos($upfile, '/') > 0) {
                 $array_save_file[] = $upfile;
             } else {
@@ -2921,14 +3393,17 @@ function upload($input_name, $file_ext = null, $max_width = null, $max_height = 
     }
     if (isset($err)) {
         return $err;
-    } else {
-        return $array_save_file;
     }
+    if ($upload_notices) {
+        $GLOBALS['_upload_post_process_notice'] = upload_truncate_notice(implode('；', $upload_notices));
+    }
+    return upload_build_success_result($array_save_file);
 }
 
 // 处理并移动上传文件
 function handle_upload($file, $temp, $array_ext_allow, $max_width, $max_height, $watermark)
 {
+    unset($GLOBALS['_upload_post_process_notice']);
     // 定义主存储路径
     $save_path = DOC_PATH . STATIC_DIR . '/upload';
     // 确保上传目录 Apache MIME/nosniff/禁脚本规则已部署
@@ -3023,7 +3498,7 @@ function handle_upload($file, $temp, $array_ext_allow, $max_width, $max_height, 
         list($can_process, $skip_msg) = gd_can_post_process_image($file_path);
         if (! $can_process) {
             if ($skip_msg !== '') {
-                $GLOBALS['_upload_post_process_notice'] = $skip_msg;
+                upload_append_post_process_notice($skip_msg);
             }
             return $save_file;
         }
@@ -3074,8 +3549,13 @@ function resize_img($src_image, $out_image = null, $max_width = null, $max_heigh
     }
     list ($width, $height, $type, $attr) = $size_info;
 
-    // 动画 GIF：GD 缩放会丢帧，整文件拷贝保留动图
+    // 动画 GIF：优先 Imagick 多帧缩放，不可用则 GD 兜底（copy 保留原图）
     if ((int) $type === IMAGETYPE_GIF && is_animated_gif($src_image)) {
+        $imResult = imagick_resize_animated_gif($src_image, $out_image, $max_width, $max_height, $width, $height);
+        if ($imResult === true || is_string($imResult)) {
+            return $imResult;
+        }
+        // false = Imagick 不可用，降级到 copy
         check_dir(dirname($out_image), true);
         if ($src_image != $out_image) {
             if (! copy($src_image, $out_image)) {
@@ -3164,17 +3644,6 @@ function cut_img($src_image, $out_image = null, $new_width = null, $new_height =
         return '上传文件不是有效的图片！';
     }
 
-    // 动画 GIF：GD 裁剪会丢帧，整文件拷贝保留动图
-    if ((int) $type === IMAGETYPE_GIF && is_animated_gif($src_image)) {
-        check_dir(dirname($out_image), true);
-        if ($src_image != $out_image) {
-            if (! copy($src_image, $out_image)) {
-                return '裁剪图片时拷贝到目的地址失败！';
-            }
-        }
-        return true;
-    }
-
     // 不限定则按另一边等比例缩放
     if (! $new_width) {
         $new_width = floor($width * ($new_height / $height));
@@ -3184,6 +3653,21 @@ function cut_img($src_image, $out_image = null, $new_width = null, $new_height =
     }
     $new_width = max(1, (int) $new_width);
     $new_height = max(1, (int) $new_height);
+
+    // 动画 GIF：Imagick 多帧裁剪，不可用则 copy 保留原图
+    if ((int) $type === IMAGETYPE_GIF && is_animated_gif($src_image)) {
+        $imResult = imagick_cut_animated_gif($src_image, $out_image, $new_width, $new_height, $width, $height);
+        if ($imResult === true || is_string($imResult)) {
+            return $imResult;
+        }
+        check_dir(dirname($out_image), true);
+        if ($src_image != $out_image) {
+            if (! copy($src_image, $out_image)) {
+                return '裁剪图片时拷贝到目的地址失败！';
+            }
+        }
+        return true;
+    }
 
     // 按目标宽高比在原图中计算最大可用源区域，并居中取样，避免拉伸与主体偏移
     $dst_ratio = $new_width / $new_height;
@@ -3275,6 +3759,7 @@ function watermark_img($src_image, $out_image = null, $position = null, $waterma
                 return '水印处理时拷贝到目的地址失败！';
             }
         }
+        upload_append_post_process_notice('动画GIF已跳过水印（保留动画）');
         return true;
     }
     
@@ -3426,10 +3911,13 @@ function watermark_img($src_image, $out_image = null, $position = null, $waterma
     // GIF 保存前重新标记透明色，避免真彩→调色板丢失透明索引
     if ($type1 == IMAGETYPE_GIF) {
         $trans_index = imagecolortransparent($img1);
-        if ($trans_index >= 0) {
-            $tc = imagecolorsforindex($img1, $trans_index);
-            $bg = imagecolorallocate($out, $tc['red'], $tc['green'], $tc['blue']);
-            imagecolortransparent($out, $bg);
+        $palette_total = (int) imagecolorstotal($img1);
+        if ($trans_index >= 0 && $palette_total > 0 && $trans_index < $palette_total) {
+            $tc = @imagecolorsforindex($img1, $trans_index);
+            if (is_array($tc) && isset($tc['red'], $tc['green'], $tc['blue'])) {
+                $bg = imagecolorallocate($out, $tc['red'], $tc['green'], $tc['blue']);
+                imagecolortransparent($out, $bg);
+            }
         }
     }
 

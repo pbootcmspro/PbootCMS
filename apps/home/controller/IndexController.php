@@ -269,7 +269,7 @@ class IndexController extends HomeBaseController
         // 调用栏目语言与当前语言不一致时，自动切换语言
         $this->switchLg($sort->acode);
         if (!$sort->listtpl) {
-            error('请到后台设置分类栏目列表页模板！');
+            error('请到后台设置分类栏目列表页模板！', null, 2, 500);
         }
 
         $this->checkPageLevel($sort->gcode, $sort->gtype, $sort->gnote);
@@ -300,7 +300,7 @@ class IndexController extends HomeBaseController
         }
 
         if (!$sort->contenttpl) {
-            error('请到后台设置分类栏目内容页模板！');
+            error('请到后台设置分类栏目内容页模板！', null, 2, 500);
         }
 
         $this->checkPageLevel($sort->gcode, $sort->gtype, $sort->gnote); // 检查栏目权限
@@ -332,7 +332,7 @@ class IndexController extends HomeBaseController
         }
 
         if (!$sort->contenttpl) {
-            error('请到后台设置分类栏目内容页模板！');
+            error('请到后台设置分类栏目内容页模板！', null, 2, 500);
         }
 
         $this->checkPageLevel($sort->gcode, $sort->gtype, $sort->gnote);
@@ -387,12 +387,12 @@ class IndexController extends HomeBaseController
             if ($deny) {
                 $gnote = $gnote ?: '您的权限不足，无法浏览本页面！';
                 if (session('pboot_uid')) { // 已经登录
-                    error($gnote);
+                    error($gnote, null, 2, 403);
                 } else {
                     if ($this->config('login_no_wait')) {
                         location(Url::home('member/login', null, "backurl=" . urlencode(get_current_url())));
                     } else {
-                        error($gnote, Url::home('member/login', null, "backurl=" . urlencode(get_current_url())));
+                        error($gnote, Url::home('member/login', null, "backurl=" . urlencode(get_current_url())), 2, 403);
                     }
                 }
             }

@@ -90,7 +90,9 @@ return array(
     'upload' => array(
         'format' => 'jpg,jpeg,png,gif,webp,svg,svgz,avif,xls,xlsx,doc,docx,ppt,pptx,rar,zip,pdf,txt,mp4,avi,flv,rmvb,mp3,otf,ttf',
         'max_width' => '1920',
-        'max_height' => ''
+        'max_height' => '',
+        'imagick_gif_decode_budget_ratio' => '0.8',
+        'imagick_gif_max_frames' => '2000'
     ),
     
     // 缩略图配置

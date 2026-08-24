@@ -158,7 +158,7 @@ class ParserController extends Controller
                 if ($this->config('login_no_wait')) {
                     location(Url::home('member/login', null, "backurl=" . urlencode(get_current_url())));
                 } else {
-                    error('您的权限不足，无法浏览本页面！', Url::home('member/login', null, "backurl=" . urlencode(get_current_url())));
+                    error('您的权限不足，无法浏览本页面！', Url::home('member/login', null, "backurl=" . urlencode(get_current_url())), 2, 403);
                 }
             }
         }
@@ -1321,7 +1321,7 @@ class ParserController extends Controller
                 if ($page) {
 
                     if (isset($paging)) {
-                        error('请不要在一个页面使用多个具有分页的列表，您可将多余的使用page=0关闭分页！');
+                        error('请不要在一个页面使用多个具有分页的列表，您可将多余的使用page=0关闭分页！', null, 2, 500);
                     }
 
                     $paging = true;
@@ -1783,7 +1783,7 @@ class ParserController extends Controller
                 $data = array();
                 if ($id) { // 获取单个内容的tags
                     if (strpos($scode, ',') !== false) {
-                        error('模板中指定id输出tags时不允许scode指定多个栏目！');
+                        error('模板中指定id输出tags时不允许scode指定多个栏目！', null, 2, 500);
                     }
                     if (!!$rs = $this->model->getContentTags(escape_string($id))) {
                         if ($rs->tags) {
@@ -3127,7 +3127,7 @@ class ParserController extends Controller
                 // 读取数据
                 if ($page) {
                     if (isset($paging)) {
-                        error('请不要在一个页面使用多个具有分页的列表，您可将多余的使用page=0关闭分页！');
+                        error('请不要在一个页面使用多个具有分页的列表，您可将多余的使用page=0关闭分页！', null, 2, 500);
                     }
                     $paging = true;
                 }

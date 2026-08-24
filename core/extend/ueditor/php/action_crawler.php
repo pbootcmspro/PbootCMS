@@ -57,6 +57,11 @@ foreach ($source as $imgUrl) {
             if ($re !== true) {
                 @unlink($full_path);
                 $info['state'] = $re;
+            } else {
+                $notice = upload_post_process_last_notice();
+                if ($notice !== '') {
+                    $info['warning'] = $notice;
+                }
             }
         }
     }

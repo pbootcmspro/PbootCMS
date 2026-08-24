@@ -32,7 +32,7 @@ class FormController extends Controller
         if ($_POST) {
             
             if ($this->config('form_status') === '0') {
-                error('系统已经关闭表单功能，请到后台开启再试！');
+                error('系统已经关闭表单功能，请到后台开启再试！', null, 2, 403);
             }
             
             if (time() - session('lastsub') < 10) {
