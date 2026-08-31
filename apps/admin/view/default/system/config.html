@@ -7,6 +7,7 @@
 	    <li  lay-id="t2">邮件通知</li>
 	    <li  lay-id="t3">百度接口</li>
 	    <li  lay-id="t12">IndexNow推送</li>
+	    <li  lay-id="t13">llms.txt</li>
 	    <li  lay-id="t4">WebAPI</li>
 	    <li  lay-id="t5">图片水印</li>
 	    <li  lay-id="t6">安全配置</li>
@@ -341,6 +342,89 @@
 		                <div class="layui-form-item">
 							 <div class="layui-input-block">
 							    <button class="layui-btn" lay-submit name="submit" value="indexnow">立即提交</button>
+							    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+							 </div>
+						</div>
+	              </form>
+                </div>
+
+                <div class="layui-tab-item">
+                    <form action="{url./admin/Config/index}" method="post" class="layui-form">
+                        <input type="hidden" name="formcheck" value="{$formcheck}" >
+
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">功能状态</label>
+		                     <div class="layui-input-block">
+							<input type="radio" name="llms_open" value="1" {if([$configs.llms_open.value]==1)} checked="checked" {/if} title="开启">
+								<input type="radio" name="llms_open" value="0" {if([$configs.llms_open.value]!=1)} checked="checked" {/if} title="关闭">
+							<span class="layui-icon layui-icon-about tips" data-content="开启后可访问 {$llms_url} ，内容随栏目与文章实时生成，无需手工维护文件；关闭时该地址返回404。llms.txt 目前是社区提案而非标准，各AI厂商均未承诺抓取，属低成本前瞻性适配，不替代 robots.txt 与 sitemap.xml，也不是搜索排名信号。"></span>
+		                     </div>
+		                </div>
+
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">输出范围</label>
+		                     <div class="layui-input-block">
+							<input type="checkbox" name="llms_inc_about" value="1" lay-skin="primary" {if([$configs.llms_inc_about.value]!=0)} checked="checked" {/if} title="单页栏目">
+							<input type="checkbox" name="llms_inc_list" value="1" lay-skin="primary" {if([$configs.llms_inc_list.value]!=0)} checked="checked" {/if} title="列表栏目">
+							<input type="checkbox" name="llms_inc_content" value="1" lay-skin="primary" {if([$configs.llms_inc_content.value]!=0)} checked="checked" {/if} title="栏目下内容">
+		                     </div>
+		                </div>
+
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">每栏目条数</label>
+		                     <div class="layui-input-inline">
+							<input type="text" name="llms_sort_num" value="{$configs.llms_sort_num.value}" placeholder="默认20" class="layui-input">
+		                     </div>
+		                     <div class="layui-form-mid layui-word-aux">条，1-500，超出范围按20处理</div>
+		                </div>
+
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">说明文字</label>
+		                     <div class="layui-input-block">
+							<input type="radio" name="llms_desc_source" value="description" {if([$configs.llms_desc_source.value]!='none')} checked="checked" {/if} title="取栏目/内容描述">
+								<input type="radio" name="llms_desc_source" value="none" {if([$configs.llms_desc_source.value]=='none')} checked="checked" {/if} title="不输出说明">
+							<span class="layui-icon layui-icon-about tips" data-content="说明取自栏目描述与内容描述，会自动去除HTML并压成单行；描述为空时该条链接不输出说明部分。"></span>
+		                     </div>
+		                </div>
+
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">说明截断</label>
+		                     <div class="layui-input-inline">
+							<input type="text" name="llms_desc_len" value="{$configs.llms_desc_len.value}" placeholder="默认100" class="layui-input">
+		                     </div>
+		                     <div class="layui-form-mid layui-word-aux">字，1-500，超出范围按100处理</div>
+		                </div>
+
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">附带站点地图</label>
+		                     <div class="layui-input-block">
+							<input type="radio" name="llms_with_sitemap" value="1" {if([$configs.llms_with_sitemap.value]!=0)} checked="checked" {/if} title="附带">
+								<input type="radio" name="llms_with_sitemap" value="0" {if([$configs.llms_with_sitemap.value]==0)} checked="checked" {/if} title="不附带">
+							<span class="layui-icon layui-icon-about tips" data-content="附带时会在 ## Optional 段输出 sitemap.xml 地址！"></span>
+		                     </div>
+		                </div>
+
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">补充说明</label>
+		                     <div class="layui-input-inline" style="width:480px;">
+							<textarea name="llms_intro" maxlength="190" placeholder="输出在站点标题与分段之间，一句话介绍站点定位，190字以内" class="layui-textarea">{$configs.llms_intro.value}</textarea>
+		                     </div>
+		                     <span class="layui-icon layui-icon-about tips" data-content="配置存放于ay_config表，字段长度限制190字，超出部分会被自动截断！"></span>
+		                </div>
+
+		                <div class="layui-form-item">
+		                     <label class="layui-form-label">Optional段栏目</label>
+		                     <div class="layui-input-block">
+							{$llms_sort_checkbox}
+							<div class="layui-word-aux" style="line-height:1.8;padding-top:6px;">
+								按规范语义，此处勾选的栏目将单独输出到 ## Optional 段，表示上下文不足时可优先跳过的次要页面，如下载、联系方式、法律条款等。仅显示当前区域栏目，其它区域的选择不受影响。跨区域合计受配置项长度限制，超出时将拒绝保存并提示，不会静默丢弃勾选。
+							</div>
+		                     </div>
+		                </div>
+
+		                <div class="layui-form-item">
+							 <div class="layui-input-block">
+							    <button class="layui-btn" lay-submit name="submit" value="llms">立即提交</button>
 							    <button type="reset" class="layui-btn layui-btn-primary">重置</button>
 							 </div>
 						</div>
@@ -982,30 +1066,44 @@
 (function(){
 	var btn = document.getElementById('aiPingBtn');
 	if(!btn) return;
+	var aiPingBusy = false;
 	btn.onclick = function(){
+		if (aiPingBusy) {
+			return;
+		}
 		var fc = btn.closest('form').querySelector('input[name=formcheck]');
 		if (!fc || !fc.value) {
 			layer.alert('表单校验令牌缺失，请刷新页面后重试');
 			return;
 		}
+		aiPingBusy = true;
+		btn.disabled = true;
 		layer.msg('正在测试...', {icon:16, time:0, shade:0.1});
 		fetch('{url./admin/Ai/ping}', {
 			method: 'POST',
 			credentials: 'same-origin',
-			headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded',
+				'X-Requested-With': 'XMLHttpRequest'
+			},
 			body: 'formcheck=' + encodeURIComponent(fc.value)
 		})
 			.then(function(r){return r.json();})
 			.then(function(r){
 				layer.closeAll('loading');
+				aiPingBusy = false;
+				btn.disabled = false;
 				if(r && r.code===1){
 					layer.alert('连接成功！\nAI响应示例：\n' + (r.data && r.data.reply ? r.data.reply : ''));
 				}else{
-					layer.alert('连接失败：' + (r && r.msg ? r.msg : '未知错误'));
+					var err = (r && r.msg) ? r.msg : (r && typeof r.data === 'string' ? r.data : '');
+					layer.alert('连接失败：' + (err || '未知错误'));
 				}
 			})
 			.catch(function(e){
 				layer.closeAll('loading');
+				aiPingBusy = false;
+				btn.disabled = false;
 				layer.alert('请求异常：' + e.message);
 			});
 	};

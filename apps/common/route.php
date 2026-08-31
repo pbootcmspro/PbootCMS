@@ -43,6 +43,7 @@ return array(
         'home/sitemap.xml' => 'home/Sitemap/index', // 站点地图XML格式
         'home/sitemap.txt' => 'home/Sitemap/linkTxt', // 站点地图TXT格式
         'home/sitemap' => 'home/Sitemap/index', // 站点地图默认XML
+        'home/llms.txt' => 'home/Llms/index', // 面向LLM的内容清单
                                                 
         // =======接口路由============
         'api/list' => 'api/list/index/scode',

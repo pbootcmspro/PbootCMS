@@ -22,8 +22,10 @@ class Url
         }
         
         $path = trim_slash($path); // 去除两端斜线
-        
-        if (! isset(self::$urls[$path])) {
+        // 缓存键用裁剪前原始路径 + suffix，避免 URL_BIND / 域名绑定改写 $path 后查写键不一致
+        $cacheKey = $path . "\0" . var_export($suffix, true);
+
+        if (! isset(self::$urls[$cacheKey])) {
             
             $path_arr = explode('/', $path); // 地址数组
             
@@ -94,14 +96,14 @@ class Url
                 $path = substr($path, strlen($cut_str) + 1);
             }
             
-            // 保存处理过的地址
+            // 保存处理过的地址（键用原始路径，值用裁剪后结果）
             if ($path) {
-                self::$urls[$path] = $host . url_index_path() . '/' . $path . $url_ext;
+                self::$urls[$cacheKey] = $host . url_index_path() . '/' . $path . $url_ext;
             } else {
-                self::$urls[$path] = $host . url_index_path(); // 获取根路径前置地址
+                self::$urls[$cacheKey] = $host . url_index_path(); // 获取根路径前置地址
             }
         }
-        return self::$urls[$path];
+        return self::$urls[$cacheKey];
     }
 
     // 生成前端地址

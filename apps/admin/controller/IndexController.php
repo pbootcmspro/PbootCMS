@@ -371,7 +371,7 @@ class IndexController extends Controller
     {
         check_dir(dirname($ip_black), true);
         $content = "<?php\nreturn " . var_export($data, true) . ";";
-        $tmp = $ip_black . '.' . getmypid() . '.' . mt_rand() . '.tmp';
+        $tmp = $ip_black . '.' . \process_instance_id() . '.' . mt_rand() . '.tmp';
         if (file_put_contents($tmp, $content, LOCK_EX) === false) {
             return false;
         }

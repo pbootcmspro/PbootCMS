@@ -1338,7 +1338,7 @@ class Model
      *            是否启用批量一次插入功能，默认true
      * @return number|string|boolean
      */
-    final public function insertGetId(array $data = null, $batch = true)
+    final public function insertGetId($data = null, $batch = true)
     {
         if ($this->insert($data, $batch)) {
             return $this->getDb()->insertId();

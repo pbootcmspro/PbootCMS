@@ -10,6 +10,7 @@ namespace app\common;
 
 use core\basic\Controller;
 use core\basic\Config;
+use core\basic\Request;
 
 class HomeController extends Controller
 {
@@ -24,6 +25,8 @@ class HomeController extends Controller
 
     public function __construct()
     {
+        Request::validate();
+
         // 自动缓存基础信息
         cache_config();
         

@@ -684,7 +684,7 @@ class VisitsCounter
     private static function nextSendingKey()
     {
         self::$sendingSeq ++;
-        return 's' . getmypid() . '-' . self::$sendingSeq . '-' . mt_rand(100000, 999999);
+        return 's' . \process_instance_id() . '-' . self::$sendingSeq . '-' . mt_rand(100000, 999999);
     }
 
     /**
@@ -1059,7 +1059,7 @@ class VisitsCounter
         if ($payload === false) {
             return false;
         }
-        $tmp = $file . '.' . getmypid() . '.' . mt_rand() . '.tmp';
+        $tmp = $file . '.' . \process_instance_id() . '.' . mt_rand() . '.tmp';
         if (@file_put_contents($tmp, $payload, LOCK_EX) === false) {
             return false;
         }

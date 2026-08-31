@@ -11,6 +11,7 @@ namespace app\admin\controller\system;
 use core\basic\Controller;
 use app\admin\model\system\ConfigModel;
 use core\basic\Config;
+use core\basic\Url;
 
 class ConfigController extends Controller
 {
@@ -72,6 +73,23 @@ class ConfigController extends Controller
                     $_POST['indexnow_key_location'] = '';
                     $indexnow_success_msg = '修改成功！推送密钥已变更，已清空密钥文件地址，改用网站根目录密钥文件！';
                 }
+                // basename 校验须在落库前（且在密钥回填/变更清空之后），避免非法地址写入 ay_config
+                $indexnow_location = trim((string) post('indexnow_key_location'));
+                if ($indexnow_location !== '' && ! indexnow_location_basename_ok(post('indexnow_key'), $indexnow_location)) {
+                    error('密钥文件名必须为' . post('indexnow_key') . '.txt（例如 /static/' . post('indexnow_key') . '.txt）！', $indexnow_tab, 8);
+                }
+            }
+
+            // llms.txt：复选框未勾选时浏览器不提交该项，需显式补0，否则无法关闭已开启的范围
+            if (post('submit') == 'llms') {
+                foreach (array('llms_inc_about', 'llms_inc_list', 'llms_inc_content') as $llms_scope_key) {
+                    if (! isset($_POST[$llms_scope_key])) {
+                        $_POST[$llms_scope_key] = '0';
+                    }
+                }
+                // Optional段栏目为复选框数组，归一化为逗号串后按普通配置项入库
+                $_POST['llms_optional_scodes'] = $this->mergeLlmsOptionalScodes(isset($_POST['llms_optional_sorts']) ? $_POST['llms_optional_sorts'] : array());
+                unset($_POST['llms_optional_sorts']);
             }
 
             foreach ($_POST as $key => $value) {
@@ -105,9 +123,7 @@ class ConfigController extends Controller
                 $indexnow_location = trim((string) post('indexnow_key_location'));
                 $root_ok = save_indexnow_key_file($indexnow_key);
                 if ($indexnow_location !== '') {
-                    if (! indexnow_location_basename_ok($indexnow_key, $indexnow_location)) {
-                        error('配置已保存，但密钥文件名必须为' . $indexnow_key . '.txt（例如 /static/' . $indexnow_key . '.txt），未写入自定义地址对应文件！', $indexnow_tab, 10);
-                    } elseif (! write_indexnow_key_to_local_location($indexnow_key, $indexnow_location)) {
+                    if (! write_indexnow_key_to_local_location($indexnow_key, $indexnow_location)) {
                         error('配置已保存，但无法写入密钥文件地址对应的本地文件，请检查路径及写入权限，或手工将文件内容更新为' . $indexnow_key . '！', $indexnow_tab, 10);
                     }
                     if (! $root_ok) {
@@ -155,6 +171,9 @@ class ConfigController extends Controller
                 case 'indexnow':
                     success($indexnow_success_msg, url('/admin/Config/index' . get_tab('t12'), false));
                     break;
+                case 'llms':
+                    success('修改成功！', url('/admin/Config/index' . get_tab('t13'), false));
+                    break;
                 default:
                     success('修改成功！', url('/admin/Config/index', false));
             }
@@ -190,6 +209,30 @@ class ConfigController extends Controller
             $configs['ai_api_key']['value'] = $plain ? mask_secret($plain) : '';
         }
 
+        // llms.txt配置项首次保存前不在库中，此处补默认值供模板取值
+        $llms_defaults = array(
+            'llms_open' => '0',
+            'llms_inc_about' => '1',
+            'llms_inc_list' => '1',
+            'llms_inc_content' => '1',
+            'llms_sort_num' => '20',
+            'llms_desc_source' => 'description',
+            'llms_desc_len' => '100',
+            'llms_with_sitemap' => '1',
+            'llms_intro' => '',
+            'llms_optional_scodes' => ''
+        );
+        foreach ($llms_defaults as $llms_key => $llms_value) {
+            if (! isset($configs[$llms_key]['value'])) {
+                $configs[$llms_key]['value'] = $llms_value;
+            }
+        }
+
+        $llms_selected = array_filter(explode(',', llms_normalize_scodes($configs['llms_optional_scodes']['value'])));
+        $this->assign('llms_sort_checkbox', $this->makeLlmsSortCheckbox(model('admin.content.ContentSort')->getSelect(), $llms_selected));
+        // 地址含未经校验的 HTTP_HOST，落在提示气泡的属性里，输出前先转义
+        $this->assign('llms_url', htmlspecialchars(get_http_url() . Url::home('llms.txt', false), ENT_QUOTES));
+
         $this->assign('ai_key_openssl_warn', $aiKeyOpensslWarn);
         $this->assign('is_sqlite', get_db_type() === 'sqlite');
         $this->assign('configs', $configs);
@@ -197,6 +240,65 @@ class ConfigController extends Controller
         $this->assign('groups', model('admin.member.MemberGroup')->getSelect());
         
         $this->display('system/config.html');
+    }
+
+    /**
+     * 合并Optional段栏目选择
+     *
+     * 该配置项跨语言共用，提交表单只含当前区域可见栏目，
+     * 因此需保留其它区域的既有选择，避免切换区域保存后互相覆盖。
+     */
+    private function mergeLlmsOptionalScodes($checked)
+    {
+        $visible = array();
+        $this->collectSortScodes(model('admin.content.ContentSort')->getSelect(), $visible);
+
+        $kept = array();
+        foreach (explode(',', llms_normalize_scodes($this->config('llms_optional_scodes'))) as $scode) {
+            if ($scode !== '' && ! in_array($scode, $visible, true)) {
+                $kept[] = $scode;
+            }
+        }
+
+        $merged = llms_normalize_scodes(array_merge($kept, is_array($checked) ? $checked : array()));
+        // ay_config.value 仅 varchar(200)；超限时若静默截断会先丢掉排在末尾的当前区域勾选
+        if (strlen($merged) > 200) {
+            error('Optional段栏目数量超出配置项容量限制，请减少勾选后再保存！', url('/admin/Config/index' . get_tab('t13'), false), 5);
+        }
+        return $merged;
+    }
+
+    // 递归收集栏目树中的全部栏目编码
+    private function collectSortScodes($tree, array &$scodes)
+    {
+        if (! is_array($tree)) {
+            return;
+        }
+        foreach ($tree as $value) {
+            $scodes[] = $value->scode;
+            if ($value->son) {
+                $this->collectSortScodes($value->son, $scodes);
+            }
+        }
+    }
+
+    // llms.txt Optional段栏目复选框，标题带上父级路径以区分同名栏目
+    private function makeLlmsSortCheckbox($tree, array $selected, $prefix = '')
+    {
+        $html = '';
+        if (! is_array($tree)) {
+            return $html;
+        }
+        foreach ($tree as $value) {
+            // 栏目名出库时仍是转义态，与栏目下拉列表一样直接插值，再转义会显示成 &amp;
+            $name = $prefix . $value->name;
+            $checked = in_array($value->scode, $selected, true) ? ' checked="checked"' : '';
+            $html .= '<input type="checkbox" name="llms_optional_sorts[]" value="' . $value->scode . '" title="' . $name . '"' . $checked . '>';
+            if ($value->son) {
+                $html .= $this->makeLlmsSortCheckbox($value->son, $selected, $name . ' / ');
+            }
+        }
+        return $html;
     }
 
     // 修改配置文件
@@ -347,6 +449,25 @@ class ConfigController extends Controller
             }
         }
 
+        // llms.txt数量类配置越界时回落默认值，避免脏值导致输出规模失控
+        if ($key == 'llms_sort_num') {
+            $value = (int) $value;
+            $value = ($value < 1 || $value > 500) ? '20' : (string) $value;
+        }
+        if ($key == 'llms_desc_len') {
+            $value = (int) $value;
+            $value = ($value < 1 || $value > 500) ? '100' : (string) $value;
+        }
+        if ($key == 'llms_desc_source' && ! in_array($value, array('description', 'none'), true)) {
+            $value = 'description';
+        }
+        // ay_config.value 为 varchar(200)，超长会被数据库静默截断，此处主动收敛。
+        // 此处的值仍是 post() 转义后的形态，只能按转义态截断，解码入库会破坏后台回显的转义保护
+        if ($key == 'llms_intro') {
+            $value = llms_truncate_intro($value, 190);
+        }
+        // Optional 段超长已在 mergeLlmsOptionalScodes 拦截，此处不再静默截断
+
         if ($this->model->checkConfig("name='$key'")) {
             $this->model->modValue($key, $value);
         } elseif ($key != 'submit' && $key != 'formcheck') {
@@ -364,6 +485,20 @@ class ConfigController extends Controller
                 $description = 'IndexNow推送密钥';
             } elseif ($key == 'indexnow_key_location') {
                 $description = 'IndexNow密钥文件地址';
+            } elseif (strpos($key, 'llms_') === 0) {
+                $llms_descriptions = array(
+                    'llms_open' => 'llms.txt总开关',
+                    'llms_inc_about' => 'llms.txt输出单页栏目',
+                    'llms_inc_list' => 'llms.txt输出列表栏目',
+                    'llms_inc_content' => 'llms.txt输出栏目内容',
+                    'llms_sort_num' => 'llms.txt每栏目条数上限',
+                    'llms_desc_source' => 'llms.txt说明文字来源',
+                    'llms_desc_len' => 'llms.txt说明截断长度',
+                    'llms_with_sitemap' => 'llms.txt附带站点地图',
+                    'llms_intro' => 'llms.txt自定义补充说明',
+                    'llms_optional_scodes' => 'llms.txtOptional段栏目'
+                );
+                $description = isset($llms_descriptions[$key]) ? $llms_descriptions[$key] : '';
             }
             $type = 2;
             if ($key == 'tpl_html_cache') {

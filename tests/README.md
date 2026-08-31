@@ -21,10 +21,11 @@ php tests/unit/ValidateIfConditionTest.php
 | `bootstrap.php` | 轻量环境，不启 Kernel |
 | `support/` | Assert、ParserControllerHarness、DatabaseTestSupport |
 | `fixtures/security/` | pboot:if 绕过 payload |
+| `fixtures/php8_upgrade_bootstrap/` | PHP 8 在线升级自举补丁文件清单 |
 | `unit/` | 单函数/单方法 |
 | `integration/` | 多模块管线 |
 | `contract/` | 源码/行为不变量 |
-| `scripts/` | 子进程探测（并发、错误模式等） |
+| `scripts/` | 子进程探测、自举补丁打包（`build_php8_bootstrap_patch.php`） |
 
 ## 安全测试约束
 

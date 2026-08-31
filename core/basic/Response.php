@@ -38,7 +38,8 @@ class Response
         if (defined('ROWTOTAL')) {
             $output['rowtotal'] = ROWTOTAL;
         } else {
-            if (is_array($data) || is_object($data)) {
+            // PHP 8：非 Countable 对象调用 count() 会抛 TypeError
+            if (is_array($data) || $data instanceof \Countable) {
                 $output['rowtotal'] = count($data);
             } else {
                 $output['rowtotal'] = 1;

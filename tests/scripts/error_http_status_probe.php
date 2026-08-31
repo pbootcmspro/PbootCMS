@@ -37,7 +37,6 @@ defined('SITE_DIR') || define('SITE_DIR', '');
 defined('CORE_DIR') || define('CORE_DIR', '/core');
 defined('APP_VERSION') || define('APP_VERSION', 'test');
 defined('RELEASE_TIME') || define('RELEASE_TIME', '0');
-$_SERVER['SERVER_SOFTWARE'] = isset($_SERVER['SERVER_SOFTWARE']) ? $_SERVER['SERVER_SOFTWARE'] : 'cli-probe';
 
 require CORE_PATH . '/function/handle.php';
 require CORE_PATH . '/basic/Config.php';

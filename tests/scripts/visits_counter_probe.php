@@ -28,6 +28,7 @@ define('APP_PATH', $sourcePath . 'apps');
 define('CORE_PATH', $sourcePath . 'core');
 define('RUN_PATH', $runPath);
 
+require CORE_PATH . '/function/handle.php';
 require CORE_PATH . '/function/file.php';
 require APP_PATH . '/common/VisitsCounter.php';
 

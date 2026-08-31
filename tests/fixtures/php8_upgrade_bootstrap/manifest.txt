@@ -1,0 +1,9 @@
+# V3.2.14 等旧版本在 PHP 8 下在线升级前的最小自举补丁（覆盖到站点根目录）
+# 用法见 doc/php8-online-upgrade-bootstrap.md
+core/function/handle.php
+core/basic/Model.php
+core/basic/Response.php
+apps/admin/controller/system/UpgradeController.php
+apps/admin/view/default/system/upgrade.html
+apps/admin/controller/IndexController.php
+apps/common/VisitsCounter.php

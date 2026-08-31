@@ -27,6 +27,7 @@ return TestAssert::runSuite(function () {
     echo "=== filter_iframe_sanitize_src() rejects dangerous schemes ===\n";
 
     TestAssert::same('', filter_iframe_sanitize_src(IframeSanitizePayloads::entityEncodedJavascript()), 'sanitize: numeric entity javascript');
+    TestAssert::same('', filter_iframe_sanitize_src('javascript&amp;amp;#58;alert(1)'), 'sanitize: triple entity javascript');
     TestAssert::same('', filter_iframe_sanitize_src(IframeSanitizePayloads::hexEntityJavascript()), 'sanitize: hex entity javascript');
     TestAssert::same('', filter_iframe_sanitize_src('JaVaScRiPt:alert(1)'), 'sanitize: mixed-case javascript');
     TestAssert::same('', filter_iframe_sanitize_src('vbscript:msgbox(1)'), 'sanitize: vbscript');

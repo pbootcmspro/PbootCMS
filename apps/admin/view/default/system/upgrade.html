@@ -83,6 +83,24 @@
 
  <script>
  
+// 从 AJAX 错误响应中提取业务文案，避免只显示固定“发生错误”
+function upgradeAjaxErrorMsg(xhr, fallback) {
+	var msg = fallback;
+	try {
+		var r = (xhr && xhr.responseJSON) ? xhr.responseJSON : null;
+		if (!r && xhr && xhr.responseText) {
+			r = JSON.parse(xhr.responseText);
+		}
+		if (r && typeof r.data === 'string' && r.data) {
+			msg = r.data;
+		}
+	} catch (e) {}
+	if (msg === fallback && xhr && xhr.status) {
+		msg = fallback + ' (HTTP ' + xhr.status + ')';
+	}
+	return msg;
+}
+
 //页面加载时检查更新
 $.ajax({
     type: 'GET',
@@ -151,7 +169,7 @@ function check(){
         },
         error:function(xhr,status,error){
      	  layer.close(lyindex);
-       	  layer.msg("检查更新发生错误!", {icon: 5});
+			layer.msg(upgradeAjaxErrorMsg(xhr, "检查更新发生错误!"), {icon: 5});
         }
    	});
 }
@@ -217,7 +235,7 @@ function down(){
 		         },
 		         error:function(xhr,status,error){
 		       	      layer.close(lyindex);
-		        	  layer.msg("下载更新文件发生错误!", {icon: 5});
+				layer.msg(upgradeAjaxErrorMsg(xhr, "下载更新文件发生错误!"), {icon: 5});
 		         }
 		   	});
 		}, index*1000);
@@ -275,7 +293,8 @@ function update(){
   		 }
        },
        error:function(xhr,status,error){
-      	  layer.msg("执行更新文件发生错误!", {icon: 5});
+		layer.close(lyindex);
+		layer.msg(upgradeAjaxErrorMsg(xhr, "执行更新文件发生错误!"), {icon: 5});
        }
  	});
 }

@@ -38,6 +38,26 @@ return TestAssert::runSuite(function () {
         '已配置时直接返回配置值'
     );
 
+    echo "=== get_indexnow_key_location() 容忍误带 SITE_DIR ===\n";
+
+    $key = 'abcdef0123456789abcdef0123456789';
+    $defaultLoc = get_indexnow_key_location($key, '');
+    TestAssert::same(
+        $defaultLoc,
+        get_indexnow_key_location($key, '/cms/' . $key . '.txt'),
+        '相对路径误带SITE_DIR时与留空等价'
+    );
+    TestAssert::same(
+        $defaultLoc,
+        get_indexnow_key_location($key, $key . '.txt'),
+        '不带SITE_DIR的相对路径仍正确'
+    );
+    TestAssert::same(
+        'http://www.example.com/cms/static/' . $key . '.txt',
+        get_indexnow_key_location($key, '/cms/static/' . $key . '.txt'),
+        '子路径误带SITE_DIR时只剥一层前缀'
+    );
+
     echo "=== resolve_indexnow_local_key_file() 二级目录剥 SITE_DIR ===\n";
 
     $rel = 'static/testindexnowsubdir01.txt';

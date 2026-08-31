@@ -232,10 +232,7 @@ CMS源码，能够满足各类企业网站开发建设的需要。系统采用�
     <strong><span style="font-size: 18px;">源码托管地址：</span></strong>
 </p>
 <p>
-    GitHub：<a href="https://github.com/hnaoyun/PbootCMS" target="_blank">https://github.com/hnaoyun/PbootCMS</a><br/>
-</p>
-<p>
-    Gitee：<a href="https://gitee.com/hnaoyun/PbootCMS" target="_blank" title="https://gitee.com/hnaoyun/PbootCMS">https://gitee.com/hnaoyun/PbootCMS</a>
+    GitHub：<a href="https://github.com/pbootcmspro/PbootCMS" target="_blank">https://github.com/pbootcmspro/PbootCMS</a><br/>
 </p>
 <p>
     <strong><span style="font-size: 18px;"><br/></span></strong>
@@ -257,7 +254,7 @@ CMS源码，能够满足各类企业网站开发建设的需要。系统采用�
 {content:source} 来源
 更多简单到想哭的标签请参考开发手册...</pre>','','','','PbootCMS是全新内核且永久开源免费的PHP企业网站开发建设管理系统，是一套高效、简洁、 强悍的可免费商用的PHP CMS源码，能够满足各类企业网站开发建设的需要。系统采用简单到想哭的模板标签，只要懂HTML就可快速开发企业网站。官方提供了大量网站模板免费下载和使用，将致力于为广大开发者和企','255','1','0','0','0','37','0','0','admin','admin','2018-04-11 17:26:11','2019-08-05 11:19:51','4','',''),
 ('2','cn','10','','在线留言','#333333','','','admin','本站','','2018-04-11 17:30:36','','','','','','','','255','1','0','0','0','26','0','0','admin','admin','2018-04-11 17:30:36','2018-04-11 17:30:36','4','',''),
-('3','cn','11','','联系我们','#333333','','','admin','本站','','2018-04-11 17:31:29','','','<p>官方网站：<a href="http://www.pbootcms.com">www.pbootcms.com</a><br/></p><p>技术交流群： 137083872</p><p><br/></p><p>我们一直秉承大道至简分享便可改变世界的理念，坚持做最简约灵活的PbootCMS开源软件！</p><p>您的每一份帮助都将支持PbootCMS做的更好，走的更远！</p><p>我们一直在坚持不懈地努力，并尽可能让PbootCMS完全开源免费，您的帮助将使我们更有动力和信心^_^！</p><p>扫一扫官网付款码赞助我们，您的支持是开发者不断前进的动力！</p><p><br/></p><p><strong>您的每一份捐赠将用来：</strong></p><p>深入PbootCMS核心的开发、</p><p>做丰富的应用；</p><p>设计更爽的用户界面；</p><p>吸引更多的模板开发者和应用开发者；</p><p>奖励更多优秀贡献者。</p><p>把PbootCMS技术交流群137083872推荐给伱自己有兴趣的群做宣传，也是对我们的帮助哟！~~</p><p><img src="/static/upload/image/20180413/1523583018133454.png"/></p><p><br/></p>','','','','','255','1','0','0','0','18','0','0','admin','admin','2018-04-11 17:31:29','2018-04-13 09:30:19','4','',''),
+('3','cn','11','','联系我们','#333333','','','admin','本站','','2018-04-11 17:31:29','','','<p>官方网站：<a href="http://www.pbootcms.com">www.pbootcms.com</a><br/></p><p>技术交流群：<a href="https://www.pbootcms.com/feishu" target="_blank">点击加入飞书群</a></p><p><br/></p><p>我们一直秉承大道至简分享便可改变世界的理念，坚持做最简约灵活的PbootCMS开源软件！</p><p>您的每一份帮助都将支持PbootCMS做的更好，走的更远！</p><p>我们一直在坚持不懈地努力，并尽可能让PbootCMS完全开源免费，您的帮助将使我们更有动力和信心^_^！</p><p>扫一扫官网付款码赞助我们，您的支持是开发者不断前进的动力！</p><p><br/></p><p><strong>您的每一份捐赠将用来：</strong></p><p>深入PbootCMS核心的开发、</p><p>做丰富的应用；</p><p>设计更爽的用户界面；</p><p>吸引更多的模板开发者和应用开发者；</p><p>奖励更多优秀贡献者。</p><p>欢迎把PbootCMS飞书群推荐给感兴趣的朋友，这也是对我们的帮助哟！~~</p><p><img src="/static/upload/image/20180413/1523583018133454.png"/></p><p><br/></p>','','','','','255','1','0','0','0','18','0','0','admin','admin','2018-04-11 17:31:29','2018-04-13 09:30:19','4','',''),
 ('4','cn','3','','PbootCMSV1.0.0正式发布','#333333','','','admin','本站','','2018-04-12 20:30:00','/static/upload/image/20180412/1523499864406172.jpg','','<p>
     &nbsp;&nbsp;&nbsp;&nbsp;<span style="font-size: 18px;">PbootCMS是全新内核且永久开源免费的PHP企业网站开发建设管理系统，是一套高效、简洁、
  强悍的可免费商用的PHP 
@@ -291,10 +288,7 @@ CMS源码，能够满足各类企业网站开发建设的需要。系统采用�
     <strong><span style="font-size: 18px;">源码托管地址：</span></strong>
 </p>
 <p>
-    GitHub：<a href="https://github.com/hnaoyun/PbootCMS" target="_blank">https://github.com/hnaoyun/PbootCMS</a><br/>
-</p>
-<p>
-    Gitee：<a href="https://gitee.com/hnaoyun/PbootCMS" target="_blank" title="https://gitee.com/hnaoyun/PbootCMS">https://gitee.com/hnaoyun/PbootCMS</a>
+    GitHub：<a href="https://github.com/pbootcmspro/PbootCMS" target="_blank">https://github.com/pbootcmspro/PbootCMS</a><br/>
 </p>
 <p>
     <strong><span style="font-size: 18px;"><br/></span></strong>
@@ -324,7 +318,7 @@ CMS源码，能够满足各类企业网站开发建设的需要。系统采用�
 Analytica利用从Facebook获得的大量用户数据，进行精准政治广告投放，以影响政治活动，事件可能涉及到8700万Facebook用户，其中大多数人位于美国，这些都引起了华盛顿的关注。</p><p>这场事件的另几个关键词是“俄罗斯操纵”、“美国总统选举”，这些已经触及到美国国家安全和核心利益。出于对各自选区选民的责任，这场听证会在所难免。</p><p>但参加听证会的国会议员的表现，或许连“通过”的标准都达不到。听证会的最终目的，是为了让这些立法者们能够更好地了解情况，最终至少能够形成对于某些现存问题的一致看法，并通过立法程序加以解决，尽管扎克伯格本人在听证会期间也明确表达了愿意接受“正确的监管”的态度，但至少从这两天的听证会现场情况来看，要达成上述目的的希望渺茫。</p><p>另一个尴尬的事实是，参与听证会的近百名议员，大多数都直接或间接接受过Facebook的政治捐款。在过去12年中，Facebook总共投入了700万美元用于政治捐款，从2014年至今，对扎克伯格质询的议员总共从Facebook获取了超过64万的政治捐助。</p><p>两天的听证会被一名Twitter用户评价为“走过场”，没有“实质意义”，如果说第一天的听证会上，扎克伯格还不时露出紧张的神态，第二天的他则完全神态自若，当主持整场听证会的议员提议休息片刻，扎克伯格回答说，“要不再来几个问题？”美国新闻电视网CNN评价道，两天的听证会，扎克伯格得以全身而退，毫发无伤。</p><p><br/></p>','','','','','255','1','0','0','0','13','0','0','admin','admin','2018-04-12 10:09:37','2018-04-13 09:35:56','4','',''),
 ('8','cn','3','','PbootCMS主要功能介绍','#333333','','','admin','本站','','2018-04-12 10:10:18','/static/upload/image/20180412/1523499864406172.jpg','','<p>&nbsp;&nbsp;&nbsp;&nbsp;<span style="font-size: 18px;">PbootCMS是全新内核且永久开源免费的PHP企业网站开发建设管理系统，是一套高效、简洁、
  强悍的可免费商用的PHP 
-CMS源码，能够满足各类企业网站开发建设的需要。系统采用简单到想哭的模板标签，只要懂HTML就可快速开发企业网站。官方提供了大量网站模板免费下载和使用，将致力于为广大开发者和企业提供最佳的网站开发建设解决方案。</span></p><p>&nbsp;&nbsp;&nbsp;&nbsp;1、系统采用高效、简洁、强悍的模板标签，只要懂HTML就可快速开发企业网站；</p><p>&nbsp;&nbsp;&nbsp;&nbsp;2、系统采用PHP语言开发，使用自主研发的高速多层开发框架及缓存技术；</p><p>&nbsp;&nbsp;&nbsp;&nbsp;3、系统默认采用sqlite轻型数据库，放入PHP空间即可直接使用，可选mysql等数据库，满足各类存储需求；</p><p>&nbsp;&nbsp;&nbsp;&nbsp;4、系统采用响应式管理后台，满足各类设备随时管理的需要；</p><p>&nbsp;&nbsp;&nbsp;&nbsp;5、系统支持后台在线升级，满足系统及时升级更新的需要；</p><p>&nbsp;&nbsp;&nbsp;&nbsp;6、系统支持内容模型、多语言、自定义表单、筛选、多条件搜索、小程序、APP等功能；</p><p>&nbsp;&nbsp;&nbsp;&nbsp;7、系统支持多种URL模式及模型、栏目、内容自定义地址名称，满足各类网站推广优化的需要。<br/></p><p><br/></p><p><strong><span style="font-size: 18px;">源码托管地址：</span></strong></p><p>GitHub：<a href="https://github.com/hnaoyun/PbootCMS" target="_blank">https://github.com/hnaoyun/PbootCMS</a><br/></p><p>Gitee：<a href="https://gitee.com/hnaoyun/PbootCMS" target="_blank" title="https://gitee.com/hnaoyun/PbootCMS">https://gitee.com/hnaoyun/PbootCMS</a></p><p><strong><span style="font-size: 18px;"><br/></span></strong></p><p><strong><span style="font-size: 18px;">简单到想哭的标签：</span></strong></p><pre class="brush:html;toolbar:false">1、全局标签示意：
+CMS源码，能够满足各类企业网站开发建设的需要。系统采用简单到想哭的模板标签，只要懂HTML就可快速开发企业网站。官方提供了大量网站模板免费下载和使用，将致力于为广大开发者和企业提供最佳的网站开发建设解决方案。</span></p><p>&nbsp;&nbsp;&nbsp;&nbsp;1、系统采用高效、简洁、强悍的模板标签，只要懂HTML就可快速开发企业网站；</p><p>&nbsp;&nbsp;&nbsp;&nbsp;2、系统采用PHP语言开发，使用自主研发的高速多层开发框架及缓存技术；</p><p>&nbsp;&nbsp;&nbsp;&nbsp;3、系统默认采用sqlite轻型数据库，放入PHP空间即可直接使用，可选mysql等数据库，满足各类存储需求；</p><p>&nbsp;&nbsp;&nbsp;&nbsp;4、系统采用响应式管理后台，满足各类设备随时管理的需要；</p><p>&nbsp;&nbsp;&nbsp;&nbsp;5、系统支持后台在线升级，满足系统及时升级更新的需要；</p><p>&nbsp;&nbsp;&nbsp;&nbsp;6、系统支持内容模型、多语言、自定义表单、筛选、多条件搜索、小程序、APP等功能；</p><p>&nbsp;&nbsp;&nbsp;&nbsp;7、系统支持多种URL模式及模型、栏目、内容自定义地址名称，满足各类网站推广优化的需要。<br/></p><p><br/></p><p><strong><span style="font-size: 18px;">源码托管地址：</span></strong></p><p>GitHub：<a href="https://github.com/pbootcmspro/PbootCMS" target="_blank">https://github.com/pbootcmspro/PbootCMS</a><br/></p><p><strong><span style="font-size: 18px;"><br/></span></strong></p><p><strong><span style="font-size: 18px;">简单到想哭的标签：</span></strong></p><pre class="brush:html;toolbar:false">1、全局标签示意：
 {pboot:sitetitle}&nbsp;站点标题&nbsp;
 {pboot:sitelogo}&nbsp;站点logo
 2、列表页标签示意：
@@ -370,10 +364,7 @@ CMS源码，能够满足各类企业网站开发建设的需要。系统采用�
     <strong><span style="font-size: 18px;">源码托管地址：</span></strong>
 </p>
 <p>
-    GitHub：<a href="https://github.com/hnaoyun/PbootCMS" target="_blank">https://github.com/hnaoyun/PbootCMS</a><br/>
-</p>
-<p>
-    Gitee：<a href="https://gitee.com/hnaoyun/PbootCMS" target="_blank" title="https://gitee.com/hnaoyun/PbootCMS">https://gitee.com/hnaoyun/PbootCMS</a>
+    GitHub：<a href="https://github.com/pbootcmspro/PbootCMS" target="_blank">https://github.com/pbootcmspro/PbootCMS</a><br/>
 </p>
 <p>
     <strong><span style="font-size: 18px;"><br/></span></strong>
@@ -427,10 +418,7 @@ CMS源码，能够满足各类企业网站开发建设的需要。系统采用�
     <strong><span style="font-size: 18px;">源码托管地址：</span></strong>
 </p>
 <p>
-    GitHub：<a href="https://github.com/hnaoyun/PbootCMS" target="_blank">https://github.com/hnaoyun/PbootCMS</a><br/>
-</p>
-<p>
-    Gitee：<a href="https://gitee.com/hnaoyun/PbootCMS" target="_blank" title="https://gitee.com/hnaoyun/PbootCMS">https://gitee.com/hnaoyun/PbootCMS</a>
+    GitHub：<a href="https://github.com/pbootcmspro/PbootCMS" target="_blank">https://github.com/pbootcmspro/PbootCMS</a><br/>
 </p>
 <p>
     <strong><span style="font-size: 18px;"><br/></span></strong>
@@ -484,10 +472,7 @@ CMS源码，能够满足各类企业网站开发建设的需要。系统采用�
     <strong><span style="font-size: 18px;">源码托管地址：</span></strong>
 </p>
 <p>
-    GitHub：<a href="https://github.com/hnaoyun/PbootCMS" target="_blank">https://github.com/hnaoyun/PbootCMS</a><br/>
-</p>
-<p>
-    Gitee：<a href="https://gitee.com/hnaoyun/PbootCMS" target="_blank" title="https://gitee.com/hnaoyun/PbootCMS">https://gitee.com/hnaoyun/PbootCMS</a>
+    GitHub：<a href="https://github.com/pbootcmspro/PbootCMS" target="_blank">https://github.com/pbootcmspro/PbootCMS</a><br/>
 </p>
 <p>
     <strong><span style="font-size: 18px;"><br/></span></strong>
@@ -541,10 +526,7 @@ CMS源码，能够满足各类企业网站开发建设的需要。系统采用�
     <strong><span style="font-size: 18px;">源码托管地址：</span></strong>
 </p>
 <p>
-    GitHub：<a href="https://github.com/hnaoyun/PbootCMS" target="_blank">https://github.com/hnaoyun/PbootCMS</a><br/>
-</p>
-<p>
-    Gitee：<a href="https://gitee.com/hnaoyun/PbootCMS" target="_blank" title="https://gitee.com/hnaoyun/PbootCMS">https://gitee.com/hnaoyun/PbootCMS</a>
+    GitHub：<a href="https://github.com/pbootcmspro/PbootCMS" target="_blank">https://github.com/pbootcmspro/PbootCMS</a><br/>
 </p>
 <p>
     <strong><span style="font-size: 18px;"><br/></span></strong>
@@ -598,10 +580,7 @@ CMS源码，能够满足各类企业网站开发建设的需要。系统采用�
     <strong><span style="font-size: 18px;">源码托管地址：</span></strong>
 </p>
 <p>
-    GitHub：<a href="https://github.com/hnaoyun/PbootCMS" target="_blank">https://github.com/hnaoyun/PbootCMS</a><br/>
-</p>
-<p>
-    Gitee：<a href="https://gitee.com/hnaoyun/PbootCMS" target="_blank" title="https://gitee.com/hnaoyun/PbootCMS">https://gitee.com/hnaoyun/PbootCMS</a>
+    GitHub：<a href="https://github.com/pbootcmspro/PbootCMS" target="_blank">https://github.com/pbootcmspro/PbootCMS</a><br/>
 </p>
 <p>
     <strong><span style="font-size: 18px;"><br/></span></strong>
@@ -655,10 +634,7 @@ CMS源码，能够满足各类企业网站开发建设的需要。系统采用�
     <strong><span style="font-size: 18px;">源码托管地址：</span></strong>
 </p>
 <p>
-    GitHub：<a href="https://github.com/hnaoyun/PbootCMS" target="_blank">https://github.com/hnaoyun/PbootCMS</a><br/>
-</p>
-<p>
-    Gitee：<a href="https://gitee.com/hnaoyun/PbootCMS" target="_blank" title="https://gitee.com/hnaoyun/PbootCMS">https://gitee.com/hnaoyun/PbootCMS</a>
+    GitHub：<a href="https://github.com/pbootcmspro/PbootCMS" target="_blank">https://github.com/pbootcmspro/PbootCMS</a><br/>
 </p>
 <p>
     <strong><span style="font-size: 18px;"><br/></span></strong>
@@ -908,7 +884,7 @@ CREATE TABLE `ay_label` (
 --
 
 INSERT INTO `ay_label` (`id`,`name`,`value`,`type`,`description`,`create_user`,`update_user`,`create_time`,`update_time`) VALUES
-('1','downlink','https://gitee.com/hnaoyun/PbootCMS/releases','1','下载地址','admin','admin','2018-04-11 16:52:19','2018-04-30 15:05:00');
+('1','downlink','https://github.com/pbootcmspro/PbootCMS','1','下载地址','admin','admin','2018-04-11 16:52:19','2018-04-30 15:05:00');
 
 -- --------------------------------------------------------
 
@@ -1275,7 +1251,7 @@ CREATE TABLE `ay_message` (
 --
 
 INSERT INTO `ay_message` (`id`,`acode`,`contacts`,`mobile`,`content`,`user_ip`,`user_os`,`user_bs`,`recontent`,`status`,`create_user`,`update_user`,`create_time`,`update_time`,`uid`) VALUES
-('1','cn','星梦','16888888888','PbootCMS真心很不错哦！','2130706433','Windows 10','Firefox','谢谢您对我们的大力支持与肯定！','1','admin','admin','2018-04-12 10:56:09','2018-04-12 10:56:42','0');
+('1','cn','PbootCMS','16888888888','PbootCMS真心很不错哦！','2130706433','Windows 10','Firefox','谢谢您对我们的大力支持与肯定！','1','admin','admin','2018-04-12 10:56:09','2018-04-12 10:56:42','0');
 
 -- --------------------------------------------------------
 
@@ -1695,4 +1671,3 @@ INSERT INTO `ay_user_role` (`id`,`ucode`,`rcode`) VALUES
 ('1','10001','R101');
 
 -- --------------------------------------------------------
-

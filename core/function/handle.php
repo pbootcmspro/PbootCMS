@@ -155,6 +155,16 @@ function get_user_ip(): string
     return htmlspecialchars($cip);
 }
 
+/**
+ * 安全关闭 cURL 句柄：PHP 7 为 resource 需 curl_close；PHP 8+ 为 CurlHandle 对象且 PHP 8.5 起 curl_close 废弃。
+ */
+function curl_safe_close($ch)
+{
+    if (is_resource($ch)) {
+        curl_close($ch);
+    }
+}
+
 // 执行URL请求，并返回数据
 function get_url($url, $fields = array(), $UserAgent = null, $vfSSL = false)
 {
@@ -164,7 +174,9 @@ function get_url($url, $fields = array(), $UserAgent = null, $vfSSL = false)
     if ($UserAgent) { // 在HTTP请求中包含一个"User-Agent: "头的字符串。
         curl_setopt($ch, CURLOPT_USERAGENT, $UserAgent);
     } else {
-        curl_setopt($ch, CURLOPT_USERAGENT, $_SERVER["HTTP_USER_AGENT"]);
+        // PHP 8：未定义下标会告警并污染 AJAX JSON；无浏览器 UA 时用固定串
+        $ua = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : 'PbootCMS';
+        curl_setopt($ch, CURLOPT_USERAGENT, $ua);
     }
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 60); // 在发起连接前等待的时间，如果设置为0，则无限等待
     curl_setopt($ch, CURLOPT_TIMEOUT, 90); // 设置cURL允许执行的最长秒数
@@ -190,11 +202,33 @@ function get_url($url, $fields = array(), $UserAgent = null, $vfSSL = false)
     }
     
     $output = curl_exec($ch);
-    if (curl_errno($ch)) {
-        error('请求远程地址错误：' . curl_error($ch));
+    if ($output === false || curl_errno($ch)) {
+        $err = curl_error($ch);
+        curl_safe_close($ch);
+        // 去掉 URL 中可能夹带的用户名密码，避免泄露凭据
+        $err = preg_replace('#://[^:@/\s]+:[^@/\s]+@#', '://***:***@', (string) $err);
+        error('请求远程地址错误：' . ($err !== '' ? $err : '未知网络错误'));
     }
-    curl_close($ch);
+    curl_safe_close($ch);
+    if (! is_string($output)) {
+        error('请求远程地址错误：响应无效');
+    }
     return $output;
+}
+
+/**
+ * 进程实例标识：优先 getmypid，主机 disable_functions 禁用时安全降级
+ * PHP 8 会将被禁用函数从函数表移除，直接调用会 fatal
+ */
+function process_instance_id()
+{
+    if (function_exists('getmypid')) {
+        $pid = @getmypid();
+        if ($pid !== false && $pid !== null && (int) $pid > 0) {
+            return (int) $pid;
+        }
+    }
+    return mt_rand(1000, 2147483647);
 }
 
 // 返回时间戳格式化日期时间，默认当前
@@ -367,13 +401,14 @@ function parse_info_tpl($info_tpl, $string, $jump_url = null, $time = 0)
         }
         $tpl_content = str_replace('{js}', $timeout_js, $tpl_content);
         $tpl_content = str_replace('{info}', $string, $tpl_content);
-        $tpl_content = str_replace('{url}', $jump_url, $tpl_content);
+        $tpl_content = str_replace('{url}', $jump_url ?? '', $tpl_content);
         $tpl_content = str_replace('{time}', $time, $tpl_content);
         $tpl_content = str_replace('{sitedir}', SITE_DIR, $tpl_content);
         $tpl_content = str_replace('{coredir}', CORE_DIR, $tpl_content);
         $tpl_content = str_replace('{appversion}', APP_VERSION . '-' . RELEASE_TIME, $tpl_content);
         $tpl_content = str_replace('{serveros}', PHP_OS, $tpl_content);
-        $tpl_content = str_replace('{serversoft}', $_SERVER['SERVER_SOFTWARE'], $tpl_content);
+        $tpl_content = str_replace('{phpversion}', PHP_VERSION, $tpl_content);
+        $tpl_content = str_replace('{serversoft}', $_SERVER['SERVER_SOFTWARE'] ?? '', $tpl_content);
         return $tpl_content;
     } else {
         exit('<div style="font-size:50px;">:(</div>提示信息的模板文件不存在！');
@@ -409,20 +444,414 @@ function filter_area_domain($domain)
     if ($domain === '') {
         return '';
     }
-    // 去掉协议前缀
-    $domain = preg_replace('{^https?://}i', '', $domain);
-    // 仅允许尾部斜杠，拒绝带 path/query 的输入
-    if (strpos($domain, '/') !== false) {
-        if (! preg_match('{^[^/?#]+/+$}', $domain)) {
-            return false;
-        }
-        $domain = rtrim($domain, '/');
+    $parsed = sanitize_redirect_parse_domain_config($domain);
+    return $parsed === null ? false : $parsed['host'];
+}
+
+/**
+ * 规范化主机名（域名或 IPv4/IPv6 字面量）
+ *
+ * @param string $host
+ * @return string
+ */
+function sanitize_redirect_normalize_host($host)
+{
+    if ($host !== '' && $host[0] === '[' && substr($host, -1) === ']') {
+        $host = substr($host, 1, -1);
     }
-    if ($domain === '' || strpos($domain, '?') !== false || strpos($domain, '#') !== false) {
+    $host = rtrim(strtolower($host), '.');
+    if ($host === '') {
+        return '';
+    }
+    if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6)) {
+        return $host;
+    }
+    if (preg_match('/^[a-z0-9]([a-z0-9\-\.]*[a-z0-9])?$/', $host)) {
+        return $host;
+    }
+    return '';
+}
+
+/**
+ * 解析 HTTP_HOST（支持 bracketed IPv6 与 hostname:port）
+ *
+ * @param mixed $http_host
+ * @return array{host:string,port:int|null}|null
+ */
+function parse_http_host($http_host)
+{
+    $http_host = trim((string) $http_host);
+    if ($http_host === '') {
+        return null;
+    }
+
+    $port = null;
+    $hostPart = '';
+
+    if ($http_host[0] === '[') {
+        if (! preg_match('/^\[([^\]]+)\](?::(\d+))?$/', $http_host, $m)) {
+            return null;
+        }
+        $hostPart = $m[1];
+        if (isset($m[2])) {
+            $port = (int) $m[2];
+        }
+    } else {
+        $parsed = parse_url('http://' . $http_host);
+        if (empty($parsed['host'])) {
+            return null;
+        }
+        $hostPart = $parsed['host'];
+        if (isset($parsed['port'])) {
+            $port = (int) $parsed['port'];
+        }
+    }
+
+    $host = sanitize_redirect_normalize_host($hostPart);
+    if ($host === '') {
+        return null;
+    }
+
+    return array('host' => $host, 'port' => $port);
+}
+
+/**
+ * 跳转参数 -1 哨兵（返回上一页 / Referer）
+ *
+ * @param mixed $jump_url
+ * @return bool
+ */
+function redirect_is_back_sentinel($jump_url)
+{
+    return trim((string) $jump_url) === '-1';
+}
+
+/**
+ * 从域名配置项解析允许的 origin 列表
+ *
+ * @param mixed $domain
+ * @return array{host:string,origins:array<int,array{scheme:string,port:int}>}|null
+ */
+function sanitize_redirect_parse_domain_config($domain)
+{
+    $raw = trim((string) $domain);
+    if ($raw === '') {
+        return null;
+    }
+
+    $scheme = null;
+    if (preg_match('{^(https?)://}i', $raw, $m)) {
+        $scheme = strtolower($m[1]);
+        $raw = substr($raw, strlen($m[0]));
+    }
+
+    if (strpos($raw, '/') !== false) {
+        if (! preg_match('{^[^/?#]+/+$}', $raw)) {
+            return null;
+        }
+        $raw = rtrim($raw, '/');
+    }
+    if ($raw === '' || strpos($raw, '?') !== false || strpos($raw, '#') !== false) {
+        return null;
+    }
+
+    $port = null;
+    $hostPart = $raw;
+    if ($raw[0] === '[') {
+        if (! preg_match('/^\[([^\]]+)\](?::(\d+))?$/', $raw, $m)) {
+            return null;
+        }
+        $hostPart = $m[1];
+        if (isset($m[2])) {
+            $port = (int) $m[2];
+        }
+    } else {
+        $parsed = parse_url('http://' . $raw);
+        if (empty($parsed['host'])) {
+            return null;
+        }
+        $hostPart = $parsed['host'];
+        if (isset($parsed['port'])) {
+            $port = (int) $parsed['port'];
+        }
+    }
+
+    $host = sanitize_redirect_normalize_host($hostPart);
+    if ($host === '') {
+        return null;
+    }
+
+    if ($scheme !== null) {
+        if ($port === null) {
+            $port = ($scheme === 'https') ? 443 : 80;
+        }
+        return array(
+            'host' => $host,
+            'origins' => array(array('scheme' => $scheme, 'port' => $port)),
+        );
+    }
+
+    if ($port !== null) {
+        return array(
+            'host' => $host,
+            'origins' => array(array('scheme' => 'http', 'port' => $port)),
+        );
+    }
+
+    return array(
+        'host' => $host,
+        'origins' => array(
+            array('scheme' => 'http', 'port' => 80),
+            array('scheme' => 'https', 'port' => 443),
+        ),
+    );
+}
+
+/**
+ * 收集允许作为跳转目标的 origin（当前请求、手机域名、主域名、多语言绑定域名）
+ *
+ * @return array<string, array<int, array{scheme:string,port:int}>>
+ */
+function sanitize_redirect_allowed_origins()
+{
+    $origins = array();
+
+    $merge = function ($host, $items) use (&$origins) {
+        if ($host === '') {
+            return;
+        }
+        if (! isset($origins[$host])) {
+            $origins[$host] = array();
+        }
+        foreach ($items as $item) {
+            $exists = false;
+            foreach ($origins[$host] as $existing) {
+                if ($existing['scheme'] === $item['scheme'] && (int) $existing['port'] === (int) $item['port']) {
+                    $exists = true;
+                    break;
+                }
+            }
+            if (! $exists) {
+                $origins[$host][] = $item;
+            }
+        }
+    };
+
+    $self = filter_iframe_request_origin();
+    if ($self !== null && $self['host'] !== '') {
+        $merge($self['host'], array(array('scheme' => $self['scheme'], 'port' => $self['port'])));
+    }
+
+    $addDomain = function ($config) use ($merge) {
+        $parsed = sanitize_redirect_parse_domain_config($config);
+        if ($parsed !== null) {
+            $merge($parsed['host'], $parsed['origins']);
+        }
+    };
+
+    $wap = Config::get('wap_domain');
+    if ($wap) {
+        $addDomain($wap);
+    }
+
+    $main = Config::get('main_domain');
+    if ($main) {
+        $addDomain($main);
+    }
+
+    $lgs = Config::get('lgs');
+    if (is_array($lgs)) {
+        foreach ($lgs as $lg) {
+            if (empty($lg['domain'])) {
+                continue;
+            }
+            $addDomain($lg['domain']);
+        }
+    }
+
+    return $origins;
+}
+
+/**
+ * 绝对 URL 的 origin 是否允许跳转（同 host 与白名单备域均需 scheme/port 一致）
+ *
+ * @param array{scheme:string,host:string,port:int} $target
+ * @return bool
+ */
+function sanitize_redirect_origin_allowed(array $target)
+{
+    $allowed = sanitize_redirect_allowed_origins();
+    if ($target['host'] === '' || ! isset($allowed[$target['host']])) {
         return false;
     }
-    $host = filter_iframe_normalize_host_literal($domain);
-    return $host === '' ? false : $host;
+
+    if ($target['scheme'] !== 'http' && $target['scheme'] !== 'https') {
+        return false;
+    }
+
+    foreach ($allowed[$target['host']] as $origin) {
+        if ($target['scheme'] === $origin['scheme'] && (int) $target['port'] === (int) $origin['port']) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * 校验并规范化相对跳转地址
+ *
+ * @param string $url
+ * @param string $fallback
+ * @return string
+ */
+function sanitize_redirect_relative($url, $fallback)
+{
+    if (strpos($url, '//') === 0) {
+        return $fallback;
+    }
+
+    if (preg_match('~^[^/?#]*:~', $url)) {
+        return $fallback;
+    }
+
+    $path = $url;
+    if (preg_match('/^([^?#]*)/', $url, $m)) {
+        $path = $m[1];
+    }
+    if (strpos($path, '@') !== false) {
+        return $fallback;
+    }
+
+    if (preg_match('/[\x00-\x1F\x7F]/', $url)) {
+        return $fallback;
+    }
+
+    return $url;
+}
+
+/**
+ * 校验绝对跳转 URL（http/https，拒绝 userinfo 与危险 scheme）
+ *
+ * @param string $url
+ * @param string $fallback
+ * @return string
+ */
+function sanitize_redirect_absolute($url, $fallback)
+{
+    $self = filter_iframe_request_origin();
+    if ($self === null) {
+        return $fallback;
+    }
+
+    if (strpos($url, '//') === 0) {
+        $url = $self['scheme'] . ':' . $url;
+    }
+
+    if (preg_match('~^https?://[^/?#]*@~i', $url)) {
+        return $fallback;
+    }
+
+    $target = filter_iframe_src_origin($url, $self['scheme']);
+    if ($target === null || ! sanitize_redirect_origin_allowed($target)) {
+        return $fallback;
+    }
+
+    return $url;
+}
+
+/**
+ * 循环解码 HTML 实体直至稳定（防 &amp;#58;、&amp;amp;#58; 等多重绕过）
+ *
+ * @param string $value
+ * @return string
+ */
+function decode_html_entities_stable($value)
+{
+    $prev = '';
+    while ($prev !== $value) {
+        $prev = $value;
+        $value = html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    }
+    return $value;
+}
+
+/**
+ * 集中式安全跳转 URL 规范化：允许站内相对路径或经 parse_url 校验的同站/白名单 http(s) 地址
+ *
+ * @param mixed  $url
+ * @param string|null $fallback 非法时回退，默认 '/'
+ * @return string
+ */
+function sanitize_redirect_url($url, $fallback = null)
+{
+    $fallback = ($fallback !== null && $fallback !== '') ? (string) $fallback : '/';
+
+    if ($url === null || $url === '' || redirect_is_back_sentinel($url)) {
+        return $fallback;
+    }
+
+    $url = trim((string) $url);
+    if ($url === '') {
+        return $fallback;
+    }
+
+    // HTML 实体解码（防 javascript&#58;、&#47;&#47; 等绕过）
+    $url = decode_html_entities_stable($url);
+
+    // C0/DEL 必须在 trim 之前拒绝，防止 &#09;//evil 等被 trim 洗白
+    if (preg_match('/[\x00-\x1F\x7F]/', $url)) {
+        return $fallback;
+    }
+
+    $url = trim($url);
+    if ($url === '') {
+        return $fallback;
+    }
+
+    if (strpos($url, '\\') !== false) {
+        return $fallback;
+    }
+
+    if (preg_match('/["\'<>]/', $url)) {
+        return $fallback;
+    }
+
+    if (preg_match('/^\s*(?:javascript|data|vbscript|file)\s*:/i', $url)) {
+        return $fallback;
+    }
+
+    if (strpos($url, '//') === 0) {
+        return sanitize_redirect_absolute($url, $fallback);
+    }
+
+    if (preg_match('#^\s*https?://#i', $url)) {
+        return sanitize_redirect_absolute($url, $fallback);
+    }
+
+    return sanitize_redirect_relative($url, $fallback);
+}
+
+/**
+ * 解析 error/success/location/alert_location 的跳转参数（含 Referer -1 回退）
+ *
+ * @param mixed $jump_url
+ * @return string|null null 表示不跳转
+ */
+function redirect_resolve_jump_url($jump_url)
+{
+    if ($jump_url === null || $jump_url === '') {
+        return null;
+    }
+
+    if (redirect_is_back_sentinel($jump_url)) {
+        if (! isset($_SERVER['HTTP_REFERER']) || $_SERVER['HTTP_REFERER'] === '') {
+            return null;
+        }
+        return sanitize_redirect_url($_SERVER['HTTP_REFERER']);
+    }
+
+    return sanitize_redirect_url($jump_url);
 }
 
 // 获取转义数据，支持字符串、数组、对象
@@ -823,13 +1252,21 @@ function filter_html_iframes($html)
     return $html;
 }
 
-// 从任意用户输入中提取字面量主机名：支持完整 URL、协议相对 URL、纯域名
+// 从任意用户输入中提取字面量主机名：支持完整 URL、协议相对 URL、纯域名、bracketed IPv6
 function filter_iframe_normalize_host_literal($value)
 {
     $value = trim((string) $value);
     if ($value === '') {
         return '';
     }
+
+    if ($value[0] === '[') {
+        if (preg_match('/^\[([^\]]+)\]/', $value, $m)) {
+            return sanitize_redirect_normalize_host($m[1]);
+        }
+        return '';
+    }
+
     // 纯域名（无协议、无斜杠）时补一个协议以便 parse_url 解析
     if (strpos($value, '//') === false && strpos($value, '/') === false) {
         $value = 'http://' . $value;
@@ -840,12 +1277,7 @@ function filter_iframe_normalize_host_literal($value)
     if (! $host) {
         return '';
     }
-    $host = rtrim(strtolower($host), '.');
-    // host 仅允许合法字符（与 filter_iframe_sanitize_src 一致）
-    if (! preg_match('/^[a-z0-9]([a-z0-9\-\.]*[a-z0-9])?$/', $host)) {
-        return '';
-    }
-    return $host;
+    return sanitize_redirect_normalize_host($host);
 }
 
 // 从白名单配置项中提取主机名或通配 pattern（支持 *.example.com、.example.com）
@@ -1029,11 +1461,7 @@ function filter_iframe_sanitize_src($src)
     }
 
     // HTML 实体解码（防 &#106;avascript: 等绕过）
-    $src = html_entity_decode($src, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    $decoded = html_entity_decode($src, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    if ($decoded !== $src) {
-        $src = $decoded;
-    }
+    $src = decode_html_entities_stable($src);
 
     $src = trim($src);
     if ($src === '') {
@@ -1104,19 +1532,19 @@ function filter_iframe_is_same_origin($src)
     return $target['scheme'] === $self['scheme'] && $target['host'] === $self['host'] && $target['port'] === $self['port'];
 }
 
-// 当前请求自身 origin：scheme 依 is_https()，host / 端口取自 HTTP_HOST（端口缺省按 scheme 归一）
+// 当前请求自身 origin：scheme 依 is_https()，host / 端口取自 HTTP_HOST（支持 bracketed IPv6）
 function filter_iframe_request_origin()
 {
     if (empty($_SERVER['HTTP_HOST'])) {
         return null;
     }
-    $host = filter_iframe_normalize_host_literal($_SERVER['HTTP_HOST']);
-    if ($host === '') {
+    $parsed = parse_http_host($_SERVER['HTTP_HOST']);
+    if ($parsed === null) {
         return null;
     }
     $scheme = is_https() ? 'https' : 'http';
-    $port = preg_match('/:(\d+)$/', $_SERVER['HTTP_HOST'], $m) ? (int) $m[1] : ($scheme === 'https' ? 443 : 80);
-    return array('scheme' => $scheme, 'host' => $host, 'port' => $port);
+    $port = ($parsed['port'] !== null) ? $parsed['port'] : ($scheme === 'https' ? 443 : 80);
+    return array('scheme' => $scheme, 'host' => $parsed['host'], 'port' => $port);
 }
 
 // 解析 iframe src 的 origin；协议相对 URL 用请求 scheme 补全；解析不出 host 返回 null
@@ -1127,11 +1555,15 @@ function filter_iframe_src_origin($src, $req_scheme)
     if (! $host) {
         return null;
     }
+    $host = sanitize_redirect_normalize_host($host);
+    if ($host === '') {
+        return null;
+    }
     $scheme = parse_url($normalized, PHP_URL_SCHEME);
     $scheme = ($scheme !== null) ? strtolower($scheme) : $req_scheme;
     $port = parse_url($normalized, PHP_URL_PORT);
     $port = ($port !== null) ? (int) $port : ($scheme === 'https' ? 443 : 80);
-    return array('scheme' => $scheme, 'host' => rtrim(strtolower($host), '.'), 'port' => $port);
+    return array('scheme' => $scheme, 'host' => $host, 'port' => $port);
 }
 
 // 从属性串提取 allow，仅保留 Permissions Policy 白名单 token（不透传任意值）
@@ -1566,15 +1998,15 @@ function get_server_info()
     // 服务器系统
     $data['php_os'] = PHP_OS;
     // 服务器访问地址
-    $data['http_host'] = $_SERVER['HTTP_HOST'];
+    $data['http_host'] = $_SERVER['HTTP_HOST'] ?? '';
     // 服务器名称
-    $data['server_name'] = $_SERVER['SERVER_NAME'];
+    $data['server_name'] = $_SERVER['SERVER_NAME'] ?? '';
     // 服务器端口
-    $data['server_port'] = $_SERVER['SERVER_PORT'];
+    $data['server_port'] = $_SERVER['SERVER_PORT'] ?? '';
     // 服务器地址
-    $data['server_addr'] = isset($_SERVER['LOCAL_ADDR']) ? $_SERVER['LOCAL_ADDR'] : $_SERVER['SERVER_ADDR'];
+    $data['server_addr'] = $_SERVER['LOCAL_ADDR'] ?? $_SERVER['SERVER_ADDR'] ?? '';
     // 服务器软件
-    $data['server_software'] = $_SERVER['SERVER_SOFTWARE'];
+    $data['server_software'] = $_SERVER['SERVER_SOFTWARE'] ?? '';
     // 站点目录
     $data['document_root'] = isset($_SERVER['DOCUMENT_ROOT']) ? $_SERVER['DOCUMENT_ROOT'] : DOC_PATH;
     // PHP版本
@@ -1651,7 +2083,7 @@ function get_server_info()
     // 检测curl扩展
     $data['curl'] = extension_loaded('curl') ? YES : NO;
     // 会话保存路径
-    $data['session_save_path'] = session_save_path() ?: $_SERVER['TMP'];
+    $data['session_save_path'] = session_save_path() ?: ($_SERVER['TMP'] ?? '');
     // 检测standard库是否存在
     $data['standard'] = extension_loaded('standard') ? YES : NO;
     // 检测多线程支持
@@ -1739,7 +2171,7 @@ function url_index_path($indexfile = null)
 // 获取服务端web软件
 function get_server_soft()
 {
-    $soft = strtolower($_SERVER["SERVER_SOFTWARE"]);
+    $soft = strtolower($_SERVER["SERVER_SOFTWARE"] ?? '');
     if (strpos($soft, 'iis')) {
         return 'iis';
     } elseif (strpos($soft, 'apache')) {

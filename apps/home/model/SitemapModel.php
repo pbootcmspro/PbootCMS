@@ -46,6 +46,7 @@ class SitemapModel extends Model
         $fields = array(
             'a.id',
             'a.filename',
+            'a.outlink',
             'a.date',
             'c.type',
             'c.urlname',
@@ -75,6 +76,83 @@ class SitemapModel extends Model
             ->where("a.scode='$scode'")
             ->where($where)
             ->join($join)
+            ->select();
+    }
+
+    // llms.txt栏目列表，较sitemap额外取栏目描述用于生成链接说明
+    public function getLlmsSorts()
+    {
+        $fields = array(
+            'a.id',
+            'a.pcode',
+            'a.scode',
+            'a.name',
+            'a.filename',
+            'a.outlink',
+            'a.description',
+            'b.type',
+            'b.urlname'
+        );
+        $join = array(
+            'ay_model b',
+            'a.mcode=b.mcode',
+            'LEFT'
+        );
+        $where = array(
+            'a.status' => 1,
+            'a.acode' => get_lg()
+        );
+        return parent::table('ay_content_sort a')->field($fields)
+            ->where($where)
+            ->join($join)
+            ->order('a.pcode,a.sorting,a.id')
+            ->select();
+    }
+
+    // llms.txt指定栏目内容，按置顶及发布时间倒序取前若干条，控制输出规模
+    public function getLlmsSortContent($scode, $num)
+    {
+        $num = (int) $num;
+        if ($num < 1) {
+            return array();
+        }
+
+        $fields = array(
+            'a.id',
+            'a.title',
+            'a.filename',
+            'a.outlink',
+            'a.description',
+            'a.date',
+            'c.type',
+            'c.urlname',
+            'b.scode',
+            'b.filename as sortfilename'
+        );
+        $join = array(
+            array(
+                'ay_content_sort b',
+                'a.scode=b.scode',
+                'LEFT'
+            ),
+            array(
+                'ay_model c',
+                'b.mcode=c.mcode',
+                'LEFT'
+            )
+        );
+
+        $where = array(
+            'a.scode' => $scode,
+            'a.status' => 1,
+            'c.type' => 2
+        );
+        return parent::table('ay_content a')->field($fields)
+            ->where($where)
+            ->where("a.date<'" . date('Y-m-d H:i:s') . "'")
+            ->join($join)
+            ->order('a.istop DESC,a.date DESC,a.id DESC')
+            ->limit($num)
             ->select();
     }
 }

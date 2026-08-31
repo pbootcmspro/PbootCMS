@@ -104,6 +104,11 @@ class IndexController extends HomeBaseController
                     $sitemap = new SitemapController();
                     $sitemap->linkTxt();
                     break;
+                case 'llms':
+                case 'llms_txt': // 兼容模式下PHP会将查询参数中的点转为下划线
+                    $llms = new LlmsController();
+                    $llms->index();
+                    break;
                 case 'tag':
                     $tag = new TagController();
                     $tag->index();

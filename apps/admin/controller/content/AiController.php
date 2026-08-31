@@ -43,14 +43,24 @@ class AiController extends Controller
     {
         $this->guardConfigAccess();
         $this->guard();
+        $cipher = $this->config('ai_api_key');
+        if (! extension_loaded('openssl') || ! function_exists('openssl_decrypt')) {
+            $this->jsonError('服务端 OpenSSL 扩展不可用，无法读取 API Key');
+        }
         $cfg = $this->getProviderConfig();
         if (! $cfg['api_key']) {
+            if (is_string($cipher) && $cipher !== '') {
+                $this->jsonError('API Key 解密失败，请重新保存 API Key');
+            }
             $this->jsonError('未配置 API Key');
         }
         $rs = $this->callAi(array(
             array('role' => 'user', 'content' => '你好，请回复"连接成功"。'),
-        ), 32);
+        ), 256);
         if ($rs['code'] !== 1) {
+            if (strpos((string) ($rs['msg'] ?? ''), 'finish_reason=length') !== false) {
+                $this->jsonOk(array('reply' => 'API 连接正常（响应被截断，请适当增大「最大Token」）'));
+            }
             $this->jsonError($rs['msg']);
         }
         $this->jsonOk(array('reply' => $rs['data']));

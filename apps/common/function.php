@@ -39,6 +39,9 @@ function make_area_Select($tree, $selectid = null)
 {
     $list_html = '';
     global $blank;
+    if (! isset($blank) || $blank === null) {
+        $blank = '';
+    }
     foreach ($tree as $values) {
         // 默认选择项
         if ($selectid == $values->acode) {
@@ -61,8 +64,10 @@ function make_area_Select($tree, $selectid = null)
             $list_html .= make_area_Select($values->son, $selectid);
         }
     }
-    // 循环完后回归位置
-    $blank = substr($blank, 0, - 6);
+    // 循环完后回归位置（PHP 8：$blank 未进入子级时为 ''，不可对 null 调用 substr）
+    if ($blank !== '' && strlen($blank) >= 6) {
+        $blank = substr($blank, 0, - 6);
+    }
     return $list_html;
 }
 
@@ -91,8 +96,10 @@ function get_btn_back($btnName = '返 回')
     } else {
         $url = url('/' . M . '/' . C . '/index');
     }
+
+    $url = sanitize_redirect_url($url, url('/' . M . '/' . C . '/index'));
     
-    $btn_html = "<a href='" . $url . "' class='layui-btn layui-btn-primary'>$btnName</a>";
+    $btn_html = "<a href='" . htmlspecialchars($url, ENT_QUOTES, 'UTF-8') . "' class='layui-btn layui-btn-primary'>$btnName</a>";
     return $btn_html;
 }
 
@@ -295,7 +302,15 @@ function get_indexnow_key_location($key, $key_location = '')
         if (preg_match('#^https?://#i', $key_location)) {
             return $key_location;
         }
-        return get_http_url() . SITE_DIR . '/' . ltrim(str_replace('\\', '/', $key_location), '/');
+        $rel = ltrim(str_replace('\\', '/', $key_location), '/');
+        // 与 resolve_indexnow_local_key_file() 一致：容忍误带的 SITE_DIR 前缀，避免 /cms/cms/ 双前缀
+        if (defined('SITE_DIR') && SITE_DIR !== '') {
+            $siteDir = trim(str_replace('\\', '/', SITE_DIR), '/');
+            if ($siteDir !== '' && ($rel === $siteDir || strpos($rel, $siteDir . '/') === 0)) {
+                $rel = ltrim(substr($rel, strlen($siteDir)), '/');
+            }
+        }
+        return get_http_url() . SITE_DIR . '/' . $rel;
     }
     return get_http_url() . SITE_DIR . '/' . $key . '.txt';
 }
@@ -710,5 +725,145 @@ function is_extfield_editor($name)
         }
     }
     return isset($map[$name]) && (int) $map[$name] === 8;
+}
+
+// llms.txt：将栏目编码集合（数组或逗号串）规范为去重逗号串，过滤非法编码
+function llms_normalize_scodes($input)
+{
+    if (is_string($input)) {
+        $input = explode(',', $input);
+    }
+    if (! is_array($input)) {
+        return '';
+    }
+    $codes = array();
+    foreach ($input as $code) {
+        if (! is_scalar($code)) {
+            continue;
+        }
+        $code = trim((string) $code);
+        // 栏目编码为 ay_content_sort.scode，限定字母数字与连字符下划线
+        if ($code === '' || ! preg_match('/^[\w\-]{1,20}$/', $code)) {
+            continue;
+        }
+        if (! in_array($code, $codes, true)) {
+            $codes[] = $code;
+        }
+    }
+    return implode(',', $codes);
+}
+
+// llms.txt：把文本压成不含换行的单行，换行会破坏 Markdown 列表结构
+function llms_single_line($text)
+{
+    if (! is_scalar($text)) {
+        return '';
+    }
+    // \s 在 /u 模式下不含 U+00A0 与中日韩全角空格，需显式列出
+    $text = preg_replace('/[\x{00a0}\x{3000}\s]+/u', ' ', (string) $text);
+    return trim((string) $text);
+}
+
+// llms.txt：将富文本或描述压成单行纯文本并按字数截断，供链接说明使用
+function llms_plain_text($text, $len = 100)
+{
+    if (! is_scalar($text)) {
+        return '';
+    }
+    $text = (string) $text;
+    if ($text === '') {
+        return '';
+    }
+    // 入库时经 escape_string 转义，须先还原再剥标签；顺序颠倒会把实体形态的标签解码进输出
+    $text = decode_string($text);
+    // 块级结束标签代表语义换行，先换成空格再剥标签，避免前后文字被粘连
+    $text = preg_replace('#<br\s*/?>|</(p|div|li|tr|td|h[1-6]|blockquote)>#i', ' ', $text);
+    $text = preg_replace('#<!--.*?-->#s', '', $text);
+    // 解码后无法区分真标签与作者写的小于号，故只剥「<字母」开头的合法标签形态；
+    // strip_tags 会从小于号一路吞到结尾，「价格 <100 元」会只剩「价格」
+    $text = preg_replace('#</?[a-z][a-z0-9]*[^>]*>#i', '', $text);
+    // 富文本常见的 &nbsp; 等命名实体在剥完标签后才还原，避免重新生成可被误认的标签
+    $text = html_entity_decode($text, ENT_QUOTES, 'UTF-8');
+    $text = llms_single_line($text);
+    if ($text === '') {
+        return '';
+    }
+
+    $len = (int) $len;
+    if ($len < 1) {
+        return '';
+    }
+    if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+        if (mb_strlen($text, 'utf-8') > $len) {
+            $text = mb_substr($text, 0, $len, 'utf-8') . '…';
+        }
+    } elseif (strlen($text) > $len) {
+        $text = substr($text, 0, $len) . '…';
+    }
+    return $text;
+}
+
+// llms.txt：按 ay_config 字段长度收敛补充说明；入参为入库转义态，不在此解码
+function llms_truncate_intro($text, $len = 190)
+{
+    if (! is_scalar($text)) {
+        return '';
+    }
+    $text = trim(preg_replace('/[\r\n\t]+/', ' ', (string) $text));
+    if ($text === '') {
+        return '';
+    }
+
+    $len = (int) $len;
+    if ($len < 1) {
+        return '';
+    }
+    if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+        if (mb_strlen($text, 'utf-8') > $len) {
+            $text = mb_substr($text, 0, $len, 'utf-8');
+        }
+    } elseif (strlen($text) > $len) {
+        $text = substr($text, 0, $len);
+    }
+    // 截断可能切开 &amp; 之类的实体，去掉尾部残片以免入库后解码出乱码
+    return preg_replace('/&[#0-9a-zA-Z]{0,9}$/', '', $text);
+}
+
+// llms.txt：转义 Markdown 链接文本中会破坏 [标题](地址) 结构的字符
+function llms_escape_link_text($text)
+{
+    if (! is_scalar($text)) {
+        return '';
+    }
+    $text = llms_plain_text($text, 200);
+    return str_replace(array('[', ']'), array('\[', '\]'), $text);
+}
+
+// llms.txt：转义链接地址中会提前闭合 Markdown 链接的字符
+function llms_escape_link_url($url)
+{
+    if (! is_scalar($url)) {
+        return '';
+    }
+    $url = trim((string) $url);
+    $url = str_replace(array("\r", "\n", ' '), array('', '', '%20'), $url);
+    return str_replace(array('(', ')'), array('%28', '%29'), $url);
+}
+
+/**
+ * llms.txt：生成一条 Markdown 链接行，说明为空时省略冒号部分
+ *
+ * 标题在此完成清洗，说明则须由调用方按 llms_desc_len 清洗截断后传入：
+ * llms_plain_text() 含解码步骤并不幂等，重复清洗会把已还原的字面标签当真标签剥掉。
+ */
+function llms_link_line($title, $url, $note = '')
+{
+    $title = llms_escape_link_text($title);
+    $url = llms_escape_link_url($url);
+    if ($title === '' || $url === '') {
+        return '';
+    }
+    $note = llms_single_line($note);
+    return '- [' . $title . '](' . $url . ')' . ($note !== '' ? ': ' . $note : '');
 }
 

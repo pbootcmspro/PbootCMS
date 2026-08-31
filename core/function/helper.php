@@ -59,13 +59,8 @@ function error($string, $jump_url = null, $time = 2, $status = null)
     if (! $string)
         $string = '未知错误！';
     
-    if ($jump_url == '-1' && isset($_SERVER['HTTP_REFERER'])) {
-        $jump_url = $_SERVER['HTTP_REFERER'];
-        if (strpos($jump_url, get_http_url()) !== 0) {
-            $jump_url = '/';
-        }
-    } elseif ($jump_url == '-1') {
-        $jump_url = null;
+    if ($jump_url !== null && $jump_url !== '') {
+        $jump_url = redirect_resolve_jump_url($jump_url);
     }
     if ($as_json) { // 接口模型返回格式数据
         Response::json(0, strip_tags($string), $jump_url);
@@ -85,13 +80,8 @@ function error($string, $jump_url = null, $time = 2, $status = null)
  */
 function success($string, $jump_url = null, $time = 2)
 {
-    if ($jump_url == '-1' && isset($_SERVER['HTTP_REFERER'])) {
-        $jump_url = $_SERVER['HTTP_REFERER'];
-        if (strpos($jump_url, get_http_url()) !== 0) {
-            $jump_url = '/';
-        }
-    } elseif ($jump_url == '-1') {
-        $jump_url = null;
+    if ($jump_url !== null && $jump_url !== '') {
+        $jump_url = redirect_resolve_jump_url($jump_url);
     }
     if (Config::get('return_data_type') == 'json' || is_ajax()) { // 接口模型返回格式数据
         Response::json(1, strip_tags($string), $jump_url);
@@ -138,11 +128,9 @@ function alert_back($info, $status = 0)
  */
 function location($url)
 {
-    if ($url == '-1' && isset($_SERVER['HTTP_REFERER'])) {
-        $url = $_SERVER['HTTP_REFERER'];
-        if (strpos($url, get_http_url()) !== 0) {
-            $url = '/';
-        }
+    $url = redirect_resolve_jump_url($url);
+    if ($url === null || $url === '') {
+        $url = '/';
     }
     header('Location:' . $url);
     exit();
@@ -156,11 +144,8 @@ function location($url)
  */
 function alert_location($info, $url, $status = 0)
 {
-    if ($url == '-1' && isset($_SERVER['HTTP_REFERER'])) {
-        $url = $_SERVER['HTTP_REFERER'];
-        if (strpos($url, get_http_url()) !== 0) {
-            $url = '/';
-        }
+    if ($url !== null && $url !== '') {
+        $url = redirect_resolve_jump_url($url);
     }
     if (Config::get('return_data_type') == 'json' || is_ajax()) { // 接口模型返回格式数据
         Response::json($status, strip_tags($info), $url);
