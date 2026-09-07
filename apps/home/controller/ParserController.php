@@ -383,7 +383,7 @@ class ParserController extends Controller
                         $content = str_replace($matches[0][$i], $this->adjustLabelData($params, $data->login_count), $content);
                         break;
                     case 'lastloginip':
-                        $content = str_replace($matches[0][$i], $this->adjustLabelData($params, long2ip($data->last_login_ip)), $content);
+                        $content = str_replace($matches[0][$i], $this->adjustLabelData($params, long2ip_safe($data->last_login_ip)), $content);
                         break;
                     case 'lastlogintime':
                         $content = str_replace($matches[0][$i], $this->adjustLabelData($params, $data->last_login_time), $content);
@@ -2141,7 +2141,7 @@ class ParserController extends Controller
                                 $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, $key), $one_html);
                                 break;
                             case 'ip':
-                                $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, long2ip($value->user_ip)), $one_html);
+                                $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, long2ip_safe($value->user_ip)), $one_html);
                                 break;
                             case 'os':
                                 $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, $value->user_os), $one_html);
@@ -2519,7 +2519,7 @@ class ParserController extends Controller
                 $content = str_replace($search, $this->adjustLabelData($params, $key), $content);
                 break;
             case 'ip':
-                $content = str_replace($search, $this->adjustLabelData($params, long2ip($data->user_ip)), $content);
+                $content = str_replace($search, $this->adjustLabelData($params, long2ip_safe($data->user_ip)), $content);
                 break;
             case 'os':
                 $content = str_replace($search, $this->adjustLabelData($params, $data->user_os), $content);
@@ -2660,7 +2660,7 @@ class ParserController extends Controller
                                 $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, $key), $one_html);
                                 break;
                             case 'ip':
-                                $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, long2ip($value->user_ip)), $one_html);
+                                $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, long2ip_safe($value->user_ip)), $one_html);
                                 break;
                             case 'os':
                                 $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, $value->user_os), $one_html);

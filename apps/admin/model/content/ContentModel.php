@@ -274,9 +274,10 @@ class ContentModel extends Model
             // 查找扩展内容
             $extdata = parent::table('ay_content_ext')->where('contentid=' . $value['id'])->find(1);
             
-            // 去除主键并修改栏目
+            // 去除主键并修改栏目，清空自定义URL名称避免副本与原文链接冲突
             unset($value['id']);
             $value['scode'] = $scode;
+            $value['filename'] = '';
             
             // 插入主内容
             $id = parent::table('ay_content')->insertGetId($value);

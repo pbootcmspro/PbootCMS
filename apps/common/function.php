@@ -130,6 +130,22 @@ function get_btn_del($idValue, $id = 'id', $btnName = '删除')
     return $btn_html;
 }
 
+// 获取 POST + formcheck 删除按钮（用于已改为仅接受 POST 的删除端点）
+function get_btn_del_post($idValue, $id = 'id', $btnName = '删除')
+{
+    $user_level = session('levels');
+    if (! in_array('/' . M . '/' . C . '/del', $user_level) && session('id') != 1)
+        return;
+    $action = htmlspecialchars(url('/' . M . '/' . C . "/del/$id/$idValue"), ENT_QUOTES, 'UTF-8');
+    $token = htmlspecialchars((string) session('formcheck'), ENT_QUOTES, 'UTF-8');
+    $btnName = htmlspecialchars($btnName, ENT_QUOTES, 'UTF-8');
+    $btn_html = "<form action='" . $action . "' method='post' style='display:inline' onsubmit='return confirm(\"您确定要删除么？\")'>"
+        . "<input type='hidden' name='formcheck' value='" . $token . "'>"
+        . "<button type='submit' class='layui-btn layui-btn-xs layui-btn-danger' title='" . $btnName . "'>" . $btnName . "</button>"
+        . "</form>";
+    return $btn_html;
+}
+
 // 获取修改按钮
 function get_btn_mod($idValue, $id = 'id', $btnName = '修改')
 {

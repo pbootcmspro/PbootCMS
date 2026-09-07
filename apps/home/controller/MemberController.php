@@ -271,9 +271,22 @@ class MemberController extends HomeBaseController
             if (! $checkcode) {
                 alert_back('验证码不能为空！');
             }
-            $retrieve_checkcode = session('retrieve_checkcode');
-            $session_retrieve_email = session('retrieve_email');
-            if (! $retrieve_checkcode || ! $session_retrieve_email || $checkcode != $retrieve_checkcode || $retrieve_email != $session_retrieve_email) {
+            $verify = verify_retrieve_code($checkcode, $retrieve_email, array(
+                'retrieve_checkcode' => session('retrieve_checkcode'),
+                'retrieve_email' => session('retrieve_email'),
+                'retrieve_checkcode_time' => session('retrieve_checkcode_time'),
+                'retrieve_checkcode_failures' => session('retrieve_checkcode_failures')
+            ));
+            if ($verify['status'] === 'expired') {
+                clear_retrieve_code_session();
+                alert_back('验证码已过期，请重新获取！');
+            }
+            if ($verify['status'] === 'locked') {
+                clear_retrieve_code_session();
+                alert_back('验证码错误次数过多，请重新获取！');
+            }
+            if ($verify['status'] !== 'ok') {
+                session('retrieve_checkcode_failures', $verify['failures']);
                 alert_back('验证码错误！');
             }
             $where = array('username' => $username);
@@ -288,8 +301,7 @@ class MemberController extends HomeBaseController
                 'password' => md5(md5($password))
             ];
             $this->model->updatePassword($where,$data);
-            unset($_SESSION['retrieve_checkcode']);
-            unset($_SESSION['retrieve_email']);
+            clear_retrieve_code_session();
             alert_location('修改成功！', Url::home('member/login'), 1);
         } else {
             $content = parent::parser($this->htmldir . 'member/retrieve.html'); // 框架标签解析
@@ -502,10 +514,12 @@ class MemberController extends HomeBaseController
         if ($to) {
             session('lastsend', time()); // 记录最后提交时间
             $mail_subject = "【" . CMSNAME . "】您有新的验证码信息，请注意查收！";
-            $code = create_code(4);
+            $code = create_code();
             session($retrieve ? 'retrieve_checkcode' : 'checkcode', strtolower($code));
             if ($retrieve) {
                 session('retrieve_email', strtolower(trim($to)));
+                session('retrieve_checkcode_time', time());
+                session('retrieve_checkcode_failures', 0);
             }
             $mail_body = "您的验证码为：" . $code;
             $mail_body .= '<br>来自网站 ' . get_http_url() . ' （' . date('Y-m-d H:i:s') . '）';

@@ -175,59 +175,23 @@ class Uploader
         $imgUrl = htmlspecialchars($this->fileField);
         $imgUrl = str_replace("&amp;", "&", $imgUrl);
 
-        //http开头验证
-        if (strpos($imgUrl, "http") !== 0) {
-            $this->stateInfo = $this->getStateInfo("ERROR_HTTP_LINK");
+        if (! function_exists('remote_fetch_image')) {
+            require_once dirname(dirname(dirname(__DIR__))) . '/function/remote_fetch.php';
+        }
+
+        $maxSize = isset($this->config['maxSize']) ? (int) $this->config['maxSize'] : 0;
+        $allowFiles = isset($this->config['allowFiles']) ? $this->config['allowFiles'] : array();
+        $fetched = remote_fetch_image($imgUrl, $allowFiles, $maxSize);
+        if ($fetched === false) {
+            $this->stateInfo = $this->getStateInfo($this->mapRemoteFetchError(remote_fetch_last_error()));
             return;
         }
 
-        preg_match('/(^https*:\/\/[^:\/]+)/', $imgUrl, $matches);
-        $host_with_protocol = count($matches) > 1 ? $matches[1] : '';
-
-        // 判断是否是合法 url
-        if (!filter_var($host_with_protocol, FILTER_VALIDATE_URL)) {
-            $this->stateInfo = $this->getStateInfo("INVALID_URL");
-            return;
-        }
-
-        preg_match('/^https*:\/\/(.+)/', $host_with_protocol, $matches);
-        $host_without_protocol = count($matches) > 1 ? $matches[1] : '';
-
-        // 此时提取出来的可能是 ip 也有可能是域名，先获取 ip
-        $ip = gethostbyname($host_without_protocol);
-        // 判断是否是私有 ip
-        if(!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE)) {
-            $this->stateInfo = $this->getStateInfo("INVALID_IP");
-            return;
-        }
-
-        //获取请求头并检测死链
-        $heads = get_headers($imgUrl, 1);
-        if (!(stristr($heads[0], "200") && stristr($heads[0], "OK"))) {
-            $this->stateInfo = $this->getStateInfo("ERROR_DEAD_LINK");
-            return;
-        }
-        //格式验证(扩展名验证和Content-Type验证)
-        $fileType = strtolower(strrchr($imgUrl, '.'));
-        if (!in_array($fileType, $this->config['allowFiles']) || !isset($heads['Content-Type']) || !stristr($heads['Content-Type'], "image")) {
-            $this->stateInfo = $this->getStateInfo("ERROR_HTTP_CONTENTTYPE");
-            return;
-        }
-
-        //打开输出缓冲区并获取远程图片
-        ob_start();
-        $context = stream_context_create(
-            array('http' => array(
-                'follow_location' => false // don't follow redirects
-            ))
-        );
-        readfile($imgUrl, false, $context);
-        $img = ob_get_contents();
-        ob_end_clean();
+        $img = $fetched['body'];
         preg_match("/[\/]([^\/]*)[\.]?[^\.\/]*$/", $imgUrl, $m);
 
-        $this->oriName = $m ? $m[1]:"";
-        $this->fileSize = strlen($img);
+        $this->oriName = $m ? $m[1] : "";
+        $this->fileSize = $fetched['size'];
         $this->fileType = $this->getFileExt();
         $this->fullName = $this->getFullName();
         $this->filePath = $this->getFilePath();
@@ -255,7 +219,35 @@ class Uploader
         } else { //移动成功
             $this->stateInfo = $this->stateMap[0];
         }
+    }
 
+    /**
+     * remote_fetch_last_error() → UEditor 状态码
+     *
+     * @param string $code
+     * @return string
+     */
+    private function mapRemoteFetchError($code)
+    {
+        switch ($code) {
+            case 'invalid_scheme':
+                return 'ERROR_HTTP_LINK';
+            case 'invalid_ip':
+                return 'INVALID_IP';
+            case 'invalid_url':
+            case 'invalid_type':
+            case 'curl_missing':
+                return 'INVALID_URL';
+            case 'dead_link':
+                return 'ERROR_DEAD_LINK';
+            case 'size_exceed':
+                return 'ERROR_SIZE_EXCEED';
+            case 'content_type':
+            case 'not_image':
+                return 'ERROR_HTTP_CONTENTTYPE';
+            default:
+                return 'ERROR_DEAD_LINK';
+        }
     }
 
     /**

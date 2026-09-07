@@ -44,7 +44,7 @@
 					    <tr>
 					      	<th>访客信息</th>
 					      	<td>
-					      		IP:<a href="http://ip.taobao.com/ipSearch.html?ipAddr={fun=long2ip($value->user_ip)}" target="_blank" title="点击查看归属地">{fun=long2ip($value->user_ip)}</a>；
+					      		IP:<a href="http://ip.taobao.com/ipSearch.html?ipAddr={fun=long2ip_safe($value->user_ip)}" target="_blank" title="点击查看归属地">{fun=long2ip_safe($value->user_ip)}</a>；
 								浏览器:[value->user_bs]；
 								操作系统:[value->user_os]
 							</td>

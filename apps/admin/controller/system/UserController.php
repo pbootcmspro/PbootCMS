@@ -117,6 +117,11 @@ class UserController extends Controller
     // 用户删除
     public function del()
     {
+        // 禁止裸 GET，须 POST（由 AdminController 校验 formcheck）
+        if (! $_POST) {
+            error('请使用正确方式提交！', - 1);
+        }
+        
         if (! $ucode = get('ucode', 'var')) {
             error('传递的参数值错误！', - 1);
         }
@@ -145,8 +150,19 @@ class UserController extends Controller
             error('内置管理员不允许此操作！', - 1);
         }
         
-        // 单独修改状态
-        if (($field = get('field', 'var')) && ! is_null($value = get('value', 'var'))) {
+        // 单独修改状态（仅允许 status；禁止裸 GET，须 POST + formcheck）
+        if ((isset($_GET['field']) || isset($_POST['field'])) && (array_key_exists('value', $_GET) || array_key_exists('value', $_POST))) {
+            if (! $_POST) {
+                error('请使用正确方式提交！', - 1);
+            }
+            $field = post('field', 'var');
+            $value = post('value', 'var');
+            if (! $field || is_null($value)) {
+                error('传递的参数值错误！', - 1);
+            }
+            if ($field !== 'status') {
+                error('不允许修改该字段！', - 1);
+            }
             if ($this->model->modUser($ucode, "$field='$value',update_user='" . session('username') . "'")) {
                 location(- 1);
             } else {

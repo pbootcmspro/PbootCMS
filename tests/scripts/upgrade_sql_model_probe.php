@@ -5,14 +5,14 @@ declare(strict_types=1);
 /**
  * UpgradeController::upsql() 路径子进程探测（模拟 debug 错误处理）
  *
- * 用法: php tests/scripts/upgrade_sql_model_probe.php <load|upsql>
+ * 用法: php tests/scripts/upgrade_sql_model_probe.php <load|upsql|upsql_ddl|upsql_fail|blank>
  */
 
 ini_set('display_errors', '0');
 
 $mode = isset($argv[1]) ? (string) $argv[1] : '';
-if ($mode !== 'load' && $mode !== 'upsql') {
-    fwrite(STDERR, "usage: upgrade_sql_model_probe.php <load|upsql>\n");
+if (! in_array($mode, array('load', 'upsql', 'upsql_ddl', 'upsql_fail', 'blank'), true)) {
+    fwrite(STDERR, "usage: upgrade_sql_model_probe.php <load|upsql|upsql_ddl|upsql_fail|blank>\n");
     exit(2);
 }
 
@@ -97,6 +97,101 @@ if ($mode === 'upsql') {
     @unlink($sqlitePath);
     echo "UPSQL_OK\n";
     exit(0);
+}
+
+if ($mode === 'blank') {
+    // isSqlBlank() 纯函数校验：注释/空白片段判定
+    $ctlRef = new ReflectionClass('app\\admin\\controller\\system\\UpgradeController');
+    $ctl = $ctlRef->newInstanceWithoutConstructor();
+    $m = $ctlRef->getMethod('isSqlBlank');
+    if (PHP_VERSION_ID < 80100) {
+        $m->setAccessible(true);
+    }
+    $cases = array(
+        array('-- foo', true),
+        array("/* x */\n  \n", true),
+        array('# c', true),
+        array("-- c\nSELECT 1", false),
+        array("SELECT '-- literal'", false),
+    );
+    $bad = 0;
+    foreach ($cases as $case) {
+        $got = $m->invoke($ctl, $case[0]);
+        if ($got !== $case[1]) {
+            $bad++;
+            echo 'BLANK_BAD want=' . var_export($case[1], true) . ' got=' . var_export($got, true) . "\n";
+        }
+    }
+    echo $bad === 0 ? "BLANK_OK\n" : "BLANK_FAIL=$bad\n";
+    exit($bad === 0 ? 0 : 1);
+}
+
+if ($mode === 'upsql_ddl' || $mode === 'upsql_fail') {
+    if (! extension_loaded('sqlite3')) {
+        fwrite(STDERR, "sqlite3 extension required for $mode mode\n");
+        exit(77);
+    }
+
+    require CORE_PATH . '/basic/Config.php';
+
+    $rel = '/data/upgrade_sql_probe_' . getmypid() . '.db';
+    $sqlitePath = ROOT_PATH . $rel;
+    if (is_file($sqlitePath)) {
+        @unlink($sqlitePath);
+    }
+    $sqliteDir = dirname($sqlitePath);
+    if (! is_dir($sqliteDir)) {
+        mkdir($sqliteDir, 0777, true);
+    }
+
+    $prop = (new ReflectionClass('core\\basic\\Config'))->getProperty('configs');
+    if (PHP_VERSION_ID < 80100) {
+        $prop->setAccessible(true);
+    }
+    $configs = $prop->getValue();
+    if (! is_array($configs)) {
+        $configs = array();
+    }
+    $configs['database'] = array('type' => 'sqlite', 'dbname' => $rel, 'prefix' => 'ay_');
+    $prop->setValue(null, $configs);
+
+    try {
+        $driverProp = (new ReflectionClass('core\\database\\Sqlite'))->getProperty('sqlite');
+        if (PHP_VERSION_ID < 80100) {
+            $driverProp->setAccessible(true);
+        }
+        $driverProp->setValue(null, null);
+    } catch (ReflectionException $e) {
+        // Sqlite 尚未加载，无需复位单例
+    }
+
+    $ctlRef = new ReflectionClass('app\\admin\\controller\\system\\UpgradeController');
+    $ctl = $ctlRef->newInstanceWithoutConstructor();
+    $upsql = $ctlRef->getMethod('upsql');
+    if (PHP_VERSION_ID < 80100) {
+        $upsql->setAccessible(true);
+    }
+
+    if ($mode === 'upsql_ddl') {
+        // 注释 + DDL（影响行数 0）+ DML + 尾随纯注释段，全部应通过
+        $sql = "-- 升级脚本\n/* 说明 */\n"
+            . "CREATE TABLE IF NOT EXISTS ay_upgrade_probe (id INTEGER PRIMARY KEY, note TEXT NOT NULL DEFAULT '');"
+            . "INSERT INTO ay_upgrade_probe (note) VALUES ('ok');"
+            . "ALTER TABLE ay_upgrade_probe ADD COLUMN extra TEXT;"
+            . "-- done";
+        $result = $upsql->invoke($ctl, $sql);
+        @unlink($sqlitePath);
+        echo $result === true ? "UPSQL_DDL_OK\n" : ('UPSQL_DDL_BAD:' . var_export($result, true) . "\n");
+        exit($result === true ? 0 : 1);
+    }
+
+    // upsql_fail：前一条成功、后一条必然失败，期望返回 false 且不 error()+exit
+    $sql = "CREATE TABLE IF NOT EXISTS ay_upgrade_probe (id INTEGER PRIMARY KEY);"
+        . "INSERT INTO ay_upgrade_probe (no_such_column) VALUES (1)";
+    $result = $upsql->invoke($ctl, $sql);
+    @unlink($sqlitePath);
+    echo $result === false ? "UPSQL_FAIL_DETECTED\n" : ('UPSQL_FAIL_BAD:' . var_export($result, true) . "\n");
+    exit($result === false ? 0 : 1);
 }
 
 new \core\basic\Model();

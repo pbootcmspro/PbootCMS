@@ -10,6 +10,9 @@ namespace app\admin\controller\system;
 
 use core\basic\Controller;
 use core\basic\Model;
+use core\database\Sqlite;
+use core\database\Pdo;
+use core\database\Mysqli;
 
 class UpgradeController extends Controller
 {
@@ -287,18 +290,46 @@ class UpgradeController extends Controller
         return $upfile;
     }
 
-    // 执行更新数据库
+    // 执行更新数据库，任一语句失败返回 false
     private function upsql($sql)
     {
-        $sql = explode(';', $sql);
+        $sqls = explode(';', $sql);
         $model = new Model();
-        foreach ($sql as $value) {
-            $value = trim($value);
-            if ($value) {
-                $model->amd($value);
+        // 软失败通道：SQL 出错时驱动回滚并返回 false，不 error()+exit，
+        // 使失败能反馈给 update()（记日志、提示脚本名、保留「检查更新」重试）
+        Sqlite::setFailSoft(true);
+        Pdo::setFailSoft(true);
+        Mysqli::setFailSoft(true);
+        try {
+            foreach ($sqls as $value) {
+                $value = trim($value);
+                // 跳过空片段与纯注释片段（explode(';') 后可能出现），
+                // 否则纯注释会被当语句发给驱动，MySQL 报空查询导致整次升级中止
+                if ($value === '' || $this->isSqlBlank($value)) {
+                    continue;
+                }
+                // 用 query() 的布尔结果判断；amd() 返回影响行数，DDL 成功时为 0 会被误判
+                if ($model->query($value, 'master') === false) {
+                    return false;
+                }
             }
+        } finally {
+            Sqlite::setFailSoft(false);
+            Pdo::setFailSoft(false);
+            Mysqli::setFailSoft(false);
         }
         return true;
+    }
+
+    // 去掉 SQL 注释后是否只剩空白（用于判断切分片段是否无可执行语句）
+    private function isSqlBlank($sql)
+    {
+        // 依次去掉 /* 块注释 */ 与行首 -- / # 注释
+        $stripped = preg_replace(array('!/\*.*?\*/!s', '/^\s*(--|#).*$/m'), '', $sql);
+        if ($stripped === null) {
+            return false; // 正则异常时按非空处理，交给驱动执行
+        }
+        return trim($stripped) === '';
     }
 
     /**

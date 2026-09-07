@@ -53,21 +53,31 @@
 	                    		<i class='fa fa-toggle-on' title="超级管理员不可操作"></i>
 	                    	{else}
 		                        {if($value->status)}
-		                        <a href="{url./admin/'.C.'/mod/ucode/'.$value->ucode.'/field/status/value/0}"><i class='fa fa-toggle-on' title="点击关闭"></i></a>
+		                        <form action="{url./admin/'.C.'/mod/ucode/'.$value->ucode.'}" method="post" style="display:inline">
+		                        	<input type="hidden" name="formcheck" value="{$formcheck}">
+		                        	<input type="hidden" name="field" value="status">
+		                        	<input type="hidden" name="value" value="0">
+		                        	<button type="submit" title="点击关闭" style="border:none;background:none;padding:0;cursor:pointer;color:inherit;"><i class='fa fa-toggle-on'></i></button>
+		                        </form>
 		                        {else}
-		                        <a href="{url./admin/'.C.'/mod/ucode/'.$value->ucode.'/field/status/value/1}"><i class='fa fa-toggle-off' title="点击开启"></i></a>
+		                        <form action="{url./admin/'.C.'/mod/ucode/'.$value->ucode.'}" method="post" style="display:inline">
+		                        	<input type="hidden" name="formcheck" value="{$formcheck}">
+		                        	<input type="hidden" name="field" value="status">
+		                        	<input type="hidden" name="value" value="1">
+		                        	<button type="submit" title="点击开启" style="border:none;background:none;padding:0;cursor:pointer;color:inherit;"><i class='fa fa-toggle-off'></i></button>
+		                        </form>
 		                        {/if}
 	                        {/if}
 	                    </td>
 	                    <td>[value->rolename]</td>
 	                    <td>[value->login_count]</td>
-	                    <td>{fun=@long2ip($value->last_login_ip)}</td>
+	                    <td>{fun=long2ip_safe($value->last_login_ip)}</td>
 	                    <td>[value->update_time]</td>
 	                    <td>
 	                    	{if($value->ucode=='10001')}
 	                        	不可操作
 	                        {else}
-	                        	{fun=get_btn_del($value->ucode,'ucode')}
+	                        	{fun=get_btn_del_post($value->ucode,'ucode')}
 	                        	{fun=get_btn_mod($value->ucode,'ucode')}
 	                        {/if}
 	                        

@@ -36,7 +36,10 @@ return array(
     // 模块模板路径定义
     'tpl_dir' => array(
         'home' => '/template'
-    )
+    ),
+    
+    // 仅当站点前置 Nginx/CDN 时启用；勿填 0.0.0.0/0
+     //'trusted_proxies' => '127.0.0.1',
 
 );
  

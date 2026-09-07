@@ -23,7 +23,7 @@ if (!isset($CONFIG)) {
     $CONFIG = ueditor_merge_upload_config($CONFIG);
 }
 
-set_time_limit(0);
+set_time_limit(30);
 include ("Uploader.class.php");
 
 /* 上传配置 */

@@ -39,3 +39,7 @@ php tests/unit/ValidateIfConditionTest.php
 - 审计 #8 — 内容/栏目/站点标题与描述输入清洗（`TitleDescInputFilterTest` / `TitleDescControllerFilterContractTest`）
 - 审计 #11 — 常规清缓存保留 `runtime/image`（`ClearCachePreserveImageTest` / `ClearCachePreserveImageContractTest`）
 - Issue #26 / 审计 #7 — 站点统计代码完整输出（可信管理员；`StatisticalSanitizeTest` / `StatisticalSanitizeContractTest`）
+- Issue #199 — `get_user_ip()` 可信代理与转发头解析（`GetUserIpTrustedProxyTest`）
+- Issue #200 — UEditor 远程抓图 SSRF 加固（`RemoteFetchValidationTest` / `UeditorCrawlerSsrfContractTest`）
+- Issue #223 — 批量复制内容清空自定义 URL 名称（`ContentCopyFilenameTest`）
+

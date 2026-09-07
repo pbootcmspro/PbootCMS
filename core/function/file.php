@@ -2789,6 +2789,35 @@ function svgz_decompress_limited($path, $max_bytes = 2097152, $max_ratio = 100)
     return array($out, true);
 }
 
+// SVGZ 内存数据限量解压；成功 array($xml, true)，失败 array($err, false)
+function svgz_decompress_limited_string($data, $max_bytes = 2097152, $max_ratio = 100)
+{
+    if (! is_string($data) || $data === '') {
+        return array('SVGZ数据无效！', false);
+    }
+    $in_len = strlen($data);
+    if ($in_len <= 0) {
+        return array('SVGZ文件无效！', false);
+    }
+    if ($in_len > $max_bytes) {
+        return array('SVGZ文件过大！', false);
+    }
+    if (substr($data, 0, 2) !== "\x1f\x8b") {
+        return array('SVGZ格式无效！', false);
+    }
+    $tmp = @tempnam(sys_get_temp_dir(), 'svgz');
+    if ($tmp === false) {
+        return array('SVGZ临时文件失败！', false);
+    }
+    if (@file_put_contents($tmp, $data) === false) {
+        @unlink($tmp);
+        return array('SVGZ写入失败！', false);
+    }
+    $result = svgz_decompress_limited($tmp, $max_bytes, $max_ratio);
+    @unlink($tmp);
+    return $result;
+}
+
 // 判断 URL/引用是否允许出现在 SVG 中（仅同文档 fragment）
 function svg_href_is_safe($value)
 {

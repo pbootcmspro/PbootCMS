@@ -136,23 +136,153 @@ function get_user_os($osstr = null)
     return $user_os;
 }
 
+/**
+ * 从 $_SERVER 读取直连对端 IPv4；无法识别时返回 0.0.0.0（不回退去信转发头）。
+ */
+function get_user_ip_peer(): string
+{
+    if (! isset($_SERVER['REMOTE_ADDR'])) {
+        return '0.0.0.0';
+    }
+    $peer = trim((string) $_SERVER['REMOTE_ADDR']);
+    if ($peer === '::1') {
+        return '127.0.0.1';
+    }
+    if (filter_var($peer, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+        return $peer;
+    }
+    return '0.0.0.0';
+}
+
+/**
+ * 转发头候选：公网 IPv4；拒绝私有/保留/回环/链路本地/0.0.0.0。
+ */
+function is_forwarded_public_ipv4($ip): bool
+{
+    if (! is_string($ip) || $ip === '') {
+        return false;
+    }
+    if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+        return false;
+    }
+    $long = ip2long($ip);
+    if ($long === false) {
+        return false;
+    }
+    $long = sprintf('%u', $long);
+    if ($long <= 0) {
+        return false;
+    }
+    // PHP 7.0 NO_RES_RANGE 不含 127.0.0.0/8
+    if (($long & 0xff000000) === 0x7f000000) {
+        return false;
+    }
+    return true;
+}
+
+/** @return string[] */
+function get_trusted_proxies(): array
+{
+    $proxies = array();
+    if (! class_exists('core\\basic\\Config', false) || ! defined('CORE_PATH')) {
+        return $proxies;
+    }
+    $raw = \core\basic\Config::get('trusted_proxies', true);
+    if (! is_array($raw)) {
+        return $proxies;
+    }
+    foreach ($raw as $entry) {
+        $entry = trim((string) $entry);
+        if ($entry !== '') {
+            $proxies[] = $entry;
+        }
+    }
+    return $proxies;
+}
+
+function is_trusted_proxy_ip(string $ip): bool
+{
+    foreach (get_trusted_proxies() as $network) {
+        if (network_match($ip, $network)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * 从 X-Forwarded-For 自右向左剥可信跳；
+ * 第一个不可信 hop：公网 IPv4 则采纳，否则拒绝整条链（不可越过私有/保留/畸形 hop）。
+ */
+function resolve_forwarded_client_ipv4(string $forwarded, array $trusted): string
+{
+    $parts = array_map('trim', explode(',', $forwarded));
+    $parts = array_values(array_filter($parts, static function ($v) {
+        return $v !== '';
+    }));
+    if (! $parts) {
+        return '';
+    }
+    for ($i = count($parts) - 1; $i >= 0; $i--) {
+        $candidate = $parts[$i];
+        // 畸形 / 非 IPv4：拒绝整条链，不可向左继续扫描
+        if (! filter_var($candidate, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            return '';
+        }
+        $trustedHop = false;
+        foreach ($trusted as $network) {
+            if (network_match($candidate, $network)) {
+                $trustedHop = true;
+                break;
+            }
+        }
+        if ($trustedHop) {
+            continue;
+        }
+        // 第一个不可信 hop：公网则采纳，否则 fail-closed
+        if (is_forwarded_public_ipv4($candidate)) {
+            return $candidate;
+        }
+        return '';
+    }
+    return '';
+}
+
 // 获取用户IP
 function get_user_ip(): string
 {
-    if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        $cip = $_SERVER['HTTP_X_FORWARDED_FOR'];
-    } elseif (isset($_SERVER['HTTP_CLIENT_IP'])) {
-        $cip = $_SERVER['HTTP_CLIENT_IP'];
-    } else {
-        $cip = $_SERVER['REMOTE_ADDR'];
+    $peer = get_user_ip_peer();
+    $trusted = get_trusted_proxies();
+
+    if ($trusted && is_trusted_proxy_ip($peer)) {
+        $client = '';
+        if (! empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            $client = resolve_forwarded_client_ipv4((string) $_SERVER['HTTP_X_FORWARDED_FOR'], $trusted);
+        } elseif (! empty($_SERVER['HTTP_X_REAL_IP'])) {
+            $real = trim((string) $_SERVER['HTTP_X_REAL_IP']);
+            if (is_forwarded_public_ipv4($real)) {
+                $client = $real;
+            }
+        }
+        if ($client !== '') {
+            return htmlspecialchars($client, ENT_QUOTES, 'UTF-8');
+        }
     }
-    if ($cip == '::1') { // 使用localhost时
-        $cip = '127.0.0.1';
+
+    return htmlspecialchars($peer, ENT_QUOTES, 'UTF-8');
+}
+
+/**
+ * IP存储值转显示字符串，兼容历史脏数据。
+ * 数值按long2ip还原；空值归零；已是点分或其它文本的原样返回。
+ * PHP8下long2ip()收到非数值字符串会抛TypeError，导致整个列表页报错，故读取端统一走此函数。
+ */
+function long2ip_safe($value): string
+{
+    if (is_numeric($value)) {
+        return long2ip((int) $value);
     }
-    if (! preg_match('/^[0-9\.]+$/', $cip)) { // 非标准的IP
-        $cip = '0.0.0.0';
-    }
-    return htmlspecialchars($cip);
+    return $value ? (string) $value : '0.0.0.0';
 }
 
 /**
@@ -2342,15 +2472,97 @@ function preg_replace_r($search, $replace, $subject)
     return $subject;
 }
 
-// 生成随机验证码
-function create_code($len = 4)
+// 找回密码验证码：绝对有效期（秒）与连续失败上限
+define('RETRIEVE_CODE_TTL', 900);
+define('RETRIEVE_CODE_MAX_FAIL', 5);
+
+// 验证码字符集（排除易混淆字符）
+function retrieve_code_charset()
 {
-    $charset = 'ABCDEFGHKMNPRTUVWXY23456789';
-    $charset = str_shuffle($charset);
-    $charlen = strlen($charset) - 1;
+    return 'ABCDEFGHKMNPRTUVWXY23456789';
+}
+
+// 生成随机验证码（CSPRNG，默认 6 位）
+function create_code($len = 6)
+{
+    $charset = retrieve_code_charset();
+    $max = strlen($charset) - 1;
     $code = '';
     for ($i = 0; $i < $len; $i ++) {
-        $code .= $charset[mt_rand(0, $charlen)];
+        $code .= $charset[random_int(0, $max)];
     }
     return $code;
+}
+
+// 找回密码验证码是否已过期
+function retrieve_code_expired($issuedAt, $now = null)
+{
+    if (! $issuedAt) {
+        return true;
+    }
+    if ($now === null) {
+        $now = time();
+    }
+    return ((int) $now - (int) $issuedAt) >= RETRIEVE_CODE_TTL;
+}
+
+// 校验找回密码验证码，返回 status 与 failures
+function verify_retrieve_code($inputCode, $inputEmail, array $session, $now = null)
+{
+    $code = isset($session['retrieve_checkcode']) ? (string) $session['retrieve_checkcode'] : '';
+    $email = isset($session['retrieve_email']) ? (string) $session['retrieve_email'] : '';
+    $issuedAt = isset($session['retrieve_checkcode_time']) ? $session['retrieve_checkcode_time'] : null;
+    $failures = isset($session['retrieve_checkcode_failures']) ? (int) $session['retrieve_checkcode_failures'] : 0;
+
+    if (! $code || ! $email) {
+        return array(
+            'status' => 'missing',
+            'failures' => $failures
+        );
+    }
+
+    if (retrieve_code_expired($issuedAt, $now)) {
+        return array(
+            'status' => 'expired',
+            'failures' => $failures
+        );
+    }
+
+    if ($failures >= RETRIEVE_CODE_MAX_FAIL) {
+        return array(
+            'status' => 'locked',
+            'failures' => $failures
+        );
+    }
+
+    $inputCode = strtolower(trim((string) $inputCode));
+    $inputEmail = strtolower(trim((string) $inputEmail));
+
+    if (! hash_equals($code, $inputCode) || ! hash_equals($email, $inputEmail)) {
+        $failures ++;
+        if ($failures >= RETRIEVE_CODE_MAX_FAIL) {
+            return array(
+                'status' => 'locked',
+                'failures' => $failures
+            );
+        }
+        return array(
+            'status' => 'mismatch',
+            'failures' => $failures
+        );
+    }
+
+    return array(
+        'status' => 'ok',
+        'failures' => $failures
+    );
+}
+
+// 清理找回密码验证码相关 session
+function clear_retrieve_code_session()
+{
+    unset($_SESSION['retrieve_checkcode']);
+    unset($_SESSION['retrieve_email']);
+    unset($_SESSION['retrieve_checkcode_time']);
+    unset($_SESSION['retrieve_checkcode_failures']);
 }

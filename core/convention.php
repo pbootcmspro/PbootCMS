@@ -117,6 +117,9 @@ return array(
     // 'slave' => array( 'host' => '127.0.0.1','user' => 'root','passwd' => 'root','port' => '3306','dbname' => 'pboot')
     ),
     
+    // 可信反向代理 IP/CIDR，逗号分隔；空 = 永不解析 X-Forwarded-For / X-Real-IP
+    'trusted_proxies' => '',
+    
     // 第二参数作为值的控制器,缩短地址
     'second_rvar' => array(
         'Form', // 第二参数传递fcode

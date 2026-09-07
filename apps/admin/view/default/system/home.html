@@ -21,7 +21,7 @@
     {/if}
     
     <blockquote class="layui-elem-quote">
-    	当前登录用户：{$user_info->username} {$user_info->realname}，登录时间：{$user_info->update_time}，登录IP：{fun=long2ip([$user_info->last_login_ip])}，累计登录次数：{$user_info->login_count}
+    	当前登录用户：{$user_info->username} {$user_info->realname}，登录时间：{$user_info->update_time}，登录IP：{fun=long2ip_safe([$user_info->last_login_ip])}，累计登录次数：{$user_info->login_count}
     </blockquote>
 	
 	<fieldset class="layui-elem-field">

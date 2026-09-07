@@ -1,0 +1,8 @@
+# 拒绝HTTP直接访问本目录，兼容Apache2.2及2.4
+<IfModule mod_authz_core.c>
+  Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+  Order allow,deny
+  Deny from all
+</IfModule>

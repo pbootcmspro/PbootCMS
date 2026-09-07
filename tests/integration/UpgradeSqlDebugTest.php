@@ -75,4 +75,25 @@ return TestAssert::runSuite(function () {
     TestAssert::contains($upsql['stdout'], 'UPSQL_OK', 'upsql probe succeeded');
     TestAssert::notContains($upsql['stderr'], 'Implicitly marking parameter', 'upsql probe no implicit nullable stderr');
     TestAssert::notContains($upsql['stdout'], 'UNKNOW:', 'upsql probe no fatal error page');
+
+    echo "=== upsql() 成功 DDL 批次不被误判为失败（#204）===\n";
+
+    $ddl = upgrade_sql_model_probe('upsql_ddl');
+    TestAssert::same(0, $ddl['exit_code'], 'upsql_ddl probe exit 0');
+    TestAssert::contains($ddl['stdout'], 'UPSQL_DDL_OK', 'CREATE/ALTER 影响行数为 0 时 upsql() 仍返回 true');
+    TestAssert::notContains($ddl['stdout'], 'UNKNOW:', 'upsql_ddl probe no fatal error page');
+
+    echo "=== upsql() 检出失败语句并返回 false，不 error()+exit（#204）===\n";
+
+    $fail = upgrade_sql_model_probe('upsql_fail');
+    TestAssert::same(0, $fail['exit_code'], 'upsql_fail probe exit 0');
+    TestAssert::contains($fail['stdout'], 'UPSQL_FAIL_DETECTED', 'upsql() 遇失败语句返回 false');
+    TestAssert::notContains($fail['stdout'], 'UNKNOW:', 'upsql_fail probe no error()+exit 错误页');
+    TestAssert::notContains($fail['stdout'], 'UPSQL_FAIL_BAD', 'upsql() 未把失败当成功');
+
+    echo "=== upsql() 跳过纯注释/空白片段，不发给驱动（#204）===\n";
+
+    $blank = upgrade_sql_model_probe('blank');
+    TestAssert::same(0, $blank['exit_code'], 'blank probe exit 0');
+    TestAssert::contains($blank['stdout'], 'BLANK_OK', 'isSqlBlank() 正确识别注释/空白片段');
 });
