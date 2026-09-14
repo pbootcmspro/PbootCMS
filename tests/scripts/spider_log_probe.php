@@ -24,9 +24,11 @@ define('ROOT_PATH', $runPath);
 define('APP_PATH', $sourcePath . 'apps');
 define('CORE_PATH', $sourcePath . 'core');
 define('RUN_PATH', $runPath);
-define('DOC_PATH', $sourcePath);
+// DOC_PATH 指向临时 runPath，使 DOC_PATH . DATA_DIR 写入隔离目录而非源码 data/
+define('DOC_PATH', $runPath);
 define('CONF_PATH', $sourcePath . 'config');
 define('SITE_DIR', '');
+define('DATA_DIR', SITE_DIR . '/data');
 
 $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 $_SERVER['HTTP_USER_AGENT'] = $userAgent;
@@ -69,7 +71,7 @@ $prop->setValue(null, array(
 $spider = new \app\home\controller\SpiderController($url);
 $spider->index();
 
-$logFile = $runPath . '/log/spider/' . date('Ymd') . '.log';
+$logFile = $runPath . '/data/log/spider/' . date('Y/Ym') . '/' . date('Ymd') . '.log';
 $lines = 0;
 if (file_exists($logFile)) {
     $content = file_get_contents($logFile);

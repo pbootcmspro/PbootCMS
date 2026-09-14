@@ -27,9 +27,11 @@ define('ROOT_PATH', $runPath);
 define('APP_PATH', $sourcePath . 'apps');
 define('CORE_PATH', $sourcePath . 'core');
 define('RUN_PATH', $runPath);
-define('DOC_PATH', $sourcePath);
+// DOC_PATH 指向临时 runPath，使 DOC_PATH . DATA_DIR 写入隔离目录而非源码 data/
+define('DOC_PATH', $runPath);
 define('CONF_PATH', $sourcePath . 'config');
 define('SITE_DIR', '');
+define('DATA_DIR', SITE_DIR . '/data');
 
 $_SERVER['REMOTE_ADDR'] = $ip;
 $_SERVER['HTTP_USER_AGENT'] = 'probe';
@@ -40,7 +42,7 @@ require CORE_PATH . '/function/file.php';
 require CORE_PATH . '/function/helper.php';
 require CORE_PATH . '/basic/Config.php';
 require CORE_PATH . '/log/Builder.php';
-require CORE_PATH . '/log/LogText.php';
+require CORE_PATH . '/log/LogFile.php';
 require CORE_PATH . '/basic/Log.php';
 require CORE_PATH . '/basic/Controller.php';
 require APP_PATH . '/admin/controller/IndexController.php';
@@ -54,7 +56,7 @@ $prop->setValue(null, array(
     'lock_time' => $lockTime,
     'lock_count' => $lockCount,
     'lock_max' => $lockMax,
-    'log_record_type' => 'text',
+    'log_record_type' => 'file',
 ));
 
 $ctrlRef = new ReflectionClass('app\admin\controller\IndexController');

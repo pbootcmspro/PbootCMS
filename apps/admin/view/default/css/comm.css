@@ -5,9 +5,12 @@
 .layui-body {
 	padding: 10px 15px;
 }
+/*layui 2.8+ 去掉了 layui-body 的 overflow-y 并留出 44px 页脚位，本后台无页脚且需内容区独立滚动*/
 .layui-layout-admin .layui-body {
 	top: 50px;
 	bottom:0;
+	padding-bottom: 10px;
+	overflow-y: auto;
 }
 .layui-layout-admin .layui-logo {
 	color: #fff;
@@ -80,7 +83,7 @@
 }
 .menu li {
 	width: 30px;
-	background: #2F4056;
+	background: #2f363c;
 }
 .menu a {
 	color: #ccc;
@@ -117,7 +120,7 @@
 .deskbox dd {
 	font-size: 30px;
 	line-height: 50px;
-	color:#009688;
+	color:#16baaa;
 }
 .deskbox dt {
 	padding-top:15px;
@@ -130,7 +133,7 @@
 	text-align: center;
 }
 .page a:hover {
-	color:#009688;
+	color:#16baaa;
 }
 .page-status{
 	border-radius: 2px 0 0 2px;
@@ -153,7 +156,7 @@
 	border: 1px solid #e2e2e2;
 }
 .page-num-current{
-	background-color: #009688;
+	background-color: #16baaa;
 	height:30px;
 	line-height: 30px;
 	border-top:none;
@@ -185,7 +188,7 @@ a.page-num-current:hover{
 }
 .fa-toggle-on {
 	font-size: 20px;
-	color: #5FB878;
+	color: #16b777;
 }
 .fa-toggle-off {
 	font-size: 20px;

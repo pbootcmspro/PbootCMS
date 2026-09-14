@@ -8,7 +8,7 @@
  */
 namespace core\basic;
 
-use core\log\LogText;
+use core\log\LogFile;
 use core\log\LogDb;
 
 class Log
@@ -18,14 +18,15 @@ class Log
     protected static function getLogInstance()
     {
         switch (Config::get('log_record_type')) {
-            case 'text':
-                $instance = LogText::getInstance();
+            case 'file':
+                $instance = LogFile::getInstance();
                 break;
             case 'db':
                 $instance = LogDb::getInstance();
                 break;
             default:
-                $instance = LogText::getInstance();
+                // 含旧配置 text，走文件驱动
+                $instance = LogFile::getInstance();
         }
         return $instance;
     }

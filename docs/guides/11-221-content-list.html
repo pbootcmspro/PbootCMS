@@ -17,7 +17,7 @@
     <code>{/pboot:list}</code>
 </p>
 <div class="alert alert-warning">
-只能在列表页面使用，带分页，同一个页面只能使用一次，否则：老版本会出现分页冲突，新版会显示一样的内容。                </div>
+只能在列表页面使用，带分页，同一个页面只能使用一次带分页的列表，否则会直接报错。                </div>
 <p>
     <br/>
 </p>
@@ -29,12 +29,11 @@ desc,id desc' 此时意味着将按照时间倒序,然后添加顺序倒序。�
     <p>order=*
 排序方式，非必填，用于输出内容的排序方式，可选：date、sorting、istop、isrecommend、isheadline、visits、likes、oppose、等字段，其中sorting为按后台填写的排序，122版本开始支持自定义模式，如：order='date
 desc,id desc' 、order='sorting desc,id desc'，(V1.3.7+)还支持random随机排序</p>
-    <p>filter=*|x,y 数据过滤，非必填，用于对列表内容进行过滤筛选，如：filter=title|ASP,PHP
-只显示标题含有ASP和PHP的内容，如果需要只显示推荐，可使用如下过滤参数： filter=isrecommend|1
-（V1.2.0+版本用下面的方式更好）</p>
+    <p>filter=*|x,y 数据过滤，非必填。字段仅限 title、istop、isrecommend、isheadline 以及扩展字段 ext_*；默认精确匹配，多值（逗号分隔）为 OR；模糊匹配需另加 fuzzy=1。示例：filter=title|ASP,PHP；只显示推荐：filter=isrecommend|1（V1.2.0+更推荐用下面的 isrecommend=1 方式）</p>
     <p>isico=*、ispics=*、istop=*、isrecommend=*、isheadline=* 用于对数据进行特殊筛选，可选值1和0，非必填，比如只调取推荐内容：isrecommend=1</p>
     <p>tags=x,y tags方式数据过滤，非必填，用于对列表内容进行过滤筛选，如：tags='ASP,PHP',则为含有asp或php标签的内容,那么可以用 tags={content:tags}来调用当前文章的相关文章</p>
     <p>start=* 起始数据(V1.3.2+)，非必填，用于需要从第几条开始</p>
+    <p>lfield=* ：lfield 会<strong>替换</strong>默认查询字段，系统仅自动附加 id,outlink,type,scode,sortfilename,filename,urlname。须列出模板要用的全部字段；勿只写 lfield='titlecolor' 这类单字段，否则 title/date 等不再查询、标签会残留。默认查询不含 tags/titlecolor/source，可用 lfield='*'（等价 a.*，已含这三项），若还要用栏目名等再追加 sortname 等关联字段，例如 lfield='*,sortname'</p>
 </div>
 <p>
     <br/>
@@ -115,7 +114,7 @@ desc,id desc' 、order='sorting desc,id desc'，(V1.3.7+)还支持random随机�
         </tr>
         <tr>
             <td>[list:titlecolor]</td>
-            <td>标题颜色</td>
+            <td>标题颜色（默认不查；须经 lfield 纳入，可用 lfield='*' 或显式列出全部所需字段，勿只写单字段）</td>
         </tr>
         <tr>
             <td>[list:subtitle]</td>
@@ -123,7 +122,7 @@ desc,id desc' 、order='sorting desc,id desc'，(V1.3.7+)还支持random随机�
         </tr>
         <tr>
             <td>[list:tags]</td>
-            <td>直接输出tags</td>
+            <td>直接输出tags（默认不查；须经 lfield 纳入，用法同上）</td>
         </tr>
         <tr>
             <td>[list:author]</td>
@@ -131,7 +130,7 @@ desc,id desc' 、order='sorting desc,id desc'，(V1.3.7+)还支持random随机�
         </tr>
         <tr>
             <td>[list:source]</td>
-            <td>来源</td>
+            <td>来源（默认不查；须经 lfield 纳入，用法同上）</td>
         </tr>
         <tr>
             <td>[list:link]</td>

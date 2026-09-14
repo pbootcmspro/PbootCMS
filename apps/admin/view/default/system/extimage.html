@@ -53,7 +53,8 @@
                     {field: 'update_time', title: '文件修改时间'}
                 ]],
                 done:function (res,curr,count){
-                    $('.layui-table-cell').css({'height':'auto'})
+                    // layui 2.8+ table-cell 默认 overflow:hidden + nowrap，图片预览列需放开
+                    $('.layui-table-cell').css({'height':'auto','white-space':'normal','overflow':'visible'})
                 }
             });
 

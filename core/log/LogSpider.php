@@ -39,9 +39,19 @@ class LogSpider
         if (Config::get('spiderlog') === '0') {
             return false;
         }
-        $dir = ROOT_PATH . '/log/spider';
+        // 随 DATA_DIR 备份且受 data 访问拒绝保护
+        $dir = DOC_PATH . DATA_DIR . '/log/spider/' . date('Y/Ym');
         // 仅确保目录存在；文件由 fopen('ab') 原子创建，避免 check_file/create_file 的 w 截断竞态
-        check_dir($dir, true);
+        // 并发首写多级目录时递归 mkdir 可能因中间目录被抢先创建而失败，短重试后再判
+        for ($i = 0; $i < 8; $i++) {
+            if (check_dir($dir, true)) {
+                break;
+            }
+            usleep(2000);
+        }
+        if (! is_dir($dir)) {
+            return false;
+        }
         $logfile = $dir . '/' . date('Ymd') . '.log';
         $line = $this->formatLine($spider, $url);
         return $this->appendWithLock($logfile, $line);

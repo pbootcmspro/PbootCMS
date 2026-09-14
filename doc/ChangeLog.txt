@@ -2,6 +2,20 @@
 官方网站：https://www.pbootcms.com
 标签手册：https://www.pbootcms.com/docs.html
 ##########################################
+PbootCMS V3.2.26 build 2026-09-14
+1. 升级后台 Layui 前端框架至 2.13.9，适配布局与配色变更并修复多上传按钮水印 URL 切换失效
+2. 蜘蛛日志默认存放到 data/log/spider 并按年月分目录，修复并发建目录丢写
+3. 系统文件日志驱动改名 LogFile，默认存放到 data/log/system 并按年月分目录
+4. 升级 SQL 统一放 /script/ 并按版本序执行，static/backup/sql 只保留新装用的 pbootcms.sql
+5. 修复 MySQL 站点 {pboot:list} 列表查询因 FORCE INDEX 退化为全表扫描的问题，新装库统一为 title 索引
+6. 修复 {pboot:if} 裸 URL、路径、中文及兼容模式链接条件校验失败导致标签原样输出的问题
+7. 修复 Apache 开启伪静态时误判 web.config 导致每次保存都覆盖站点 .htaccess 的问题
+8. 修复 {sort:parentlink} 父栏目为外链时输出错误，以及 {pboot:content} 内上下篇标签传参错误
+9. 修复 order=isheadline 误用推荐排序导致头条内容不优先的问题
+10. 修复 {pboot:nav} 同时使用 num 与 scode 时输出条数少于 num 的问题
+11. 清理 api/search 死路由与未调用的 parserCommentsubLabel
+12. 修正 docs/guides 标签手册中与代码不符的表述并同步 manifest hash
+
 PbootCMS V3.2.25 build 2026-09-07
 1. 修复后台用户快捷改值无字段白名单，可改写任意管理员密码哈希的问题，仅允许修改 status 字段
 2. 修复后台用户删除与状态切换接口可被裸 GET 请求触发 CSRF 的问题，改为 POST 提交并校验 formcheck

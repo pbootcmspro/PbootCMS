@@ -2,7 +2,7 @@
 {if([$ai_enabled]==1 && [$ai_show_assistant])}
 <style>
 	.ai-fab{position:fixed;right:30px;bottom:30px;width:54px;height:54px;border-radius:50%;
-		background:linear-gradient(135deg,#1E9FFF 0%,#5FB878 100%);color:#fff;text-align:center;
+		background:linear-gradient(135deg,#1E9FFF 0%,#16b777 100%);color:#fff;text-align:center;
 		line-height:54px;cursor:pointer;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.2);
 		font-size:14px;font-weight:bold;user-select:none;transition:transform .2s;}
 	.ai-fab:hover{transform:scale(1.08);}
@@ -493,19 +493,12 @@
 		function bindTabEvents(){
 			if(eventsBound) return;
 			eventsBound = true;
+			// 勿再 layui.element.on('tab(tab)')：Layui 2.8+ 同 filter 会覆盖注册，冲掉 mylayui 的 hash/翻页逻辑
 			window.addEventListener('hashchange', syncFabVisibility);
 			document.addEventListener('pbootcms-tab-change', syncFabVisibility);
 			if(typeof jQuery !== 'undefined'){
 				jQuery(document).on('click', TAB_SEL + ' > .layui-tab-title li', function(){
 					setTimeout(syncFabVisibility, 0);
-				});
-			}
-			if(typeof layui !== 'undefined'){
-				layui.use('element', function(){
-					layui.element.on('tab(tab)', function(){
-						setTimeout(syncFabVisibility, 0);
-					});
-					syncFabVisibility();
 				});
 			}
 		}

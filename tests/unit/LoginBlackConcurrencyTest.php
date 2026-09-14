@@ -221,8 +221,8 @@ return TestAssert::runSuite(function () {
     TestAssert::true(isset($afterEviction['4.4.4.4']), 'eviction: newest IP (4.4.4.4) accepted, not rejected');
     TestAssert::true(isset($afterEviction['2.2.2.2']) && isset($afterEviction['3.3.3.3']), 'eviction: newer existing entries kept');
 
-    $logFile = $runPath . '/log/' . date('Ymd') . '.log';
-    TestAssert::true(file_exists($logFile), 'eviction: warning log is written under the temporary run path');
+    $logFile = $runPath . '/data/log/system/' . date('Y/Ym') . '/' . date('Ymd') . '.log';
+    TestAssert::true(file_exists($logFile), 'eviction: warning log is written under data/log/system');
     $log = file_get_contents($logFile);
     TestAssert::true(strpos($log, 'warning 登录黑名单已满，淘汰最旧IP：1.1.1.1，腾出给：4.4.4.4') !== false, 'eviction: warning is written after blacklist persistence');
 

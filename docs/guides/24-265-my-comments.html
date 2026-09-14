@@ -10,7 +10,7 @@
 <p>
 {pboot:mycomment}</p>
 <p>
-[comment:***]</p>
+[mycomment:***]</p>
 <p>
 {/pboot:mycomment}</p>
 <h4 class="mt-3">3、可使用的输出标签</h4>
@@ -73,7 +73,7 @@
             <td>评论人头像</td>
         </tr>
         <tr>
-            <td>[mycomment:pid]</td>
+            <td>[mycomment:puid]</td>
             <td>父评论人ID</td>
         </tr>
         <tr>
@@ -98,7 +98,7 @@
         </tr>
         <tr>
             <td style="word-break: break-all;">[mycomment:status]</td>
-            <td style="word-break: break-all;">评论状态：1审核2待审核</td>
+            <td style="word-break: break-all;">评论状态：1 已审核 / 0 待审核</td>
         </tr>
         <tr>
             <td style="word-break: break-all;">[mycomment:delaction]</td>

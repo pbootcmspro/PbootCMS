@@ -85,27 +85,27 @@
     </code>
     <h4 class="mt-3">8、幻灯片接口</h4>
     <code>
-        <p>http://IP/api.php/cms/slide/gid/*/num/*  此处传递分组gid及调取的数量num值，默认num为5</p>
+        <p>http://IP/api.php/cms/slide/gid/*/num/*  此处传递分组gid及调取的数量num值，默认num为10</p>
     </code>
     <h4 class="mt-3">9、友情链接接口</h4>
     <code>
-        <p>http://IP/api.php/cms/link/gid/*/num/*  此处传递分组gid及调取的数量num值,默认num为10</p>
+        <p>http://IP/api.php/cms/link/gid/*/num/*  此处传递分组gid及调取的数量num值,默认num为20</p>
     </code>
     <h4 class="mt-3">10、指定内容列表接口</h4>
     <code>
         <p>http://IP/api.php/list/*  此处传递需要调用的栏目scode</p>
         <p>http://IP/api.php/list/*/page/2 调取第二页，如果数据已获取完，返回类似{"code":0,"data":"已经到底了！","rowtotal":"5"}</p>
     </code>
-    <div class="alert alert-warning">同时还支持URL中传递num/*参数控制数量，传递order/* 控制排序方式，用POST方式会更好传递值</div>
+    <div class="alert alert-warning">同时还支持URL中传递num/*参数控制数量，传递order/* 控制排序方式；field/order 已白名单化，非法值会静默丢弃</div>
     <h4 class="mt-3">11、指定内容详情接口</h4>
     <code>http://IP/api.php/content/*  传递需要调用的内容ID(单页一样适用)</code>
     <h4 class="mt-3">12、指定单页详情接口</h4>
     <code>http://IP/api.php/about/*  传递需要调用的单页scode</code>
     <h4 class="mt-3">13、搜索内容接口</h4>
     <code>
-        <p>http://IP/api.php/cms/search   建议使用POST提交,keyword传递搜索关键字单条件搜索</p>
-        <p>同时支持传递num/*参数控制数量，传递order/* 控制排序方式，建议POST方式</p>
-        <p>可传递参数 field指定字段，多个用|隔开；</p>
+        <p>http://IP/api.php/cms/search   必须使用POST提交,keyword传递搜索关键字单条件搜索</p>
+        <p>同时支持传递num/*参数控制数量，传递order/* 控制排序方式，强制POST</p>
+        <p>可传递参数 field指定字段，多个用|隔开；field/order 非法值静默丢弃</p>
         <p>可传递参数 scode指定分类，多个用逗号隔开；</p>
         <p>可传递参数 fuzzy等于0关闭模糊匹配，另外也可使用多数据库字段名称传递值来多条件搜索</p>
     </code>

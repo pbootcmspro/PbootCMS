@@ -219,7 +219,7 @@ class UpgradeController extends Controller
                             $db->backupDB();
                             break;
                     }
-                    sort($sqls); // 排序
+                    $sqls = $this->sortSqlsByVersion($sqls);
                     foreach ($sqls as $value) {
                         $path = RUN_PATH . '/upgrade' . $value;
                         if (file_exists($path)) {
@@ -288,6 +288,18 @@ class UpgradeController extends Controller
             $upfile[] = $files[$key];
         }
         return $upfile;
+    }
+
+    // 按文件名版本段排序（/script/<db>-<version>-update.sql）；字符串序会把 3.2.10 排到 3.2.9 之前
+    private function sortSqlsByVersion(array $sqls)
+    {
+        $version = function ($path) {
+            return preg_match('/-([\w\.]+)-update\.sql$/i', $path, $matches) ? $matches[1] : '0';
+        };
+        usort($sqls, function ($a, $b) use ($version) {
+            return version_compare($version($a), $version($b));
+        });
+        return $sqls;
     }
 
     // 执行更新数据库，任一语句失败返回 false

@@ -27,7 +27,7 @@
 </p>
 <div class="bd-callout bd-callout-danger">
     <p>控制参数：</p>
-    <p>scode=* 栏目编码，用于控制需要输出内容的栏目编码，多个用逗号隔开</p>
+    <p>scode=* 栏目编码，用于控制需要输出内容的栏目编码，多个用逗号隔开；按栏目统计时仅计入列表模型内容</p>
     <p>num=* 数量，非必填，用于控制需要输出的数量</p>
     <p>target=tag （V2.0.6+）可以指定链接跳转到tags.html独立模板 <br/>
     </p>
@@ -66,7 +66,24 @@
 <p>
     <br/>
 </p>
-<h4>3、使用tags显示相似内容列表</h4>
+<h4>3、调用全站 tags（不填 scode / id）</h4>
+<p>
+    <code>{pboot:tags}</code>
+</p>
+<p>
+    <code>&amp;lt;a href="[tags:link]"&amp;gt;[tags:text]&amp;lt;/a&amp;gt;</code>
+</p>
+<p>
+    <code>{/pboot:tags}</code>
+</p>
+<div class="bd-callout bd-callout-danger">
+    <p>不填 scode、id 时输出全站 tags；若填写 scode，则只统计对应栏目下列表模型（type=2）的内容 tags。</p>
+    <p>num=* 数量，非必填；target=tag 可跳转到独立模板。</p>
+</div>
+<p>
+    <br/>
+</p>
+<h4>4、使用tags显示相似内容列表</h4>
 <p>
     <br/>
 </p>

@@ -2302,14 +2302,38 @@ function url_index_path($indexfile = null)
 function get_server_soft()
 {
     $soft = strtolower($_SERVER["SERVER_SOFTWARE"] ?? '');
-    if (strpos($soft, 'iis')) {
+    // 须用 !== false：命中位置为 0（如 "Apache/2.4"）时 if (strpos(...)) 会误判为未命中
+    if (strpos($soft, 'iis') !== false) {
         return 'iis';
-    } elseif (strpos($soft, 'apache')) {
+    } elseif (strpos($soft, 'apache') !== false) {
         return 'apache';
-    } elseif (strpos($soft, 'nginx')) {
+    } elseif (strpos($soft, 'nginx') !== false) {
         return 'nginx';
     } else {
         return 'other';
+    }
+}
+
+/**
+ * 开启伪静态时按 Web 服务器类型部署根目录重写规则（缺文件才拷贝）
+ *
+ * @param string $soft get_server_soft() 返回值
+ * @param string|null $root 站点根目录，默认 ROOT_PATH
+ */
+function deploy_pseudo_static_rewrite($soft, $root = null)
+{
+    if ($root === null) {
+        $root = ROOT_PATH;
+    }
+    $root = rtrim(str_replace('\\', '/', $root), '/');
+    if ($soft == 'iis') {
+        if (! file_exists($root . '/web.config')) {
+            copy($root . '/rewrite/web.config', $root . '/web.config');
+        }
+    } elseif ($soft == 'apache') {
+        if (! file_exists($root . '/.htaccess')) {
+            copy($root . '/rewrite/.htaccess', $root . '/.htaccess');
+        }
     }
 }
 

@@ -103,20 +103,20 @@ H:i:s'，更多请参考PHP时间格式化语法 ，参考链接
     </div>
 <h4>11、程序运行时间</h4>
     <code>
-        <p>{pboot:runtime@} 使用时@去掉<br/>
-        </p>
+        <p>{pboot:runtime}</p>
     </code>
 <div class="bd-callout bd-callout-danger">
         <p>使用说明：</p>
-        <p>用于输出页面运行时间/缓存时间，使用时请将反斜杠去掉。</p>
+        <p>用于输出页面运行时间/缓存时间。文档中若写作 <code>{pboot:runtime@}</code>，请将 <code>@</code> 替换为冒号，实际标签为 <code>{pboot:runtime}</code>。</p>
     </div>
-<h4>12、留言验证码开关状态</h4>
+<h4>12、留言/表单验证码开关状态</h4>
     <code>
-        <p>{pboot:checkcodestatus}</p>
+        <p>{pboot:msgcodestatus}</p>
+        <p>{pboot:formcodestatus}</p>
     </code>
 <div class="bd-callout bd-callout-danger">
         <p>使用说明：</p>
-        <p>用于判断留言验证码是否开启状态，方便页面控制验证码图标的显示。</p>
+        <p>{pboot:msgcodestatus} 用于判断留言验证码是否开启；{pboot:formcodestatus} 用于判断自定义表单验证码是否开启，方便页面控制验证码的显示。开启为 1，关闭为 0。</p>
     </div>
 <h4>13、站点地图</h4>
     <code>
@@ -140,8 +140,10 @@ H:i:s'，更多请参考PHP时间格式化语法 ，参考链接
     </code>
 <div class="bd-callout bd-callout-danger">
         <p>使用说明：</p>
-        <p>四个参数可以组合使用，此处会生成改变了图片大小的缓存图片，缓存图片是裁切过后的图片，但原上传的图片不变。</p>
-        <p class="text-danger">如果不想改变大小及裁切图片，只是想缩放显示，那么请使用CSS进行控制即可。</p>
+        <p>四个参数可以组合使用，此处会生成改变了图片大小的缓存图片，但原上传的图片不变。</p>
+        <p><code>width</code> / <code>height</code>：按指定宽高<strong>裁切</strong>；</p>
+        <p><code>maxwidth</code> / <code>maxheight</code>：按最大宽高<strong>等比缩放、不裁切</strong>。</p>
+        <p class="text-danger">如果不想生成缓存图、只是想缩放显示，那么请使用CSS进行控制即可。</p>
     </div>
 </div>
 <p>

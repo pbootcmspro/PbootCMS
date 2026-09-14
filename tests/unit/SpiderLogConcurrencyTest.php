@@ -144,9 +144,14 @@ function spider_log_tmp_dir(string $suffix): string
     return $dir;
 }
 
+function spider_log_file_path(string $runPath): string
+{
+    return $runPath . '/data/log/spider/' . date('Y/Ym') . '/' . date('Ymd') . '.log';
+}
+
 function spider_log_read_lines(string $runPath): array
 {
-    $logFile = $runPath . '/log/spider/' . date('Ymd') . '.log';
+    $logFile = spider_log_file_path($runPath);
     if (! file_exists($logFile)) {
         return array();
     }
@@ -179,6 +184,9 @@ return TestAssert::runSuite(function () {
     TestAssert::notContains($src, 'check_file(', 'LogSpider must not call check_file()');
     TestAssert::notContains($src, 'create_file(', 'LogSpider must not call create_file()');
     TestAssert::contains($src, 'check_dir(', 'LogSpider ensures spider log directory exists');
+    TestAssert::contains($src, 'DATA_DIR', 'LogSpider writes under DATA_DIR');
+    TestAssert::contains($src, "date('Y/Ym')", 'LogSpider archives under year/Ym directories');
+    TestAssert::notContains($src, "ROOT_PATH . '/log/spider'", 'LogSpider must not write to /log/spider');
     TestAssert::true(
         strpos($src, "fopen(\$path, 'ab')") !== false || strpos($src, 'fopen($path, "ab")') !== false,
         'LogSpider appends with fopen ab (create without truncate)'
@@ -194,7 +202,7 @@ return TestAssert::runSuite(function () {
     if (is_array($decoded)) {
         TestAssert::false((bool) $decoded['written'], 'spiderlog=0: no log lines written');
     }
-    TestAssert::false(file_exists($runPath . '/log/spider/' . date('Ymd') . '.log'), 'spiderlog=0: log file not created');
+    TestAssert::false(file_exists(spider_log_file_path($runPath)), 'spiderlog=0: log file not created');
 
     path_delete($runPath);
 
@@ -256,7 +264,7 @@ return TestAssert::runSuite(function () {
     }
 
     TestAssert::false(
-        file_exists($runPath . '/log/spider/' . date('Ymd') . '.log'),
+        file_exists(spider_log_file_path($runPath)),
         'fresh-file: log absent before barrier release'
     );
 

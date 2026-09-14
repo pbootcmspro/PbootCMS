@@ -2,7 +2,7 @@
     <div class="bd-callout bd-callout-info">
         <h4>IF条件语句使用</h4>
         <p>标签作用：用于根据条件输出不同内容</p>
-        <p>注意：从V3.2.0开始，if标签仅支持'&amp;gt;'、'&amp;gt;='、'!='、'=='、'&amp;lt;='、'&amp;lt;'、'&amp;&amp;'、'||'、'%'等符号，详情可查看V3.2.0开发日志</p>
+        <p>注意：通过校验的 token 仅有比较运算符（==、!=、&amp;gt;、&amp;lt;、&amp;gt;=、&amp;lt;=）、逻辑运算符（&amp;&amp;、||）、取模 %、括号、逻辑非 !，以及字符串/数字/标识符；非法 token 会导致条件校验失败。实际求值只支持一个比较，或两个比较用 &amp;&amp; / || 连接（不可混用）；括号与逻辑非无独立求值语义。</p>
         <h4>1、IF语句格<span style="color: rgb(0, 0, 0);">
             </span>式<br/>
         </h4>
@@ -16,8 +16,9 @@
     </code>
     <div class="bd-callout bd-callout-info">
         <p class="text-danger">使用提示：</p>
+        <p>注意：使用时请将 @ 替换为冒号 : ，实际标签为 {pboot:if}…{/pboot:if}。</p>
         <p>对于非数字类的条件均为字符串类型，请加上引号，如：{pboot@if('[list:author]'=='admin')}，但是数字类的可以不加：{pboot@if([list:i]==1)}</p>
-        <p>如果条件有多个，可以按照PHP的语法进行运算，如下：</p>
+        <p>最多支持两个条件用 &amp;&amp; 或 || 连接，二者不可混用：</p>
         <p>条件并列：{pboot@if('[list:author]'=='admin' &amp;&amp; [list:i]==1)}</p>
         <p>条件或：{pboot@if('[list:author]'=='admin' || [list:i]==1)}</p>
     </div>

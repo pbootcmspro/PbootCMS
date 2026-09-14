@@ -51,7 +51,7 @@ return array(
     // 控制器返回数据输出方式
     'return_data_type' => 'html',
     
-    // 日志记录方式，text文本记录，db为数据库记录
+    // 日志记录方式，file 为文件记录，db 为数据库记录
     'log_record_type' => 'db',
     
     // 默认分页大小

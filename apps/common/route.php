@@ -48,8 +48,7 @@ return array(
         // =======接口路由============
         'api/list' => 'api/list/index/scode',
         'api/content' => 'api/content/index/id',
-        'api/about' => 'api/about/index/scode',
-        'api/search' => 'api/search/index'
+        'api/about' => 'api/about/index/scode'
     
     )
 );

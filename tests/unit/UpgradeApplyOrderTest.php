@@ -6,6 +6,7 @@ declare(strict_types=1);
  * @suite unit
  * @covers upgrade_apply_file_copies()
  * @covers UpgradeController update() version.php 延后写入
+ * @covers UpgradeController sortSqlsByVersion() 升级 SQL 按版本序执行
  */
 
 if (!defined('TEST_ROOT')) {
@@ -25,6 +26,32 @@ return TestAssert::runSuite(function () {
     TestAssert::true(upgrade_is_version_status_file('/apps/common/version.php'), 'matches version.php');
     TestAssert::true(upgrade_is_version_status_file('apps/common/version.php'), 'matches without leading slash');
     TestAssert::false(upgrade_is_version_status_file('/apps/common/version.php.bak'), 'rejects backup name');
+
+    echo "=== 升级 SQL 按版本段排序而非字符串序 ===\n";
+
+    TestAssert::contains($upgrade, '$sqls = $this->sortSqlsByVersion($sqls);', 'update() uses version sort');
+    require_once APP_PATH . '/admin/controller/system/UpgradeController.php';
+    $ref = new ReflectionClass('app\\admin\\controller\\system\\UpgradeController');
+    $sort = $ref->getMethod('sortSqlsByVersion');
+    if (PHP_VERSION_ID < 80100) {
+        $sort->setAccessible(true);
+    }
+    $controller = $ref->newInstanceWithoutConstructor();
+    TestAssert::same(
+        array(
+            '/script/mysql-3.2.9-update.sql',
+            '/script/mysql-3.2.10-update.sql',
+            '/script/mysql-3.2.26-update.sql',
+            '/script/mysql-3.2.26.20260920-update.sql',
+        ),
+        $sort->invoke($controller, array(
+            '/script/mysql-3.2.26.20260920-update.sql',
+            '/script/mysql-3.2.10-update.sql',
+            '/script/mysql-3.2.26-update.sql',
+            '/script/mysql-3.2.9-update.sql',
+        )),
+        '3.2.9 before 3.2.10, hotfix with release time after plain version'
+    );
 
     echo "=== 成功时 version.php 最后写入 ===\n";
 

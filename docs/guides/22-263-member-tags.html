@@ -19,7 +19,7 @@
     <code>{pboot:logout} 退出登录地址</code>
 </p>
 <p>
-    <code>{pboot:upload} 文件上传AJAX接口</code>
+    <code>{pboot:upload} 文件上传AJAX接口（须登录，且受 home_upload_ext 扩展名限制）</code>
 </p>
 <p>
     <code>{pboot:islogin} 是否登录状态</code>
@@ -34,7 +34,7 @@
     <code>{pboot:registercodestatus} 会员注册验证码状态0、1、2</code>
 </p>
 <p>
-    <code>{pboot:logincodestatus} 会员登录验证码状态</code>
+    <code>{pboot:logincodestatus} 会员登录验证码状态，仅 0/1 两态</code>
 </p>
 <p>
     <code>{pboot:registerstatus} 是否开启注册</code>
@@ -147,5 +147,8 @@
     <code>username、password、checkcode 登录必填</code>
 </p>
 <p>
-    <code>username、nickname、password、rpassword、checkcode 注册必填</code>
+    <code>username、password、rpassword、checkcode 注册必填（nickname 非必填）</code>
+</p>
+<p>
+    <code>register_type=2 时账号按邮箱校验并写入 useremail；register_type=3 时按手机校验并写入 usermobile</code>
 </p>

@@ -79,7 +79,7 @@ layui.use(['element','upload','laydate','form'], function(){
   var imageExts = 'jpg|jpeg|png|gif|bmp|webp|svg|svgz|avif';
   
   //执行单图片实例
-  var uploadInst = upload.render({
+  upload.render({
 	elem: '.upload' //绑定元素
 	,url: uploadurl //上传接口
 	,field: 'upload' //字段名称
@@ -89,7 +89,7 @@ layui.use(['element','upload','laydate','form'], function(){
 	,exts: imageExts
     ,before: function(obj){ 
        //判断是否需要加水印
-       uploadInst.config.url = $(this.item).hasClass('watermark')
+       this.url = $(this.item).hasClass('watermark')
 	     ? uploadurl + '/watermark/1'
 	     : uploadurl;
 	   layer.load(); //上传loading
@@ -165,7 +165,7 @@ layui.use(['element','upload','laydate','form'], function(){
 	   finalizeUploadBatch(inst);
 	}
   }
-  var uploadsInst = upload.render({
+  upload.render({
 	elem: '.uploads' //绑定元素
 	,url: uploadurl //上传接口
 	,field: 'upload' //字段名称
@@ -188,7 +188,7 @@ layui.use(['element','upload','laydate','form'], function(){
 	}
 	,before: function(obj){ 
 	   //判断是否需要加水印
-       uploadsInst.config.url = $(this.item).hasClass('watermark')
+       this.url = $(this.item).hasClass('watermark')
 	     ? uploadurl + '/watermark/1'
 	     : uploadurl;
 	   layer.load(); //上传loading

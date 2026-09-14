@@ -74,7 +74,7 @@
 
 其中最低版本要求适用于新安装及全包升级；使用后台在线升级的存量站点不受影响，仍可继续运行于原有PHP版本。
 
-如果需要启用Mysql版本，请导入目录下数据库文件/static/backup/sql/xxx.sql，同时请注意使用最新日期名字的脚本文件，并修改config/database数据库连接文件信息。
+如果需要启用Mysql版本，请导入目录下数据库文件/static/backup/sql/pbootcms.sql，并修改config/database数据库连接文件信息。
 
 系统后台默认访问路径：http://ip/admin.php   账号：admin   密码：123456，
 
@@ -87,7 +87,7 @@
 
 * 使用全包升级：
 
-支持跨版本升级，保留config、data、static、template目录，其余全部用新版替换， 同时如果涉及到的中间版本有升级数据库，需要使用群文件数据库脚本升级数据库。
+支持跨版本升级，保留config、data、static、template目录，其余全部用新版替换， 同时如果涉及到的中间版本有升级数据库，需要按站点数据库类型手工执行新版/script/目录下对应前缀（mysql-、sqlite-）且版本号高于当前站点的数据库升级脚本。
 
 
 ##  授权声明：

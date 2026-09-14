@@ -22,12 +22,14 @@ function check_dir($path, $create = false)
 // 创建目录
 function create_dir($path)
 {
-    if (! file_exists($path)) {
-        if (mkdir($path, 0777, true)) {
-            return true;
-        }
+    if (is_dir($path)) {
+        return true;
     }
-    return false;
+    // mkdir 失败后再判 is_dir，他进程可能已建成
+    if (@mkdir($path, 0777, true)) {
+        return true;
+    }
+    return is_dir($path);
 }
 
 // 检查文件是否存在

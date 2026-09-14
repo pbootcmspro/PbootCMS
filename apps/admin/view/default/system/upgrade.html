@@ -128,12 +128,7 @@ function check(){
   	var lyindex;
   	layui.use('layer', function(){
 		var layer = layui.layer;
-		lyindex = layer.open({
-			type: 1,
-			title:'检查更新',
-			closeBtn:0,
-			content: '<div style="padding:20px 10px;"><img src="{APP_THEME_DIR}/layui/css/modules/layer/default/loading-0.gif">正在检查更新文件，请稍等...<div>' 
-		});
+		lyindex = layer.msg('正在检查更新文件，请稍等...', {icon:16, time:0, shade:0.1});
 	});
   		
 	var url= $('#check').data('url');
@@ -180,12 +175,7 @@ function down(){
   	    var layer;
   	    layui.use('layer', function(){
 		  	layer = layui.layer;
-		  	lyindex = layer.open({
-			type: 1,
-			title:'下载更新',
-			closeBtn:0,
-			content: '<div style="padding:20px 10px;"><img src="{APP_THEME_DIR}/layui/css/modules/layer/default/loading-0.gif"><span id="layer-content">正在下载更新文件，请稍等...</span><div>'
-		});
+		  	lyindex = layer.msg('<span id="layer-content">正在下载更新文件，请稍等...</span>', {icon:16, time:0, shade:0.1});
 	});
 
 	var url= $('#down').data('url');
@@ -248,12 +238,7 @@ function update(){
   	    var layer;
   	    layui.use('layer', function(){
 	  	layer = layui.layer;
-	  	lyindex = layer.open({
-		  type: 1,
-		  title:'执行更新',
-		  closeBtn:0,
-		  content: '<div style="padding:20px 10px;"><img src="{APP_THEME_DIR}/layui/css/modules/layer/default/loading-0.gif"><span id="layer-content">正在执行更新文件，请稍等...</span><div>'
-		});
+	  	lyindex = layer.msg('<span id="layer-content">正在执行更新文件，请稍等...</span>', {icon:16, time:0, shade:0.1});
 	});
 
     //由于涉及到数据库升级文件先后顺序，所以必须一次性提交	

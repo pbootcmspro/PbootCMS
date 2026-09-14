@@ -33,6 +33,9 @@ final class PbootIfBypassPayloads
             'comma args only' => "('a')('b','c')",
             'dot concat only' => "'file_'.'put'",
             'variable' => '$a==1',
+            'url with system call' => "/?a=system('id')",
+            'ternary form' => '1?2:3',
+            'url with and-call' => "/?a=1&&b('x')",
         );
     }
 
@@ -42,13 +45,24 @@ final class PbootIfBypassPayloads
         return array(
             'num eq' => '1==1',
             'num gt' => '3 > 2',
+            'num decimal' => '1.5>=1',
             'str eq single' => "'a'=='b'",
             'str neq double' => '"x"!="y"',
+            'str empty neq' => "'' != ''",
             'logic and' => '1==1 && 2>1',
             'logic or parens' => '(1>0) || (2<3)',
             'modulo' => 'n % 2 == 0',
             'not' => '!0',
             'bare val url' => 'http://a.com == http://a.com',
+            'bare val url with path' => "https://example.com/newscenter/299.html != ''",
+            'bare val url trailing slash' => "https://example.com/about/ != ''",
+            'bare val chinese' => "XX商贸公司!= ''",
+            'bare val site path' => "/uploads/a.jpg != ''",
+            'bare compat url' => "/?news/1.html != ''",
+            'bare page qs' => "/news/?page=2 != ''",
+            'bare wechat qs' => "https://mp.weixin.qq.com/s?__biz=xxx != ''",
+            'bare anchor' => "/about/#team != ''",
+            'quoted url' => "'https://example.com/newscenter/299.html' != ''",
             'date preprocessed form' => "'2026-07-04'=='2026-07-04'",
         );
     }

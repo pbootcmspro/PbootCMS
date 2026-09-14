@@ -460,7 +460,16 @@ class ParserController extends Controller
                     $out_data = $data['top'];
                 }
 
-                // 读取指定数量
+                // 先按 scode 过滤范围，再按 num 截断数量
+                if ($scode_arr) {
+                    $filtered = array();
+                    foreach ($out_data as $value) {
+                        if (in_array($value['scode'], $scode_arr)) {
+                            $filtered[] = $value;
+                        }
+                    }
+                    $out_data = $filtered;
+                }
                 if ($num) {
                     $out_data = array_slice($out_data, 0, $num);
                 }
@@ -475,9 +484,6 @@ class ParserController extends Controller
                 $out_html = '';
                 $key = 1;
                 foreach ($out_data as $value) { // 按查询的数据条数循环
-                    if ($scode_arr && !in_array($value['scode'], $scode_arr)) {
-                        continue;
-                    }
                     $one_html = $matches[2][$i];
                     if ($count2) {
                         for ($j = 0; $j < $count2; $j++) { // 循环替换数据
@@ -663,7 +669,7 @@ class ParserController extends Controller
                             $parent_sort = $this->model->getSort($sort->pcode);
                         }
                         if ($parent_sort->outlink) {
-                            $parentlink = $top_sort->outlink;
+                            $parentlink = $parent_sort->outlink;
                         } else {
                             $parentlink = $this->parserLink($parent_sort->type, $parent_sort->urlname, 'list', $parent_sort->scode, $parent_sort->filename, '', '');
                         }
@@ -1228,7 +1234,7 @@ class ParserController extends Controller
                                     $order = 'a.isrecommend DESC,a.istop DESC,a.isheadline DESC,a.sorting ASC,a.date DESC,a.id DESC';
                                     break;
                                 case 'isheadline':
-                                    $order = 'a.isrecommend DESC,a.istop DESC,a.isheadline DESC,a.sorting ASC,a.date DESC,a.id DESC';
+                                    $order = 'a.isheadline DESC,a.istop DESC,a.isrecommend DESC,a.sorting ASC,a.date DESC,a.id DESC';
                                     break;
                                 case 'visits':
                                 case 'likes':
@@ -1513,9 +1519,11 @@ class ParserController extends Controller
                 }
 
                 $out_html = $matches[2][$i];
+                // 无内部标签时跳过 getSort
+                $sort = $count2 > 0 ? $this->model->getSort($data->scode) : null;
                 for ($j = 0; $j < $count2; $j++) { // 循环替换数据
                     $params = $this->parserParam($matches2[2][$j]);
-                    $out_html = $this->parserContent($matches2[1][$j], $matches2[0][$j], $out_html, $data, $params, $scode);
+                    $out_html = $this->parserContent($matches2[1][$j], $matches2[0][$j], $out_html, $data, $params, $sort);
                 }
                 // 执行替换
                 $content = str_replace($matches[0][$i], $out_html, $content);
@@ -2580,126 +2588,6 @@ class ParserController extends Controller
         return $content;
     }
 
-    // 解析评论子楼层
-    public function parserCommentsubLabel($content)
-    {
-        $pattern = '/\{pboot:commentsub(\s+[^}]+)?\}([\s\S]*?)\{\/pboot:commentsub\}/';
-        $pattern2 = '/\[commentsub:([\w]+)(\s+[^]]+)?\]/';
-        if (preg_match_all($pattern, $content, $matches)) {
-            $count = count($matches[0]);
-            for ($i = 0; $i < $count; $i++) {
-                // 获取调节参数
-                $params = $this->parserParam($matches[1][$i]);
-
-                if (!self::checkLabelLevel($params)) {
-                    $content = str_replace($matches[0][$i], '', $content);
-                    continue;
-                }
-
-                $num = $this->config('pagesize');
-                $page = false;
-                $order = 'a.id desc';
-                $start = 1;
-
-                // 跳过未指定fcode的标签
-                if (!array_key_exists('contentid', $params)) {
-                    continue;
-                }
-
-                foreach ($params as $key => $value) {
-                    switch ($key) {
-                        case 'num':
-                            $num = $value;
-                            break;
-                        case 'page':
-                            $page = $value;
-                            break;
-                        case 'start':
-                            $start = $value;
-                            break;
-                        case 'contentid':
-                            $contentid = $value;
-                            break;
-                        case 'order':
-                            $order = $value;
-                            break;
-                    }
-                }
-
-                // 起始数校验
-                if (!is_numeric($start) || $start < 1) {
-                    $start = 1;
-                }
-
-                // 读取数据
-                if (!$data = $this->model->getComment($contentid, $num, $order, $page, $start)) {
-                    $content = str_replace($matches[0][$i], '', $content);
-                    continue;
-                }
-
-                // 匹配到内部标签
-                if (preg_match_all($pattern2, $matches[2][$i], $matches2)) {
-                    $count2 = count($matches2[0]); // 循环内的内容标签数量
-                } else {
-                    $count2 = 0;
-                }
-
-                $out_html = '';
-
-                $pagenum = defined('PAGE') ? PAGE : 1;
-                $key = ($pagenum - 1) * $num + 1;
-                foreach ($data as $value) { // 按查询数据条数循环
-                    $one_html = $matches[2][$i];
-                    for ($j = 0; $j < $count2; $j++) { // 循环替换数据
-                        $params = $this->parserParam($matches2[2][$j]);
-                        switch ($matches2[1][$j]) {
-                            case 'n':
-                                $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, $key) - 1, $one_html);
-                                break;
-                            case 'i':
-                                $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, $key), $one_html);
-                                break;
-                            case 'ip':
-                                $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, long2ip_safe($value->user_ip)), $one_html);
-                                break;
-                            case 'os':
-                                $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, $value->user_os), $one_html);
-                                break;
-                            case 'bs':
-                                $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, $value->user_bs), $one_html);
-                                break;
-                            case 'date':
-                                $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, $value->create_time), $one_html);
-                                break;
-                            case 'headpic':
-                                if ($value->headpic) {
-                                        $one_html = str_replace($matches2[0][$j], $this->parserAssetUrl($value->headpic, $params), $one_html);
-                                } else {
-                                    $one_html = str_replace($matches2[0][$j], SITE_DIR . '/apps/admin/view/default/images/logo.png', $one_html);
-                                }
-                                break;
-                            case 'pheadpic':
-                                if ($value->pheadpic) {
-                                        $one_html = str_replace($matches2[0][$j], $this->parserAssetUrl($value->pheadpic, $params), $one_html);
-                                } else {
-                                    $one_html = str_replace($matches2[0][$j], SITE_DIR . '/apps/admin/view/default/images/logo.png', $one_html);
-                                }
-                                break;
-                            default:
-                                if (isset($value->{$matches2[1][$j]})) {
-                                    $one_html = str_replace($matches2[0][$j], $this->adjustLabelData($params, $value->{$matches2[1][$j]}), $one_html);
-                                }
-                        }
-                    }
-                    $key++;
-                    $out_html .= $one_html;
-                }
-                $content = str_replace($matches[0][$i], $out_html, $content);
-            }
-        }
-        return $content;
-    }
-
     // 解析自定义SQL循环 V3.2.4 build20230304开始废弃(安全性修复)
 
 //    public function parserSqlListLabel($content)
@@ -2883,7 +2771,7 @@ class ParserController extends Controller
                                     $order = 'a.isrecommend DESC,a.istop DESC,a.isheadline DESC,a.sorting ASC,a.date DESC,a.id DESC';
                                     break;
                                 case 'isheadline':
-                                    $order = 'a.isrecommend DESC,a.istop DESC,a.isheadline DESC,a.sorting ASC,a.date DESC,a.id DESC';
+                                    $order = 'a.isheadline DESC,a.istop DESC,a.isrecommend DESC,a.sorting ASC,a.date DESC,a.id DESC';
                                     break;
                                 case 'visits':
                                 case 'likes':
@@ -3269,12 +3157,16 @@ class ParserController extends Controller
         $test = preg_replace("/'[^']*'/", ' __STR__ ', $test);
         $test = preg_replace('/"[^"]*"/', ' __STR__ ', $test);
 
-        // 2. 替换数字字面量
-        $test = preg_replace('/\b\d+\.?\d*\b/', ' __NUM__ ', $test);
-        // 2.5 替换裸值标识符（模板变量替换后残留的值，如URL、文本标识符）
+        // 2.0 整体识别 URL 形态裸值（兼容模式 /?xxx、分页 ?page=、带参外链、锚点）
+        // = 和 & 不能连续出现，避免吞掉 == 和 &&；不把 ?#=& 并进普通字符类，以免破坏 1.5>=1 / 放行三元
+        $test = preg_replace('#(?<![a-zA-Z0-9_:/.\-%\x80-\xFF])(?:https?://|/)(?:[a-zA-Z0-9_:/.\-%?\#@+~\x80-\xFF]|=(?!=)|&(?!&))*+(?!\s*\()#', ' __VAL__ ', $test);
+
+        // 2. 替换裸值标识符（含数字、URL、站内路径、多字节文本；数字不再单独拆步，避免 299.html 被切开）
         // 安全约束：标识符后不能紧跟 ( （阻止函数调用），且不以 __ 开头（跳过内部占位符）
-        // 例如：http://www.example.com → __VAL__，但 system( 中的 system 不会被替换
-        $test = preg_replace('/\b(?!__)[a-zA-Z_][a-zA-Z0-9_:\/.\-%]*\b(?!\s*\()/i', ' __VAL__ ', $test);
+        // 边界用分隔符 lookbehind + 占有量词收尾，避免 \b 在 / 处截断、中文/相对路径无法识别
+        // 例如：https://a.com/1.html、/uploads/a.jpg、中文标题 → __VAL__；system( 中的 system 不会被替换
+        $test = preg_replace('/(?<![a-zA-Z0-9_:\/.\-%\x80-\xFF])(?!__)[a-zA-Z0-9_\/\x80-\xFF][a-zA-Z0-9_:\/.\-%\x80-\xFF]*+(?!\s*\()/', ' __VAL__ ', $test);
+
         // 3. 替换比较运算符（双字符必须先于单字符替换，防止部分匹配）
         $test = str_replace('>=', ' __CMP__ ', $test);
         $test = str_replace('<=', ' __CMP__ ', $test);
@@ -3294,7 +3186,7 @@ class ParserController extends Controller
         $test = str_replace('%', ' __MOD__ ', $test);
 
         // 6. 移除所有安全占位符和空白字符
-        $test = preg_replace('/__(STR|NUM|VAL|CMP|LOG|NOT|PAR|MOD)__/', '', $test);
+        $test = preg_replace('/__(STR|VAL|CMP|LOG|NOT|PAR|MOD)__/', '', $test);
         $test = preg_replace('/\s+/', '', $test);
 
         // 7. 如果仍有残留内容，说明存在不允许的 token（如函数名、$变量、%取模等）

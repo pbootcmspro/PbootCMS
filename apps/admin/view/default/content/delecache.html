@@ -7,11 +7,11 @@ font-weight: 400;
 line-height: 20px;
 text-align: right;
 color:#ffffff;
-background-color: #009688;
+background-color: #16baaa;
 border-radius:2px;
 }
 .huancuna:hover{
-background-color: #33aba0;
+opacity:.8;
 color:#ffffff;
 }
 
@@ -86,12 +86,7 @@ color:#ffffff;
 	 var lyindex;
 	 layui.use('layer', function(){
 		var layer = layui.layer;
-		lyindex = layer.open({
-			type: 1,
-			title:'温馨提示',
-			closeBtn:0,
-			content: '<div style="padding:20px 10px;"><img src="{APP_THEME_DIR}/layui/css/modules/layer/default/loading-0.gif">正在更新...<div>' 
-		});
+		lyindex = layer.msg('正在更新...', {icon:16, time:0, shade:0.1});
 	 });
 	
 	var url= "?p=/DeleCache/index";

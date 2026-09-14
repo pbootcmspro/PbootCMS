@@ -346,16 +346,7 @@ class ConfigController extends Controller
         
         // 如果开启伪静态时自动拷贝文件
         if ($key == 'url_rule_type' && $value == 2) {
-            $soft = get_server_soft();
-            if ($soft == 'iis') {
-                if (! file_exists(ROOT_PATH . '/web.config')) {
-                    copy(ROOT_PATH . '/rewrite/web.config', ROOT_PATH . '/web.config');
-                }
-            } elseif ($soft == 'apache') {
-                if (! file_exists(ROOT_PATH . '/web.config')) {
-                    copy(ROOT_PATH . '/rewrite/.htaccess', ROOT_PATH . '/.htaccess');
-                }
-            }
+            deploy_pseudo_static_rewrite(get_server_soft());
             // 同步部署上传目录 MIME/nosniff 规则（审计 #25）
             if (function_exists('upload_ensure_htaccess')) {
                 upload_ensure_htaccess(true);

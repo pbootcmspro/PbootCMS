@@ -57,3 +57,4 @@ function upgrade_apply_file_copies(array $list, callable $copyFn, array &$order)
 
     return true;
 }
+

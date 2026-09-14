@@ -25,11 +25,11 @@ class ParserModel extends Model
     // 存储栏目位置
     protected $position = array();
 
-    // 上一篇
-    protected $pre;
+    // 上一篇（按 scode-id 键缓存，避免同请求多文章互相污染）
+    protected $pre = array();
 
-    // 下一篇
-    protected $next;
+    // 下一篇（按 scode-id 键缓存）
+    protected $next = array();
 
     // 获取模型数据
     public function checkModelUrlname($urlname)
@@ -517,21 +517,9 @@ class ParserModel extends Model
             $where['a.acode'] = $lg;
         }
 
-        $indexSql = '';
-        //todo:V3.1.5判断mysql是否设置了索引
-        if (get_db_type() == 'mysql') {
-            $checkIndex = parent::table('ay_content')->checkIndexSql();
-            foreach ($checkIndex as $item){
-                if($item[2] == 'ay_content_unique'){
-                    $indexSql = 'FORCE INDEX ( ay_content_unique )';
-                    break;
-                }
-            }
-        }
-
         // 筛选条件支持模糊匹配
         if($page){
-            return parent::table('ay_content a ' . $indexSql)->field($fields)
+            return parent::table('ay_content a')->field($fields)
                 ->where($scode_arr, 'OR')
                 ->where($where)
                 ->where($select, 'AND', 'AND', $fuzzy)
@@ -543,7 +531,7 @@ class ParserModel extends Model
                 ->decode()
                 ->select();
         }else{
-            return parent::table('ay_content a ' . $indexSql)->field($fields)
+            return parent::table('ay_content a')->field($fields)
                 ->where($scode_arr, 'OR')
                 ->where($where)
                 ->where($select, 'AND', 'AND', $fuzzy)
@@ -763,7 +751,8 @@ class ParserModel extends Model
     // 上一篇内容
     public function getContentPre($scode, $id)
     {
-        if (! $this->pre) {
+        $key = $scode . '-' . $id;
+        if (! isset($this->pre[$key])) {
             $this->scodes = array();
             $scodes = $this->getSubScodes($scode);
 
@@ -791,7 +780,7 @@ class ParserModel extends Model
                 )
             );
 
-            $this->pre = parent::table('ay_content a')->field($field)
+            $this->pre[$key] = parent::table('ay_content a')->field($field)
                 ->where("a.id<$id")
                 ->join($join)
                 ->in('a.scode', $scodes)
@@ -801,13 +790,14 @@ class ParserModel extends Model
                 ->order('a.id DESC')
                 ->find();
         }
-        return $this->pre;
+        return $this->pre[$key];
     }
 
     // 下一篇内容
     public function getContentNext($scode, $id)
     {
-        if (! $this->next) {
+        $key = $scode . '-' . $id;
+        if (! isset($this->next[$key])) {
             $this->scodes = array();
             $scodes = $this->getSubScodes($scode);
 
@@ -835,7 +825,7 @@ class ParserModel extends Model
                 )
             );
 
-            $this->next = parent::table('ay_content a')->field($field)
+            $this->next[$key] = parent::table('ay_content a')->field($field)
                 ->where("a.id>$id")
                 ->join($join)
                 ->in('a.scode', $scodes)
@@ -845,7 +835,7 @@ class ParserModel extends Model
                 ->order('a.id ASC')
                 ->find();
         }
-        return $this->next;
+        return $this->next[$key];
     }
 
     // 幻灯片
