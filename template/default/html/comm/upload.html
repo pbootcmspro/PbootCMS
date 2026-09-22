@@ -1,12 +1,12 @@
  <!-- Bootstrap Fileinput-->
 <link href="{pboot:sitetplpath}/fileinput/css/fileinput.css" media="all" rel="stylesheet" type="text/css"/>
-<link href="{pboot:sitetplpath}/fileinput/themes/explorer-fa/theme.css" media="all" rel="stylesheet" type="text/css"/>
+<link href="{pboot:sitetplpath}/fileinput/themes/explorer-fa4/theme.css" media="all" rel="stylesheet" type="text/css"/>
 <script src="{pboot:sitetplpath}/fileinput/js/plugins/sortable.js" type="text/javascript"></script>
+<!-- bootstrap.js 在 foot.html 中后加载，fileinput 无法自动探测版本，需显式声明（只取主版本号） -->
+<script type="text/javascript">$.fn.fileinputBsVersion='4.4.1';</script>
 <script src="{pboot:sitetplpath}/fileinput/js/fileinput.js" type="text/javascript"></script>
-<script src="{pboot:sitetplpath}/fileinput/js/locales/fr.js" type="text/javascript"></script>
-<script src="{pboot:sitetplpath}/fileinput/js/locales/es.js" type="text/javascript"></script>
-<script src="{pboot:sitetplpath}/fileinput/themes/explorer-fa/theme.js" type="text/javascript"></script>
-<script src="{pboot:sitetplpath}/fileinput/themes/fa/theme.js" type="text/javascript"></script>
+<script src="{pboot:sitetplpath}/fileinput/themes/explorer-fa4/theme.js" type="text/javascript"></script>
+<script src="{pboot:sitetplpath}/fileinput/themes/fa4/theme.js" type="text/javascript"></script>
 <script src="{pboot:sitetplpath}/fileinput/js/locales/zh.js" type="text/javascript"></script>
 <!-- Bootstrap Fileinput End-->
 
@@ -21,7 +21,7 @@
 			   	<div class="file-loading">
 			     	<input id="uploadInput" name="upload"  accept="image/gif,image/jpeg,image/png"  type="file" data-msg-placeholder="请选择要上传的图片">
 			    </div>
-			    <div id="kartik-file-errors"></div>
+			    <div id="uploadInputErrors"></div>
 			 </div>
 			 <div class="modal-footer">
 			   	<button type="button" class="btn btn-primary uploadSubmit">上传</button>
@@ -42,7 +42,7 @@
 			   	<div class="file-loading">
 			     	<input id="uploadInputs" name="upload[]" multiple accept="image/gif,image/jpeg,image/png"  type="file" data-msg-placeholder="请选择要上传的图片">
 			    </div>
-			    <div id="kartik-file-errors"></div>
+			    <div id="uploadInputsErrors"></div>
 			 </div>
 			 <div class="modal-footer">
 			   	<button type="button" class="btn btn-primary uploadSubmit">上传</button>
@@ -63,7 +63,7 @@
 			   	<div class="file-loading">
 			     	<input id="fileInput" name="upload" type="file" data-msg-placeholder="请选择要上传的文件">
 			    </div>
-			    <div id="kartik-file-errors"></div>
+			    <div id="fileInputErrors"></div>
 			 </div>
 			 <div class="modal-footer">
 			   	<button type="button" class="btn btn-primary uploadSubmit">上传</button>
@@ -76,7 +76,7 @@
  
 <script>
 
-$(document).on('ready', function() {
+$(function() {
 	
 	var target;
 
@@ -99,14 +99,28 @@ $(document).on('ready', function() {
     });
 	
 	
+	// 每个弹窗的“上传”按钮只绑定一次，且只作用于所在弹窗的input
+	$(".uploadSubmit").on("click",function(){
+		var $input=$(this).closest(".modal").find("input[type=file]");
+		// 未初始化时不调用，避免插件以默认参数隐式初始化
+		if($input.data("fileinput")){
+			$input.fileinput("upload");
+		}
+	});
+	
 	function upload(inputName,showPreview,dropZoneEnabled,autoReplace,maxFileCount){
+		// 已初始化则跳过，避免重复打开弹窗时重复绑定回调
+		if($("#"+inputName).data("fileinput")){
+			return;
+		}
 		$("#"+inputName).fileinput({
 	      	language:'zh',
+	      	theme:'fa4',
 	        showUpload: false,
 	        showPreview: showPreview,
 	        dropZoneEnabled: dropZoneEnabled,
 	        autoReplace: autoReplace,
-	        elErrorContainer: '#kartik-file-errors',
+	        elErrorContainer: '#'+inputName+'Errors',
 	        uploadAsync: false,
 	        maxFileCount: maxFileCount,
 	        uploadUrl: '{pboot:upload}'//文件上传接口
@@ -122,10 +136,6 @@ $(document).on('ready', function() {
 	    		alert(data.response.data);
 	    	}
 	    });
-		
-		$(".uploadSubmit").on("click",function(){
-			$("#"+inputName).fileinput("upload");
-		});
 	}
 
 });

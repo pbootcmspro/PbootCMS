@@ -1,0 +1,99 @@
+<form action="{url./admin/Syslog/index}" method="get" class="layui-form">
+	<div class="layui-form-item nospace">
+		{$pathinfo}
+		<input type="hidden" name="tab" value="{$text_tab}">
+		<div class="layui-input-inline">
+	       <select name="year">
+                {foreach $text_years(key,value)}
+                <option value="[value]" {if([$text_year]==$value)}selected{/if}>[value] 年</option>
+                {/foreach}
+           </select>
+	    </div>
+	    <div class="layui-input-inline">
+	       <select name="month">
+                {foreach $text_months(key,value)}
+                <option value="[value]" {if([$text_month]==$value)}selected{/if}>[value] 月</option>
+                {/foreach}
+           </select>
+	    </div>
+         <div class="layui-input-inline">
+         	<button class="layui-btn" lay-submit>查询</button>
+         	<a class="layui-btn layui-btn-primary" href="{$text_today_url}">今天</a>
+         </div>
+    </div>
+</form>
+
+{if([$text_date_invalid])}
+<p class="layui-word-aux" style="margin-bottom:10px;">日期参数无效</p>
+{else}
+	{if([$text_empty_month])}
+	<p class="layui-word-aux" style="margin-bottom:10px;">该月无日志</p>
+	{else}
+	<div style="margin-bottom:15px;">
+		{foreach $text_days(key,value)}
+			<a class="[value->btn_class]" href="[value->url]">[value->label]</a>
+		{/foreach}
+	</div>
+
+	{if([$text_show_day])}
+		{if([$text_empty_day])}
+		<p class="layui-word-aux">该日期无日志</p>
+		{else}
+			{if([$text_truncated])}
+			<blockquote class="layui-elem-quote">文件较大，仅显示最后 {$text_shown} 行</blockquote>
+			{/if}
+			{if([$text_tab]=='spider')}
+  	   		<table class="layui-table">
+            	<thead>
+                    <tr>
+                        <th>时间</th>
+                        <th>蜘蛛名称</th>
+                        <th>URL</th>
+                        <th>IP</th>
+                        <th>系统</th>
+                        <th>浏览器</th>
+                        <th>UA</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {foreach $text_logs(key,value,num)}
+                    <tr>
+                        <td>[value->time]</td>
+                        <td>[value->spider]</td>
+                        <td style="word-break:break-all;">[value->url]</td>
+                        <td>[value->ip]</td>
+                        <td>[value->os]</td>
+                        <td>[value->browser]</td>
+                        <td style="word-break:break-all;">[value->ua]</td>
+                    </tr>
+                    {/foreach}
+                </tbody>
+            </table>
+            {else}
+  	   		<table class="layui-table">
+            	<thead>
+                    <tr>
+                        <th>时间</th>
+                        <th>动作</th>
+                        <th>服务商</th>
+                        <th>用户</th>
+                        <th>详情</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {foreach $text_logs(key,value,num)}
+                    <tr>
+                        <td>[value->time]</td>
+                        <td>[value->action]</td>
+                        <td>[value->provider]</td>
+                        <td>[value->user]</td>
+                        <td style="word-break:break-all;">[value->detail]</td>
+                    </tr>
+                    {/foreach}
+                </tbody>
+            </table>
+            {/if}
+        {/if}
+	{/if}
+	{/if}
+{/if}

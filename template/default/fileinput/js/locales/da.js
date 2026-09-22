@@ -8,35 +8,51 @@
  *
  * NOTE: this file must be saved in UTF-8 encoding.
  */
-(function ($) {
+(function (factory) {
+    'use strict';
+    if (typeof define === 'function' && define.amd) {
+        define(['jquery'], factory);
+    } else if (typeof module === 'object' && typeof module.exports === 'object') {
+        factory(require('jquery'));
+    } else {
+        factory(window.jQuery);
+    }
+}(function($) {
     "use strict";
-    
+
     $.fn.fileinputLocales['da'] = {
+        sizeUnits: ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'], 
+        bitRateUnits: ['B/s', 'KB/s', 'MB/s', 'GB/s', 'TB/s', 'PB/s', 'EB/s', 'ZB/s', 'YB/s'],
         fileSingle: 'fil',
         filePlural: 'filer',
         browseLabel: 'Browse &hellip;',
         removeLabel: 'Fjern',
         removeTitle: 'Fjern valgte filer',
         cancelLabel: 'Fortryd',
-        cancelTitle: 'Afbryd nuv&aelig;rende upload',
+        cancelTitle: 'Afbryd nuværende upload',
+        pauseLabel: 'Pause',
+        pauseTitle: 'Pause ongoing upload',
         uploadLabel: 'Upload',
         uploadTitle: 'Upload valgte filer',
         msgNo: 'Ingen',
         msgNoFilesSelected: '',
+        msgPaused: 'Paused',
         msgCancelled: 'aflyst',
-        msgPlaceholder: 'Select {files}...',
+        msgPlaceholder: 'Vælg {files} ...',
         msgZoomModalHeading: 'Detaljeret visning',
-        msgFileRequired: 'You must select a file to upload.',
-        msgSizeTooSmall: 'File "{name}" (<b>{size} KB</b>) is too small and must be larger than <b>{minSize} KB</b>.',
-        msgSizeTooLarge: 'Fil "{name}" (<b>{size} KB</b>) er st&oslash;rre end de tilladte <b>{maxSize} KB</b>.',
-        msgFilesTooLess: 'Du skal mindst v&aelig;lge <b>{n}</b> {files} til upload.',
+        msgFileRequired: 'Du skal vælge en fil at uploade.',
+        msgSizeTooSmall: 'Fil "{name}" (<b>{size}</b>) er for lille og skal være større end <b>{minSize}</b>.',
+        msgSizeTooLarge: 'Fil "{name}" (<b>{size}</b>) er større end de tilladte <b>{maxSize}</b>.',
+        msgMultipleSizeTooLarge: 'Filer "{name}" (<b>{size}</b>) er større end de tilladte <b>{maxSize}</b>.',
+        msgFilesTooLess: 'Du skal mindst vælge <b>{n}</b> {files} til upload.',
         msgFilesTooMany: '<b>({n})</b> filer valgt til upload, men maks. <b>{m}</b> er tilladt.',
+        msgTotalFilesTooMany: 'You can upload a maximum of <b>{m}</b> files (<b>{n}</b> files detected).',
         msgFileNotFound: 'Filen "{name}" blev ikke fundet!',
-        msgFileSecured: 'Sikkerhedsrestriktioner forhindrer l&aelig;sning af "{name}".',
-        msgFileNotReadable: 'Filen "{name}" kan ikke indl&aelig;ses.',
-        msgFilePreviewAborted: 'Filpreview annulleret for "{name}".',
-        msgFilePreviewError: 'Der skete en fejl under l&aelig;sningen af filen "{name}".',
-        msgInvalidFileName: 'Invalid or unsupported characters in file name "{name}".',
+        msgFileSecured: 'Sikkerhedsrestriktioner forhindrer læsning af "{name}".',
+        msgFileNotReadable: 'Filen "{name}" kan ikke indlæses.',
+        msgFilePreviewAborted: 'Filgennemsyn annulleret for "{name}".',
+        msgFilePreviewError: 'Der skete en fejl under læsningen af filen "{name}".',
+        msgInvalidFileName: 'Ugyldige eller ikke-understøttede tegn i filnavn "{name}".',
         msgInvalidFileType: 'Ukendt type for filen "{name}". Kun "{types}" kan bruges.',
         msgInvalidFileExtension: 'Ukendt filtype for filen "{name}". Kun "{extensions}" filer kan bruges.',
         msgFileTypes: {
@@ -50,51 +66,62 @@
             'object': 'object'
         },
         msgUploadAborted: 'Filupload annulleret',
-        msgUploadThreshold: 'Processing...',
-        msgUploadBegin: 'Initializing...',
-        msgUploadEnd: 'Done',
-        msgUploadEmpty: 'No valid data available for upload.',
-        msgUploadError: 'Error',
-        msgValidationError: 'Validering Fejl',
+        msgUploadThreshold: 'Arbejder &hellip;',
+        msgUploadBegin: 'Initialiserer &hellip;',
+        msgUploadEnd: 'Udført',
+        msgUploadResume: 'Genoptager upload &hellip;',
+        msgUploadEmpty: 'Ingen gyldig data tilgængelig til upload.',
+        msgUploadError: 'Upload fejl',
+        msgDeleteError: 'Sletnings fejl',
+        msgProgressError: 'Fejl',
+        msgValidationError: 'Valideringsfejl',
         msgLoading: 'Henter fil {index} af {files} &hellip;',
-        msgProgress: 'Henter fil {index} af {files} - {name} - {percent}% f&aelig;rdiggjort.',
+        msgProgress: 'Henter fil {index} af {files} - {name} - {percent}% færdiggjort.',
         msgSelected: '{n} {files} valgt',
+        msgProcessing: 'Processing ...',
         msgFoldersNotAllowed: 'Drag & drop kun filer! {n} mappe(r) sprunget over.',
-        msgImageWidthSmall: 'Bredden af billedet "{name}" skal v&aelig;re p&aring; mindst {size} px.',
-        msgImageHeightSmall: 'H&oslash;jden af billedet "{name}" skal v&aelig;re p&aring; mindst {size} px.',
-        msgImageWidthLarge: 'Bredden af billedet "{name}" m&aring; ikke v&aelig;re over {size} px.',
-        msgImageHeightLarge: 'H&oslash;jden af billedet "{name}" m&aring; ikke v&aelig;re over {size} px.',
+        msgImageWidthSmall: 'Bredden af billedet "{name}" skal være på mindst <b>{size} px</b> (detected <b>{dimension} px</b>).',
+        msgImageHeightSmall: 'Højden af billedet "{name}" skal være på mindst <b>{size} px</b> (detected <b>{dimension} px</b>).',
+        msgImageWidthLarge: 'Bredden af billedet "{name}" må ikke være over <b>{size} px</b> (detected <b>{dimension} px</b>).',
+        msgImageHeightLarge: 'Højden af billedet "{name}" må ikke være over <b>{size} px</b> (detected <b>{dimension} px</b>).',
         msgImageResizeError: 'Kunne ikke få billedets dimensioner for at ændre størrelsen.',
         msgImageResizeException: 'Fejl ved at ændre størrelsen på billedet.<pre>{errors}</pre>',
-        msgAjaxError: 'Something went wrong with the {operation} operation. Please try again later!',
-        msgAjaxProgressError: '{operation} failed',
+        msgAjaxError: 'Noget gik galt med {operation} operationen. Forsøg venligst senere!',
+        msgAjaxProgressError: '{operation} fejlede',
+        msgDuplicateFile: 'File "{name}" af samme størrelse "{size}" er allerede valgt tidligere. Springer over duplikat valg.',
+        msgResumableUploadRetriesExceeded: 'Upload afbrudt ud over <b> {max} </b> forsøger igen for fil <b> {fil} </b>! Fejloplysninger: <pre> {error} </pre>',
+        msgPendingTime: '{time} tilbage',
+        msgCalculatingTime: 'beregner resterende tid',
         ajaxOperations: {
-            deleteThumb: 'file delete',
-            uploadThumb: 'file upload',
-            uploadBatch: 'batch file upload',
+            deleteThumb: 'fil slet',
+            uploadThumb: 'fil upload',
+            uploadBatch: 'batchfil upload',
             uploadExtra: 'form data upload'
         },
         dropZoneTitle: 'Drag & drop filer her &hellip;',
-        dropZoneClickTitle: '<br>(or click to select {files})',
+        dropZoneClickTitle: '<br>(eller klik for at vælge {files})',
         fileActionSettings: {
             removeTitle: 'Fjern fil',
             uploadTitle: 'Upload fil',
-            uploadRetryTitle: 'Retry upload',
-            downloadTitle: 'Download file',
+            uploadRetryTitle: 'Forsøg upload igen',
+            downloadTitle: 'Download fil',
+            rotateTitle: 'Rotate 90 deg. clockwise',
             zoomTitle: 'Se detaljer',
-            dragTitle: 'Move / Rearrange',
+            dragTitle: 'Flyt / Omarranger',
             indicatorNewTitle: 'Ikke uploadet endnu',
             indicatorSuccessTitle: 'Uploadet',
             indicatorErrorTitle: 'Upload fejl',
-            indicatorLoadingTitle: 'Uploader ...'
+            indicatorPausedTitle: 'Upload Paused',
+            indicatorLoadingTitle: 'Uploader &hellip;'
         },
         previewZoomButtonTitles: {
-            prev: 'View previous file',
-            next: 'View next file',
-            toggleheader: 'Toggle header',
-            fullscreen: 'Toggle full screen',
-            borderless: 'Toggle borderless mode',
-            close: 'Close detailed preview'
+            prev: 'Se forrige fil',
+            next: 'Se næste fil',
+            rotate: 'Rotate 90 deg. clockwise',
+            toggleheader: 'Skift titel',
+            fullscreen: 'Skift fuld skærm',
+            borderless: 'Skift grænseløs mode',
+            close: 'Luk detaljeret visning'
         }
     };
-})(window.jQuery);
+}));

@@ -167,6 +167,10 @@ class ParserModel extends Model
             ->order('a.pcode,a.sorting,a.id')
             ->column($fields, 'scode');
 
+        $data = array(
+            'top' => array(),
+            'tree' => array()
+        );
         foreach ($result as $key => $value) {
             if ($value['pcode']) {
                 $result[$value['pcode']]['son'][] = $value; // 记录到关系树

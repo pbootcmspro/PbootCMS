@@ -667,15 +667,21 @@ class AiController extends Controller
     }
 
     /**
-     * AI 专用调用日志（不含 Key / 正文），写入 runtime/log/ai_YYYYMMDD.log
+     * AI 专用调用日志（不含 Key / 正文），归档到 data/log/ai/Y/Ym/
      */
     private function aiWriteLog($action, $detail = '')
     {
-        $dir = RUN_PATH . '/log';
-        if (! check_dir($dir, true)) {
+        $dir = DOC_PATH . DATA_DIR . '/log/ai/' . date('Y/Ym');
+        for ($i = 0; $i < 8; $i ++) {
+            if (check_dir($dir, true)) {
+                break;
+            }
+            usleep(2000);
+        }
+        if (! is_dir($dir)) {
             return;
         }
-        $file = $dir . '/ai_' . date('Ymd') . '.log';
+        $file = $dir . '/' . date('Ymd') . '.log';
         $user = session('username') ?: ('uid:' . (session('id') ?: '0'));
         $provider = $this->config('ai_provider') ?: 'deepseek';
         $line = date('Y-m-d H:i:s') . ' [' . $action . '] provider=' . $provider . ' user=' . $user;
@@ -684,7 +690,23 @@ class AiController extends Controller
             $line .= ' ' . mb_substr(strip_tags($detail), 0, 200);
         }
         $line .= PHP_EOL;
-        @file_put_contents($file, $line, FILE_APPEND);
+        $this->aiAppendLog($file, $line);
+    }
+
+    private function aiAppendLog($path, $content)
+    {
+        $fp = @fopen($path, 'ab');
+        if (! $fp) {
+            return false;
+        }
+        if (! flock($fp, LOCK_EX)) {
+            fclose($fp);
+            return false;
+        }
+        $result = fwrite($fp, $content);
+        flock($fp, LOCK_UN);
+        fclose($fp);
+        return $result !== false;
     }
 
     /**

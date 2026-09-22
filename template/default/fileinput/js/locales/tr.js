@@ -8,10 +8,21 @@
  *
  * NOTE: this file must be saved in UTF-8 encoding.
  */
-(function ($) {
+(function (factory) {
+    'use strict';
+    if (typeof define === 'function' && define.amd) {
+        define(['jquery'], factory);
+    } else if (typeof module === 'object' && typeof module.exports === 'object') {
+        factory(require('jquery'));
+    } else {
+        factory(window.jQuery);
+    }
+}(function ($) {
     "use strict";
 
     $.fn.fileinputLocales['tr'] = {
+        sizeUnits: ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'], 
+        bitRateUnits: ['B/s', 'KB/s', 'MB/s', 'GB/s', 'TB/s', 'PB/s', 'EB/s', 'ZB/s', 'YB/s'],
         fileSingle: 'dosya',
         filePlural: 'dosyalar',
         browseLabel: 'Gözat &hellip;',
@@ -19,18 +30,23 @@
         removeTitle: 'Seçilen dosyaları sil',
         cancelLabel: 'İptal',
         cancelTitle: 'Devam eden yüklemeyi iptal et',
+        pauseLabel: 'Durdur',
+        pauseTitle: 'Devam eden yüklemeyi durdur',
         uploadLabel: 'Yükle',
         uploadTitle: 'Seçilen dosyaları yükle',
         msgNo: 'Hayır',
-        msgNoFilesSelected: '',
+        msgNoFilesSelected: 'Dosya seçilmedi',
+        msgPaused: 'Durduruldu',
         msgCancelled: 'İptal edildi',
-        msgPlaceholder: 'Select {files}...',
+        msgPlaceholder: 'Seçilen {files} ...',
         msgZoomModalHeading: 'Detaylı Önizleme',
         msgFileRequired: 'Yüklemek için bir dosya seçmelisiniz.',
-        msgSizeTooSmall: '"{name}"(<b>{size} KB</b>) dosyası çok küçük  ve <b>{minSize} KB</b> boyutundan büyük olmalıdır.',
-        msgSizeTooLarge: '"{name}" dosyasının boyutu (<b>{size} KB</b>) izin verilen azami dosya boyutu olan <b>{maxSize} KB</b>\'tan büyük.',
+        msgSizeTooSmall: '"{name}"(<b>{size}</b>) dosyası çok küçük  ve <b>{minSize}</b> boyutundan büyük olmalıdır.',
+        msgSizeTooLarge: '"{name}" dosyasının boyutu (<b>{size}</b>) izin verilen azami dosya boyutu olan <b>{maxSize}</b>\'tan büyük.',
+        msgMultipleSizeTooLarge: '"{name}" dosya boyutu (<b>{size}</b>) izin verilen azami dosya boyutu olan <b>{maxSize}</b>\'tan büyük.',
         msgFilesTooLess: 'Yüklemek için en az <b>{n}</b> {files} dosya seçmelisiniz.',
         msgFilesTooMany: 'Yüklemek için seçtiğiniz dosya sayısı <b>({n})</b> azami limitin <b>({m})</b> altında olmalıdır.',
+        msgTotalFilesTooMany: 'En fazla <b>{m}</b> adet dosya yükleyebilirsiniz (<b>{n}</b> adet tespit edildi).',
         msgFileNotFound: '"{name}" dosyası bulunamadı!',
         msgFileSecured: 'Güvenlik kısıtlamaları "{name}" dosyasının okunmasını engelliyor.',
         msgFileNotReadable: '"{name}" dosyası okunabilir değil.',
@@ -50,15 +66,19 @@
             'object': 'object'
         },
         msgUploadAborted: 'Dosya yükleme iptal edildi',
-        msgUploadThreshold: 'İşlem yapılıyor...',
-        msgUploadBegin: 'Başlıyor...',
+        msgUploadThreshold: 'İşlem yapılıyor &hellip;',
+        msgUploadBegin: 'Başlıyor &hellip;',
         msgUploadEnd: 'Başarılı',
+        msgUploadResume: 'Yüklemeye devam ediliyor &hellip;',
         msgUploadEmpty: 'Yüklemek için geçerli veri mevcut değil.',
-        msgUploadError: 'Error',
+        msgUploadError: 'Yükleme Hatası',
+        msgDeleteError: 'Silme Hatası',
+        msgProgressError: 'Hata',
         msgValidationError: 'Doğrulama Hatası',
         msgLoading: 'Dosya yükleniyor {index} / {files} &hellip;',
         msgProgress: 'Dosya yükleniyor {index} / {files} - {name} - %{percent} tamamlandı.',
         msgSelected: '{n} {files} seçildi',
+        msgProcessing: 'Processing ...',
         msgFoldersNotAllowed: 'Yalnızca dosyaları sürükleyip bırakabilirsiniz! {n} dizin(ler) göz ardı edildi.',
         msgImageWidthSmall: '"{name}" adlı görüntü dosyasının genişliği en az {size} piksel olmalıdır.',
         msgImageHeightSmall: '"{name}" adlı görüntü dosyasının yüksekliği en az {size} piksel olmalıdır.',
@@ -68,6 +88,10 @@
         msgImageResizeException: 'Görüntü boyutlandırma sırasında hata.<pre>{errors}</pre>',
         msgAjaxError: '{operation} işlemi ile ilgili bir şeyler ters gitti. Lütfen daha sonra tekrar deneyiniz!',
         msgAjaxProgressError: '{operation} işlemi başarısız oldu.',
+        msgDuplicateFile: 'Aynı "{size}" boyutundaki "{name}" dosyası daha önce seçilmiş. Yinelenen seçim atlanıyor.',
+        msgResumableUploadRetriesExceeded:  '<b>{max}</b> deneme sonrasında <b>{file}</b> dosyasının yükleme işlemi iptal edildi! Hata Detayları: <pre>{error}</pre>',
+        msgPendingTime: '{time} kaldı',
+        msgCalculatingTime: 'kalan süre hesaplanıyor',
         ajaxOperations: {
             deleteThumb: 'dosya silme',
             uploadThumb: 'dosya yükleme',
@@ -79,21 +103,24 @@
         fileActionSettings: {
             removeTitle: 'Dosyayı kaldır',
             uploadTitle: 'Dosyayı yükle',
-            uploadRetryTitle: 'Retry upload',
+            uploadRetryTitle: 'Tekrar dene',
+            rotateTitle: 'Rotate 90 deg. clockwise',
             zoomTitle: 'Ayrıntıları görüntüle',
             dragTitle: 'Taşı / Yeniden düzenle',
             indicatorNewTitle: 'Henüz yüklenmedi',
             indicatorSuccessTitle: 'Yüklendi',
             indicatorErrorTitle: 'Yükleme Hatası',
-            indicatorLoadingTitle: 'Yükleniyor ...'
+            indicatorPausedTitle: 'Upload Paused',
+            indicatorLoadingTitle:  'Yükleniyor &hellip;'
         },
         previewZoomButtonTitles: {
             prev: 'Önceki dosyayı göster',
             next: 'Sonraki dosyayı göster',
+            rotate: 'Rotate 90 deg. clockwise',
             toggleheader: 'Üst bilgi geçiş',
             fullscreen: 'Tam ekran geçiş',
             borderless: 'Çerçevesiz moda geçiş',
             close: 'Detaylı önizlemeyi kapat'
         }
     };
-})(window.jQuery);
+}));

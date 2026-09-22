@@ -3,10 +3,13 @@
 <div class="layui-body">
 	<div class="layui-tab layui-tab-brief" lay-filter="tab">
 	  <ul class="layui-tab-title">
-	    <li class="layui-this" lay-id="t1">系统日志</li>
+	    <li {if([$log_tab]=='sys')}class="layui-this"{/if} lay-id="t1" data-href="{$sys_tab_url}" onclick="location.href=this.getAttribute('data-href')">系统日志</li>
+	    <li {if([$log_tab]=='spider')}class="layui-this"{/if} lay-id="t2" data-href="{$spider_tab_url}" onclick="location.href=this.getAttribute('data-href')">蜘蛛日志</li>
+	    <li {if([$log_tab]=='ai')}class="layui-this"{/if} lay-id="t3" data-href="{$ai_tab_url}" onclick="location.href=this.getAttribute('data-href')">AI 日志</li>
 	  </ul>
 	  <div class="layui-tab-content">
-	  	   <div class="layui-tab-item layui-show">
+	  	   <div class="layui-tab-item {if([$log_tab]=='sys')}layui-show{/if}">
+	  	   		{if([$log_tab]=='sys')}
 		  	   	<table class="layui-table">
 	            	<thead>
 	                    <tr>
@@ -37,6 +40,17 @@
 	            	<a href="{url./admin/Syslog/clear}" class="layui-btn layui-btn-sm"  onclick='return confirm("您确定要清空么？")'>清空日志</a>
 	            {/if}
 	            <div class="page">{$pagebar}</div>
+	            {/if}
+	  	   </div>
+	  	   <div class="layui-tab-item {if([$log_tab]=='spider')}layui-show{/if}">
+	  	   		{if([$log_tab]=='spider')}
+	  	   		{include file='system/syslog_text.html'}
+	            {/if}
+	  	   </div>
+	  	   <div class="layui-tab-item {if([$log_tab]=='ai')}layui-show{/if}">
+	  	   		{if([$log_tab]=='ai')}
+	  	   		{include file='system/syslog_text.html'}
+	            {/if}
 	  	   </div>
 	  </div>
 	</div>	

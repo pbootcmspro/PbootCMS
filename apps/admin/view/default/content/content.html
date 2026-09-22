@@ -387,9 +387,9 @@
 			                <div class="layui-form-item">
 			                     <label class="layui-form-label">参数</label>
 			                     <div class="layui-input-block">
-									<input type="checkbox" name="istop" value="1" title="置顶">
-			                    	<input type="checkbox" name="isrecommend" value="1" title="推荐">
-			                    	<input type="checkbox" name="isheadline" value="1" title="头条">
+									<input type="checkbox" name="istop" value="1" title="置顶" lay-skin="tag">
+			                    	<input type="checkbox" name="isrecommend" value="1" title="推荐" lay-skin="tag">
+			                    	<input type="checkbox" name="isheadline" value="1" title="头条" lay-skin="tag">
 			                     </div>
 			                </div>
 			                
@@ -794,9 +794,9 @@
 			                <div class="layui-form-item">
 			                     <label class="layui-form-label">状态</label>
 			                     <div class="layui-input-block">
-									<input type="checkbox" name="istop" value="1" title="置顶" {if([$content->istop]==1)}checked{/if}>
-			                    	<input type="checkbox" name="isrecommend" value="1" title="推荐" {if([$content->isrecommend]==1)}checked{/if}>
-			                    	<input type="checkbox" name="isheadline" value="1" title="头条" {if([$content->isheadline]==1)}checked{/if}>
+									<input type="checkbox" name="istop" value="1" title="置顶" lay-skin="tag" {if([$content->istop]==1)}checked{/if}>
+			                    	<input type="checkbox" name="isrecommend" value="1" title="推荐" lay-skin="tag" {if([$content->isrecommend]==1)}checked{/if}>
+			                    	<input type="checkbox" name="isheadline" value="1" title="头条" lay-skin="tag" {if([$content->isheadline]==1)}checked{/if}>
 			                     </div>
 			                </div>
 			                

@@ -8,8 +8,8 @@ tests/tmp_*
 #   AI agent  #
 ###############
 # 本地运行状态
-/.omc/
-/.omo/
+.omc
+.omo
 
 ###############
 #  fixed file #
