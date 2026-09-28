@@ -174,7 +174,7 @@ class Smtp
     public function setMail($subject, $body)
     {
         $this->subject = base64_encode($subject);
-        $this->body = base64_encode($body);
+        $this->body = chunk_split(base64_encode($body), 76, "\r\n");
         return true;
     }
 
@@ -440,7 +440,7 @@ class Smtp
     {
         if (file_exists($file)) {
             $file_obj = file_get_contents($file);
-            return base64_encode($file_obj);
+            return chunk_split(base64_encode($file_obj), 76, "\r\n");
         } else {
             $this->errorMessage = "file " . $file . " dose not exist";
             return false;

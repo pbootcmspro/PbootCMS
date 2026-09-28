@@ -2,6 +2,13 @@
 官方网站：https://www.pbootcms.com
 标签手册：https://www.pbootcms.com/docs.html
 ##########################################
+PbootCMS V3.2.28 build 2026-09-28
+1. 升级前台默认模板 Bootstrap 至 5.3.8，移除 Popper 与 datetimepicker
+2. 升级前台默认模板 Font Awesome 4.7.0 至 6.7.2，同步替换图标类名，fileinput 主题切换为 fa6
+3. 升级前台默认模板 Swiper 4.3.5 至 14.2.0、animate.css 3.7.0 至 4.1.1，单张幻灯片时关闭 loop
+4. 前台默认模板页脚备案与 QQ 客服外链由 http 改为 https，避免混合内容拦截
+5. 修复正文较长的通知邮件因行长超限被 SMTP 服务器拒收的问题
+
 PbootCMS V3.2.27 build 2026-09-22
 1. 升级后台 jQuery 1.12.4 至 3.7.1，修复旧版安全漏洞并兼容现代浏览器，内容状态复选框在 Layui 2.13 下保持块状外观
 2. 升级前台默认模板 jQuery 1.12.4 至 3.7.1

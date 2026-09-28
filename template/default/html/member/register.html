@@ -11,30 +11,30 @@
     	<div class="col-lg-3"></div>
     	<div class="col-12 col-lg-6">
         	<form class="my-4" onsubmit="return register(this);">
-                <div class="form-group">
-                    <label for="username">账　号</label>
+                <div class="mb-3">
+                    <label for="username" class="form-label">账　号</label>
                     <input type="text" name="username" required id="username" onblur="isRegister()" class="form-control" placeholder="请输入登录账号">
                     <div id="usernote"></div>
                 </div>
                 
-                <div class="form-group">
-                    <label for="nickname">昵　称</label>
+                <div class="mb-3">
+                    <label for="nickname" class="form-label">昵　称</label>
                     <input type="text" name="nickname" required id="nickname" class="form-control" placeholder="请输入账号昵称">
                 </div>
                 
-                <div class="form-group">
-                    <label for="password">密　码</label>
+                <div class="mb-3">
+                    <label for="password" class="form-label">密　码</label>
                     <input type="password" name="password" required id="password" class="form-control" placeholder="请输入登录密码">
                 </div>
                 
-                <div class="form-group">
-                    <label for="rpassword">确认密码</label>
+                <div class="mb-3">
+                    <label for="rpassword" class="form-label">确认密码</label>
                     <input type="password" name="rpassword" required id="rpassword" class="form-control" placeholder="请再次输入登录密码">
                 </div>
                 
                 {pboot:if({pboot:registercodestatus}==1)}
-                <div class="form-group">
-                    <label for="checkcode">验证码</label>
+                <div class="mb-3">
+                    <label for="checkcode" class="form-label">验证码</label>
                     <div class="row">
                         <div class="col-6">
                             <input type="text" name="checkcode" required id="checkcode" class="form-control" placeholder="请输入验证码">
@@ -47,8 +47,8 @@
                 {/pboot:if}
                 
                 {pboot:if({pboot:registercodestatus}==2)}
-                <div class="form-group">
-                    <label for="checkcode">邮箱验证码</label>
+                <div class="mb-3">
+                    <label for="checkcode" class="form-label">邮箱验证码</label>
                     <div class="row">
                         <div class="col-6">
                             <input type="text" name="checkcode" required id="checkcode" class="form-control" placeholder="请输入验证码">
@@ -60,9 +60,9 @@
                 </div>
                 {/pboot:if}
                 
-                <div class="form-group">
+                <div class="mb-3">
                    <button type="submit" class="btn btn-info mb-2">立即注册</button>
-                   <span class="text-secondary ml-3">已有账号？<a href="{pboot:login}">马上登录</a></span>
+                   <span class="text-secondary ms-3">已有账号？<a href="{pboot:login}">马上登录</a></span>
                 </div>
             </form>
         </div>

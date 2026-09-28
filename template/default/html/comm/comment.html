@@ -3,12 +3,12 @@
 	<div class="shadow-sm p-3 my-5 bg-white rounded">
 		<h4>发表评论：</h4>
 		<form class="my-4" onsubmit="return submitcomment(this);" data-action="{pboot:commentaction}" >
-		        <div class="form-group">
+		        <div class="mb-3">
 		            <textarea name="comment" id="comment" class="form-control" placeholder="请输入评论内容"></textarea>
 		        </div>
 		        
 		        {pboot:2if({pboot:commentcodestatus})}
-		        <div class="form-group">
+		        <div class="mb-3">
 		            <div class="row">
 		                <div class="col-6 col-md-3">
 		                    <input type="text" name="checkcode" required id="checkcode" class="form-control" placeholder="请输入验证码">
@@ -20,7 +20,7 @@
 		        </div>
 		        {/pboot:2if}
 		        
-		        <div class="form-group">
+		        <div class="mb-3">
 		           <button type="submit" class="btn btn-info mb-2">提交评论</button>
 		        </div>
 		    </form>
@@ -29,25 +29,25 @@
 		    <h4>评论记录：</h4>
 		      <a name="comment"></a>
 		     {pboot:comment contentid={content:id} num=20}
-		    <div class="media border-bottom pb-3 pt-3">
-			  <img class="mr-3" src="[comment:headpic]" height="25">
-			  <div class="media-body">
+		    <div class="d-flex align-items-start border-bottom pb-3 pt-3">
+			  <img class="me-3" src="[comment:headpic]" height="25">
+			  <div class="flex-grow-1">
 			    <h6 class="mt-0">
 			    	<strong>[comment:nickname]</strong> 
 			    	<small style="color:#999">[comment:date]</small>
 			    </h6>
 			    <p>[comment:comment] 
-			    	<span class="badge badge-light text-secondary font-weight-normal replybtn"  data-action="[comment:replyaction]">回复</span>
+			    	<span class="badge bg-light text-secondary fw-normal replybtn"  data-action="[comment:replyaction]">回复</span>
 			    </p>
 			    
 			    {pboot:commentsub} <!-- 调用子评论 -->
-			    <div class="media mt-3 border-top-dashed pt-3">
-			      <img class="mr-3" src="[commentsub:headpic]" height="25">
-			      <div class="media-body">
+			    <div class="d-flex align-items-start mt-3 border-top-dashed pt-3">
+			      <img class="me-3" src="[commentsub:headpic]" height="25">
+			      <div class="flex-grow-1">
 			        <h6 class="mt-0"><strong>[commentsub:nickname]</strong> <small style="color:#999">[commentsub:date]</small></h6>
 			        <p>
 			        	@[commentsub:pnickname] [commentsub:comment] 
-			        	<span class="badge badge-light text-secondary font-weight-normal replybtn"  data-action="[commentsub:replyaction]">回复</span>
+			        	<span class="badge bg-light text-secondary fw-normal replybtn"  data-action="[commentsub:replyaction]">回复</span>
 			        </p>
 			      </div>
 			    </div>
@@ -80,18 +80,16 @@
     
       <div class="modal-header">
         <h5 class="modal-title">回复评论：</h5>
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-          <span aria-hidden="true">&times;</span>
-        </button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       
       <form  onsubmit="return submitcomment(this);" data-action=""  id="replyform">
 	      <div class="modal-body">
-		         <div class="form-group">
+		         <div class="mb-3">
 		             <textarea name="comment" id="comment" class="form-control" placeholder="请输入评论内容"></textarea>
 		         </div>
 		         {pboot:2if({pboot:commentcodestatus})}
-		         <div class="form-group">
+		         <div class="mb-3">
 		             <div class="row">
 		                 <div class="col-6">
 		                     <input type="text" name="checkcode" required id="checkcode" class="form-control" placeholder="请输入验证码">
@@ -104,7 +102,7 @@
 		         {/pboot:2if}
 	      </div>
 	      <div class="modal-footer">
-	        <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+	        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
 	        <button type="submit" class="btn btn-info">提交评论</button>
 	      </div>
        </form>

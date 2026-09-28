@@ -36,6 +36,7 @@ local.properties
 .settings/
 .loadpath
 .idea/
+.DS_Store
 
 # External tool builders
 .externalToolBuilders/
