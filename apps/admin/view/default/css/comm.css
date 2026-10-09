@@ -266,3 +266,18 @@ a.page-num-current:hover{
 	margin: 0 0 10px 0px;
 }
 }
+
+table.admin-tree span.indenter {
+	display: inline-block;
+	margin: 0;
+	padding: 0;
+	text-align: right;
+	user-select: none;
+	box-sizing: content-box;
+	width: 19px;
+}
+table.admin-tree span.indenter a {
+	display: inline-block;
+	text-decoration: none;
+	width: 19px;
+}

@@ -141,7 +141,7 @@ class View
         // 当编译文件不存在，或者模板文件修改过，则重新生成编译文件
         if (! file_exists($tpl_c_file) || filemtime($tpl_c_file) < filemtime($tpl_file) || ! Config::get('tpl_parser_cache')) {
             $content = Parser::compile($this->tplPath, $tpl_file); // 解析模板
-            file_put_contents($tpl_c_file, $content) ?: error('编译文件' . $tpl_c_file . '生成出错！请检查目录是否有可写权限！'); // 写入编译文件
+            write_file_atomic($tpl_c_file, $content) ?: error('编译文件' . $tpl_c_file . '生成出错！请检查目录是否有可写权限！'); // 写入编译文件
             $compile = true;
         }
         
@@ -151,7 +151,7 @@ class View
             foreach ($rs as $value) { // 检查包含文件是否更新,其中一个包含文件不存在或修改则重新解析模板
                 if (! file_exists($value) || filemtime($tpl_c_file) < filemtime($value) || ! Config::get('tpl_parser_cache')) {
                     $content = Parser::compile($this->tplPath, $tpl_file); // 解析模板
-                    file_put_contents($tpl_c_file, $content) ?: error('编译文件' . $tpl_c_file . '生成出错！请检查目录是否有可写权限！'); // 写入编译文件
+                    write_file_atomic($tpl_c_file, $content) ?: error('编译文件' . $tpl_c_file . '生成出错！请检查目录是否有可写权限！'); // 写入编译文件
                     ob_clean();
                     include $tpl_c_file;
                     break;
@@ -175,7 +175,7 @@ class View
             }
             $content = preg_replace('/<\?(php|=)?|\?>|<%|%>|<script\s+language\s*=\s*["\']?php["\']?\s*>/i', '', $content);
             $cacheFile = $this->cachePath . '/' . md5(get_http_url() . $_SERVER["REQUEST_URI"] . $lg . $wap) . '.html'; // 缓存文件
-            file_put_contents($cacheFile, $content) ?: error('缓存文件' . $cacheFile . '生成出错！请检查目录是否有可写权限！'); // 写入缓存文件
+            write_file_atomic($cacheFile, $content) ?: error('缓存文件' . $cacheFile . '生成出错！请检查目录是否有可写权限！'); // 写入缓存文件
             return true;
         }
         return false;

@@ -1,8 +1,63 @@
-layui.use(['element','upload','laydate','form'], function(){
+layui.use(['element','upload','laydate','form','colorpicker'], function(){
   var element = layui.element;
   var upload = layui.upload;
   var laydate = layui.laydate;
   var form = layui.form;
+  var colorpicker = layui.colorpicker;
+
+  function normalizeTitleColor(color) {
+    if (!color) {
+      return '';
+    }
+    color = String(color).trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(color)) {
+      return color;
+    }
+    if (/^[0-9a-fA-F]{6}$/.test(color)) {
+      return '#' + color;
+    }
+    return '';
+  }
+
+  $('input[name=titlecolor]').each(function (index) {
+    var input = this;
+    var $picker = $(input).closest('.layui-form-item').find('.titlecolor-picker');
+    if (!$picker.length) {
+      return;
+    }
+    var pickerId = 'titlecolor-picker-' + index;
+    $picker.attr('id', pickerId);
+
+    function renderTitleColorPicker(color) {
+      colorpicker.render({
+        elem: '#' + pickerId,
+        color: color,
+        format: 'hex',
+        alpha: false,
+        done: function (color) {
+          input.value = normalizeTitleColor(color);
+        }
+      });
+    }
+
+    renderTitleColorPicker(normalizeTitleColor(input.value));
+
+    $(input).on('click', function () {
+      $picker.find('.layui-colorpicker').trigger('click');
+    });
+
+    $(input).on('input', function () {
+      var value = String(input.value || '').trim();
+      var color = normalizeTitleColor(value);
+      if (color || value === '') {
+        var inst = colorpicker.getInst(pickerId);
+        if (inst) {
+          inst.removePicker();
+        }
+        renderTitleColorPicker(color);
+      }
+    });
+  });
   
   //获取hash来切换选项卡，假设当前地址的hash为lay-id对应的值
   var layid = location.hash.replace(/^#tab=/, '');

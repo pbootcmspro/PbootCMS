@@ -381,7 +381,7 @@
 			                     <button type="button" class="layui-btn uploads watermark" data-des="pics">
 								 	 <i class="layui-icon">&#xe67c;</i>上传多图
 								 </button>
-								 <div id="pics_box" class="pic addedit"><dl></dl> <!-- 规避空内容拖动bug --></div>
+								 <div id="pics_box" class="pic addedit"></div>
 			                </div>
 			                
 			                <div class="layui-form-item">
@@ -433,8 +433,9 @@
 					   		 <div class="layui-form-item">
 			                     <label class="layui-form-label">标题颜色</label>
 			                     <div class="layui-input-inline">
-			                     	<input type="text" name="titlecolor" placeholder="请选择标题颜色" value="#333333" class="layui-input jscolor {hash:true}">
+			                     	<input type="text" name="titlecolor" placeholder="请选择标题颜色" value="#333333" class="layui-input">
 			                     </div>
+			                     <div class="layui-inline"><div class="titlecolor-picker"></div></div>
 			                 </div>
 			                 
 			                 <div class="layui-form-item">
@@ -771,7 +772,6 @@
 								 	 <i class="layui-icon">&#xe67c;</i>上传多图
 								 </button>
 								 <div id="pics_box" class="pic addedit">
-								 	 <dl></dl> <!-- 规避空内容拖动bug -->
 									 {php}
 									    if([$content->pics]){
 		                					$pics=explode(',',[$content->pics]);
@@ -841,8 +841,9 @@
 					   		 <div class="layui-form-item">
 			                     <label class="layui-form-label">标题颜色</label>
 			                     <div class="layui-input-inline">
-			                     	<input type="text" name="titlecolor" value="{$content->titlecolor}" placeholder="请选择标题颜色"  class="layui-input jscolor {hash:true}">
+			                     	<input type="text" name="titlecolor" value="{$content->titlecolor}" placeholder="请选择标题颜色" class="layui-input">
 			                     </div>
+			                     <div class="layui-inline"><div class="titlecolor-picker"></div></div>
 			                 </div>
 			                 
 			                 <div class="layui-form-item">
@@ -931,26 +932,27 @@
 </div>
 
 <style>.placeHolder {border:dashed 2px gray; }</style>
-<script type="text/javascript" src="{APP_THEME_DIR}/js/jquery.dragsort-0.5.2.min.js"></script>
+<script type="text/javascript" src="{APP_THEME_DIR}/js/Sortable.min.js"></script>
 <script type="text/javascript">
-$("#pics_box").dragsort({
-	dragSelector: "dl",
-	dragSelectorExclude: "input,textarea,dd",
-	dragBetween: false,
-	dragEnd: saveOrder,
-	placeHolderTemplate: "<dl class='placeHolder'><dt></dt></dl>"
-});
+var picsBox = document.getElementById('pics_box');
+if (picsBox && window.Sortable) {
+	new Sortable(picsBox, {
+		draggable: 'dl',
+		filter: 'input, textarea, dd',
+		preventOnFilter: false,
+		animation: 150,
+		ghostClass: 'placeHolder',
+		onEnd: saveOrder
+	});
+}
 
 function saveOrder() {
 	var data = $("#pics_box dl dt img").map(function() {
 		return $(this).data("url");
 	}).get();
-	$("input[name=pics]").val(data.join(","))
-};
-
+	$("input[name=pics]").val(data.join(","));
+}
 </script>
-<script type="text/javascript" src="{APP_THEME_DIR}/js/jscolor.js"></script>
-
 {include file='common/ueditor.html'}
 {if([$mod]||[$list])}
 {include file='common/ai_assistant.html'}

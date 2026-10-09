@@ -123,6 +123,14 @@ $(document).ready(function (e) {
         return false;
     })
 
+    $('#sortTable, #menuTable').each(function () {
+        initAdminTreeTable(this, {
+            column: 1,
+            indent: 20,
+            stringExpand: '展开',
+            stringCollapse: '收缩'
+        });
+    });
 
 })
 
@@ -215,4 +223,111 @@ function isExistOption(id,value) {
         }
     }
     return isExist;
+}
+
+function initAdminTreeTable(table, options) {
+    var indent = options.indent;
+    var column = options.column;
+    var stringExpand = options.stringExpand;
+    var stringCollapse = options.stringCollapse;
+    var $table = $(table);
+    var nodes = {};
+    var order = [];
+
+    $table.find('tbody > tr').each(function () {
+        var id = this.getAttribute('data-tt-id');
+        if (id === null || id === '') {
+            return;
+        }
+        id = String(id);
+        var parentId = this.getAttribute('data-tt-parent-id');
+        parentId = parentId === null ? '' : String(parentId);
+        var node = {
+            id: id,
+            parentId: parentId,
+            el: this,
+            children: [],
+            collapsed: true,
+            isRoot: true
+        };
+        nodes[id] = node;
+        order.push(node);
+    });
+
+    var i;
+    for (i = 0; i < order.length; i++) {
+        var node = order[i];
+        if (node.parentId && nodes[node.parentId]) {
+            nodes[node.parentId].children.push(node);
+            node.isRoot = false;
+        }
+    }
+
+    function levelOf(item) {
+        var n = 0;
+        var guard = 0;
+        var current = item;
+        while (current.parentId && nodes[current.parentId] && guard < 50) {
+            n++;
+            current = nodes[current.parentId];
+            guard++;
+        }
+        return n;
+    }
+
+    function hideDescendants(item) {
+        var c;
+        for (c = 0; c < item.children.length; c++) {
+            $(item.children[c].el).hide();
+            hideDescendants(item.children[c]);
+        }
+    }
+
+    function showChildren(item) {
+        var c;
+        for (c = 0; c < item.children.length; c++) {
+            var child = item.children[c];
+            $(child.el).show();
+            if (!child.collapsed) {
+                showChildren(child);
+            }
+        }
+    }
+
+    function setCollapsed(item, collapsed) {
+        var $exp = $(item.el).find('a.tree-expander');
+        item.collapsed = collapsed;
+        if (collapsed) {
+            $(item.el).removeClass('expanded').addClass('collapsed');
+            $exp.attr('title', stringExpand).removeClass('fa-caret-down').addClass('fa-caret-right');
+            hideDescendants(item);
+        } else {
+            $(item.el).removeClass('collapsed').addClass('expanded');
+            $exp.attr('title', stringCollapse).removeClass('fa-caret-right').addClass('fa-caret-down');
+            showChildren(item);
+        }
+    }
+
+    for (i = 0; i < order.length; i++) {
+        (function (item) {
+            var $cell = $(item.el).children('td').eq(column);
+            var $indenter = $('<span class="indenter"></span>').css('paddingLeft', (levelOf(item) * indent) + 'px');
+            if (item.children.length) {
+                var $expander = $('<a href="#" class="tree-expander fa fa-caret-right">&nbsp;</a>');
+                $expander.attr('title', stringExpand);
+                $expander.on('click', function (e) {
+                    e.preventDefault();
+                    setCollapsed(item, !item.collapsed);
+                });
+                $indenter.append($expander);
+                $(item.el).addClass('collapsed');
+            }
+            $cell.prepend($indenter);
+            if (!item.isRoot) {
+                $(item.el).hide();
+            }
+        })(order[i]);
+    }
+
+    $table.addClass('admin-tree');
 } 

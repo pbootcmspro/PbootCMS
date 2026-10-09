@@ -219,6 +219,8 @@ function cache_config($refresh = false)
         if (! $model->hasTplHtmlCacheConfig() && file_exists($config_cache)) {
             @unlink($config_cache);
         }
+    } else {
+        Config::assign($config_cache); // 缓存已存在时重新注入，覆盖本请求启动时缓存尚未生成、随后被并发请求生成的情况
     }
     
     // 多语言缓存
@@ -235,6 +237,8 @@ function cache_config($refresh = false)
         }
         $lgs['lgs'] = $map;
         Config::set(md5('area'), $lgs, false, true);
+    } else {
+        Config::assign($lg_cache); // 同上，重新注入区域配置
     }
 }
 

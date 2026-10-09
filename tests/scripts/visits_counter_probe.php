@@ -88,4 +88,4 @@ if ($mode === 'flush') {
 }
 
 echo json_encode(array('ok' => $ok, 'times' => $times));
-exit(0);
+exit($ok ? 0 : 1);

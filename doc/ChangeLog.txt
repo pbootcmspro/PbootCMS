@@ -2,6 +2,15 @@
 官方网站：https://www.pbootcms.com
 标签手册：https://www.pbootcms.com/docs.html
 ##########################################
+PbootCMS V3.2.29 build 2026-10-09
+1. 升级内置 UEditorPlus 编辑器前端资源至 v4.5.0，抓取远程图片支持配置本地域名白名单，并修复简单上传失败回调不生效
+2. 升级后台 Font Awesome 至 6.7.2，标题颜色改用 Layui colorpicker，多图排序改用 SortableJS，栏目与菜单树形展开改为自有实现，移除 jscolor、dragsort 与 jquery.treetable
+3. Excel 读取器替换为 SimpleXLSX 1.1.19，不再支持 .xls 文件读取
+4. 修复前台并发访问时偶发空白或截断页面，残缺页面可能被写入缓存的问题
+5. 修复 PHP 8.1 以下多进程并发递归建目录时偶发失败导致访问计数丢失的问题
+6. 修复同一页面多个分页列表时分页常量重复定义及分页变量错乱的问题
+7. 修复栏目 URL 名称含下划线时列表分页提示页面不存在的问题
+
 PbootCMS V3.2.28 build 2026-09-28
 1. 升级前台默认模板 Bootstrap 至 5.3.8，移除 Popper 与 datetimepicker
 2. 升级前台默认模板 Font Awesome 4.7.0 至 6.7.2，同步替换图标类名，fileinput 主题切换为 fa6

@@ -28,13 +28,7 @@ class LogFile implements Builder
     public function write($content, $level = "info", $username = null)
     {
         $dir = DOC_PATH . DATA_DIR . '/log/system/' . date('Y/Ym');
-        for ($i = 0; $i < 8; $i ++) {
-            if (check_dir($dir, true)) {
-                break;
-            }
-            usleep(2000);
-        }
-        if (! is_dir($dir)) {
+        if (! check_dir($dir, true)) {
             return false;
         }
         $logfile = $dir . '/' . date('Ymd') . '.log';

@@ -887,6 +887,7 @@ class Model
         }
         $this->sql['paging'] = true;
         $paging = Paging::getInstance();
+        $paging->start = 1; // 未传起始数时复位，避免沿用上一个分页列表的偏移
         $var_num = func_num_args();
         if ($var_num > 1 || preg_match('/,/', $args)) {
             if ($var_num > 1) {

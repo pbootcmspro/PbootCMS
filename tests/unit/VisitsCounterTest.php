@@ -77,11 +77,17 @@ function visits_concurrent_incr(int $contentId, string $runPath, int $totalTimes
             $exitCodes[] = -1;
             continue;
         }
-        stream_get_contents($pipes[1]);
-        stream_get_contents($pipes[2]);
+        $out = (string) stream_get_contents($pipes[1]);
+        $err = (string) stream_get_contents($pipes[2]);
         fclose($pipes[1]);
         fclose($pipes[2]);
-        $exitCodes[] = proc_close($proc);
+        $code = proc_close($proc);
+        $res = json_decode(trim($out), true);
+        TestAssert::true(
+            $code === 0 && is_array($res) && ! empty($res['ok']),
+            'probe ok (exit=' . $code . ', stdout=' . trim($out) . ', stderr=' . trim($err) . ')'
+        );
+        $exitCodes[] = $code;
     }
     return $exitCodes;
 }

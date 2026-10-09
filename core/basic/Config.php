@@ -68,9 +68,9 @@ class Config
                 $config = $data;
             }
             
-            // 写入
-            if (check_file($path, true)) {
-                $result = file_put_contents($path, "<?php\nreturn " . var_export($config, true) . ";");
+            // 写入（原子替换，避免并发请求 require 到空文件或半截文件）
+            if (check_dir(dirname($path), true)) {
+                $result = write_file_atomic($path, "<?php\nreturn " . var_export($config, true) . ";") or error('创建文件失败，请检查目录权限！');
                 if ($assign) { // 缓存后是否注入配置
                     self::assign($path);
                 }

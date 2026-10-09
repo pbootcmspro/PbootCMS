@@ -66,14 +66,31 @@ return TestAssert::runSuite(function () {
     TestAssert::contains($allJs, 'sanitizeInsertImageItem(ci);', 'insertimage: sanitize called per item');
     TestAssert::contains($allJs, '(ci.alt && ci.alt != "" ? \' alt="\' + ci.alt + \'"\' : "") +', 'insertimage: alt attribute in template');
 
-    $multiStart = strpos($allJs, 'for (var i = 0; (ci = opt[i++]); )');
+    $multiStart = strpos($allJs, 'for (var i = 0; (ci = opt[i++]);)');
     TestAssert::true($multiStart !== false, 'insertimage: multi-image loop found');
-    $multiChunk = substr($allJs, (int) $multiStart, 900);
+    $multiChunk = substr($allJs, (int) $multiStart, 1200);
+    TestAssert::contains($multiChunk, 'sanitizeInsertImageItem(ci);', 'insertimage: multi-image branch sanitizes each item');
     TestAssert::contains($multiChunk, 'ci.alt && ci.alt != ""', 'insertimage: multi-image branch includes alt');
+    TestAssert::contains($allJs, 'sanitizeInsertImageItem(first);', 'insertimage: replace-existing branch sanitizes item');
 
     echo "=== ueditor.all.min.js insertimage multi-image alt ===\n";
 
-    TestAssert::contains($minJs, 'g.alt&&""!=g.alt?\' alt="\'+g.alt+\'"\':""', 'min insertimage: multi-image alt present');
+    TestAssert::contains($minJs, 'unhtmlForUrl:', 'min utils: unhtmlForUrl present');
+    TestAssert::contains($minJs, 'utils.each("src,_src".split(","),function(', 'min insertimage: src sanitize present');
+    TestAssert::contains($minJs, 'utils.each("title,alt".split(","),function(', 'min insertimage: title/alt sanitize present');
+    $minAltCount = preg_match_all('/(\w+)\.alt&&""!=\1\.alt\?\' alt="\'\+\1\.alt\+\'"\':""/', $minJs);
+    TestAssert::true($minAltCount >= 2, 'min insertimage: single and multi-image alt present');
+
+    echo "=== ueditor entry files share the same version ===\n";
+
+    foreach (['ueditor.all.js', 'ueditor.parse.js'] as $file) {
+        $head = (string) file_get_contents($root . '/core/extend/ueditor/' . $file, false, null, 0, 200);
+        TestAssert::contains($head, 'version: 4.5.0', $file . ': v4.5.0 header');
+    }
+    foreach (['ueditor.all.min.js', 'ueditor.parse.min.js'] as $file) {
+        $head = (string) file_get_contents($root . '/core/extend/ueditor/' . $file, false, null, 0, 200);
+        TestAssert::contains($head, 'UEditorPlus v4.5.0', $file . ': v4.5.0 header');
+    }
 
     echo "=== image.js online filename alt helper ===\n";
 
@@ -86,6 +103,7 @@ return TestAssert::runSuite(function () {
     TestAssert::same('中文 图.jpg', ueditor_image_alt_from_src('/upload/image/%E4%B8%AD%E6%96%87%20%E5%9B%BE.jpg'), 'alt from src: decoded unicode filename');
     TestAssert::same('photo.jpg', ueditor_image_alt_from_src('/upload/image/photo.jpg?x=1'), 'alt from src: strips query');
     TestAssert::same('photo.jpg', ueditor_image_alt_from_src('/upload/image/photo.jpg#thumb'), 'alt from src: strips hash');
+    TestAssert::same('中文.jpg', ueditor_image_alt_from_src('/upload/image/%E4%B8%AD%E6%96%87.jpg?x=1#t'), 'alt from src: strips query and hash then decodes');
 
     echo "=== unhtml() alt escaping ===\n";
 

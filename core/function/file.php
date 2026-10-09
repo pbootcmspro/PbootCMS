@@ -22,12 +22,11 @@ function check_dir($path, $create = false)
 // 创建目录
 function create_dir($path)
 {
-    if (is_dir($path)) {
-        return true;
-    }
-    // mkdir 失败后再判 is_dir，他进程可能已建成
-    if (@mkdir($path, 0777, true)) {
-        return true;
+    // PHP < 8.1 递归 mkdir 遇中间层被他进程抢建（EEXIST）即返回 false，每次重试至少多建一层
+    for ($i = 0; $i < 8; $i++) {
+        if (is_dir($path) || @mkdir($path, 0777, true)) {
+            return true;
+        }
     }
     return is_dir($path);
 }
@@ -54,6 +53,24 @@ function create_file($path, $content = null, $over = false)
     $handle = fopen($path, 'w') or error('创建文件失败，请检查目录权限！');
     fwrite($handle, $content);
     return fclose($handle);
+}
+
+// 原子写入文件：临时文件 + 同目录 rename 替换，避免并发请求读到空文件或半截文件
+function write_file_atomic($path, $content)
+{
+    $tmp = $path . '.' . process_instance_id() . '.' . mt_rand() . '.tmp';
+    if (@file_put_contents($tmp, $content) !== false) {
+        // Windows 下目标文件正被读取时 rename 可能短暂失败，短重试
+        for ($i = 0; $i < 3; $i ++) {
+            if (@rename($tmp, $path)) {
+                return true;
+            }
+            usleep(20000);
+        }
+    }
+    @unlink($tmp);
+    // 仍失败则回退为直接写入
+    return file_put_contents($path, $content) !== false;
 }
 
 // 目录文件夹列表

@@ -135,7 +135,7 @@ class IndexController extends HomeBaseController
                     // 开始进行地址匹配
                     if (!$suffix && !!$sort = $this->model->getSort($path)) {
                         // 栏目名称，即栏目全路径匹配
-                    } elseif (preg_match('/^([a-zA-Z0-9\-\/]+)' . $url_break_char . '([0-9]+)$/i', $path, $matchs) && !!$sort = $this->model->getSort($matchs[1])) {
+                    } elseif (!$suffix && preg_match('/^([\w\-\/]+)' . $url_break_char . '([0-9]+)$/i', $path, $matchs) && !!$sort = $this->model->getSort($matchs[1])) {
                         // 栏目名称_分页，栏目分页的情况
                         define('CMS_PAGE_CUSTOM', true); // 设置走自定义CMS分页
                         $_GET['page'] = $matchs[2]; // 设置分页参数

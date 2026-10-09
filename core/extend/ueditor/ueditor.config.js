@@ -28,8 +28,12 @@
   } else {
     URL = getUEBasePath();
   }
-  if (window.__msRoot) {
+  if (window.UEDITOR_CORS_URL) {
+    CORS_URL = window.UEDITOR_CORS_URL;
+  } else if (window.__msRoot) {
     CORS_URL = window.__msRoot + 'asset/vendor/ueditor/';
+  } else if (window.UEDITOR_HOME_URL) {
+    CORS_URL = window.UEDITOR_HOME_URL;
   } else {
     CORS_URL = getUEBasePath();
   }
@@ -44,8 +48,18 @@
     UEDITOR_CORS_URL: CORS_URL,
 
     // 服务器统一请求接口路径
-    //serverUrl: "/ueditor-plus/_demo_server/handle.php",
     serverUrl: URL + "php/controller.php",
+
+    // 从服务器获取配置
+    loadConfigFromServer: true,
+
+    // 服务器统一请求头信息，会在所有请求中带上该信息
+    serverHeaders: {},
+
+    // 服务器返回参数统一转换方法
+    serverResponsePrepare: function (res) {
+      return res;
+    },
 
     //工具栏上的所有的功能按钮和下拉框，可以在new编辑器的实例时选择自己需要的重新定义
     toolbars: [
@@ -145,6 +159,8 @@
         "help",                // 帮助
       ]
     ]
+    // 动态控制 toolbars 中按钮的显示，键为按钮名，值为 true/false
+    , toolbarShows: {}
 
     // 自定义工具栏按钮点击，返回 true 表示已经处理点击，会阻止默认事件
     , toolbarCallback: function (cmd, editor) {
@@ -163,6 +179,9 @@
       //     return true;
       // }
     }
+
+    // 自定义上传功能，关闭时使用 serverUrl 上传
+    , uploadServiceEnable: false
 
     // 插入图片自定义配置
     , imageConfig: {
@@ -453,6 +472,8 @@
       "touppercase",    // 字母大写
       "tolowercase"     // 字母小写
     ]
+    // 动态控制 shortcutMenu 中按钮的显示，键为按钮名，值为 true/false
+    , shortcutMenuShows: {}
 
     // 是否启用元素路径，默认是显示
     ,elementPathEnabled : true
@@ -565,6 +586,15 @@
     ,allowDivTransToP:true
     // 默认产出的数据中的color自动从rgb格式变成16进制格式
     ,rgb2Hex:true
+
+    // 弹窗内的错误提示
+    ,tipError: function (msg) {
+      if (window.layui && window.layui.layer && window.layui.layer.msg) {
+        window.layui.layer.msg(msg, {icon: 5});
+      } else {
+        alert(msg);
+      }
+    }
   };
 
   function getUEBasePath(docUrl, confUrl) {

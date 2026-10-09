@@ -22,6 +22,7 @@ php tests/unit/ValidateIfConditionTest.php
 | `support/` | Assert、ParserControllerHarness、DatabaseTestSupport |
 | `fixtures/security/` | pboot:if 绕过 payload |
 | `fixtures/php8_upgrade_bootstrap/` | PHP 8 在线升级自举补丁文件清单 |
+| `fixtures/excel/` | `.xlsx` 读取样本（两个工作表，含中文单元格） |
 | `unit/` | 单函数/单方法 |
 | `integration/` | 多模块管线 |
 | `contract/` | 源码/行为不变量 |
@@ -42,4 +43,6 @@ php tests/unit/ValidateIfConditionTest.php
 - Issue #199 — `get_user_ip()` 可信代理与转发头解析（`GetUserIpTrustedProxyTest`）
 - Issue #200 — UEditor 远程抓图 SSRF 加固（`RemoteFetchValidationTest` / `UeditorCrawlerSsrfContractTest`）
 - Issue #223 — 批量复制内容清空自定义 URL 名称（`ContentCopyFilenameTest`）
+- Issue #273 — 内置表格读取器替换为 SimpleXLSX 1.1.19（`SimpleXlsxReaderTest`）
+- Issue #283 — 编译文件、页面缓存与配置缓存原子写入，冷启动补注入配置缓存（`WriteFileAtomicTest` / `RuntimeCacheAtomicWriteContractTest`）
 

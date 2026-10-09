@@ -82,13 +82,15 @@ class Paging
         $this->page = $this->page();
         
         // 定义相关常量，用于方便模板引擎解析序号等计算和调用
-        define('ROWTOTAL', $this->rowTotal);
-        define('PAGECOUNT', $this->pageCount);
-        define('PAGE', $this->page);
-        define('PAGESIZE', $this->pageSize);
-        
-        // 注入分页模板变量
-        $this->assign($morePageStr);
+        if (! defined('PAGE')) {
+            define('ROWTOTAL', $this->rowTotal);
+            define('PAGECOUNT', $this->pageCount);
+            define('PAGE', $this->page);
+            define('PAGESIZE', $this->pageSize);
+            
+            // 注入分页模板变量
+            $this->assign($morePageStr);
+        }
         
         // 返回限制语句
         return ($this->page - 1) * $this->pageSize + ($this->start - 1) . ",$this->pageSize";

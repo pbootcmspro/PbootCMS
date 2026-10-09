@@ -210,7 +210,7 @@ class ContentSortController extends Controller
                 // 检查自定义URL名称
                 if ($filename) {
                     while ($this->model->checkFilename($filename)) {
-                        $filename = $filename . '_' . mt_rand(1, 20);
+                        $filename = $filename . '-' . mt_rand(1, 20);
                     }
                 }
                 
