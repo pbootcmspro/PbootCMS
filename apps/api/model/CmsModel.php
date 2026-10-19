@@ -264,11 +264,11 @@ class CmsModel extends Model
             $this->scodes = array(); // 先清空
             $arr = explode(',', $scode); // 传递有多个分类时进行遍历
             foreach ($arr as $value) {
-                $scodes = $this->getSubScodes(trim($value));
+                $this->getSubScodes(trim($value));
             }
             // 拼接条件
             $scode_arr = array(
-                "a.scode in (" . implode_quot(',', $scodes) . ")",
+                "a.scode in (" . implode_quot(',', $this->scodes) . ")",
                 "a.subscode='$scode'"
             );
         }
@@ -336,11 +336,11 @@ class CmsModel extends Model
             $this->scodes = array(); // 先清空
             $arr = explode(',', $scode); // 传递有多个分类时进行遍历
             foreach ($arr as $value) {
-                $scodes = $this->getSubScodes(trim($value));
+                $this->getSubScodes(trim($value));
             }
             // 拼接条件
             $scode_arr = array(
-                "a.scode in (" . implode_quot(',', $scodes) . ")",
+                "a.scode in (" . implode_quot(',', $this->scodes) . ")",
                 "a.subscode='$scode'"
             );
         }

@@ -1,5 +1,8 @@
 <!-- 引入编辑器文件 -->
 <script type="text/javascript" charset="utf-8" src="{CORE_DIR}/extend/ueditor/ueditor.config.js"></script>
+{if(!ueditor_catch_remote_enabled())}
+<script>window.UEDITOR_CONFIG.catchRemoteImageEnable = false;</script>
+{/if}
 <script type="text/javascript" charset="utf-8" src="{CORE_DIR}/extend/ueditor/ueditor.all.js"> </script>
 <script type="text/javascript" charset="utf-8" src="{CORE_DIR}/extend/ueditor/lang/zh-cn/zh-cn.js"></script>
 <script>

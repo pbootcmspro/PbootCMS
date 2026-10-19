@@ -10,6 +10,7 @@ declare(strict_types=1);
 if (!defined('TEST_ROOT')) {
     require dirname(__DIR__) . '/bootstrap.php';
 }
+require_once CORE_PATH . '/function/file.php';
 
 function imageext_probe(string $siteDir, string $action, array $payload = array()): array
 {
@@ -53,6 +54,27 @@ function imageext_resolve(string $siteDir, string $path, string $docPath): bool
         'doc_path' => $docPath,
     ));
     return !empty($data['result']['ok']);
+}
+
+function imageext_build_site(string $siteDir): string
+{
+    $tmpRoot = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'pboot_imageext_' . uniqid('', true);
+    $upload = $tmpRoot . str_replace('/', DIRECTORY_SEPARATOR, $siteDir . '/static/upload');
+    $files = array(
+        '.htaccess' => 'deny',
+        '.user.ini' => 'x',
+        'image/.DS_Store' => 'x',
+        'image/20260101/a.jpg' => 'jpg',
+        'file/20260101/b.pdf' => 'pdf',
+    );
+    foreach ($files as $rel => $content) {
+        $path = $upload . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $rel);
+        if (!is_dir(dirname($path))) {
+            mkdir(dirname($path), 0777, true);
+        }
+        file_put_contents($path, $content);
+    }
+    return $tmpRoot;
 }
 
 return TestAssert::runSuite(function () {
@@ -160,4 +182,41 @@ return TestAssert::runSuite(function () {
     @rmdir(dirname($uploadDir));
     @rmdir(dirname(dirname($uploadDir)));
     @rmdir($tmpRoot);
+
+    foreach (array('', '/cms') as $siteDir) {
+        $label = $siteDir === '' ? 'root' : $siteDir;
+        echo "=== buildRedundantMap: hidden files skipped ({$label}) ===\n";
+
+        $tmpRoot = imageext_build_site($siteDir);
+        $docPath = $tmpRoot . DIRECTORY_SEPARATOR;
+        $upload = $tmpRoot . str_replace('/', DIRECTORY_SEPARATOR, $siteDir . '/static/upload');
+        $backup = $tmpRoot . str_replace('/', DIRECTORY_SEPARATOR, $siteDir . '/static/backup/ImageExt/static/upload');
+
+        $data = imageext_probe($siteDir, 'redundant', array('doc_path' => $docPath));
+        TestAssert::same(
+            array('/static/upload/image/20260101/a.jpg'),
+            isset($data['result']) ? $data['result'] : null,
+            "redundant set only contains unreferenced image ({$label})"
+        );
+
+        $data = imageext_probe($siteDir, 'cleanup_all', array('doc_path' => $docPath));
+        TestAssert::same(
+            array('/static/upload/image/20260101/a.jpg'),
+            isset($data['result']['moved']) ? $data['result']['moved'] : null,
+            "cleanup all moves only unreferenced image ({$label})"
+        );
+        TestAssert::true(is_file($upload . DIRECTORY_SEPARATOR . '.htaccess'), ".htaccess stays in upload ({$label})");
+        TestAssert::true(is_file($upload . DIRECTORY_SEPARATOR . '.user.ini'), ".user.ini stays in upload ({$label})");
+        TestAssert::true(
+            is_file($upload . DIRECTORY_SEPARATOR . 'image' . DIRECTORY_SEPARATOR . '.DS_Store'),
+            ".DS_Store stays in upload ({$label})"
+        );
+        TestAssert::false(is_file($backup . DIRECTORY_SEPARATOR . '.htaccess'), "no .htaccess in backup ({$label})");
+        TestAssert::true(
+            is_file($backup . str_replace('/', DIRECTORY_SEPARATOR, '/image/20260101/a.jpg')),
+            "unreferenced image moved to backup ({$label})"
+        );
+
+        path_delete($tmpRoot, true);
+    }
 });

@@ -817,7 +817,7 @@ class ParserController extends Controller
                 }
 
                 // 读取一个或多个栏目数据
-                $data = $this->model->getMultSort(escape_string($scode));
+                $data = $this->model->getMultSort($scode);
 
                 // 无数据直接跳过
                 if (!$data) {
@@ -1104,7 +1104,7 @@ class ParserController extends Controller
                 }
 
                 // 读取数据
-                if (!!$data = $this->model->getSelect(escape_string($field))) {
+                if (!!$data = $this->model->getSelect($field)) {
                     $data = explode(',', $data);
                 } else {
                     $data = array();
@@ -1497,10 +1497,10 @@ class ParserController extends Controller
                 // 跳过未指定id和scode的列表
                 if (array_key_exists('id', $params)) {
                     $id = $params['id'];
-                    $data = $this->model->getContent(escape_string($id));
+                    $data = $this->model->getContent($id);
                 } elseif (array_key_exists('scode', $params)) {
                     $scode = $params['scode'];
-                    $data = $this->model->getAbout(escape_string($scode));
+                    $data = $this->model->getAbout($scode);
                 } else {
                     continue;
                 }
@@ -1587,7 +1587,7 @@ class ParserController extends Controller
                 $field = $canonicalField;
 
                 // 读取内容多图
-                if (!!$rs = $this->model->getContentPics(escape_string($id), $field)) {
+                if (!!$rs = $this->model->getContentPics($id, $field)) {
                     $pics = explode(',', $rs->$field);
                     $picstitle = explode(',', $rs->picstitle);
                 } else {
@@ -1704,7 +1704,7 @@ class ParserController extends Controller
                 }
 
                 // 读取内容多图
-                if (!!$checkboxs = $this->model->getContentCheckbox(escape_string($id), escape_string($field))) {
+                if (!!$checkboxs = $this->model->getContentCheckbox($id, $field)) {
                     $data = explode(',', $checkboxs);
                 } else {
                     $data = array();
@@ -1793,7 +1793,7 @@ class ParserController extends Controller
                     if (strpos($scode, ',') !== false) {
                         error('模板中指定id输出tags时不允许scode指定多个栏目！', null, 2, 500);
                     }
-                    if (!!$rs = $this->model->getContentTags(escape_string($id))) {
+                    if (!!$rs = $this->model->getContentTags($id)) {
                         if ($rs->tags) {
                             $tags = explode(',', $rs->tags);
                             $scode = $scode ?: $rs->scode;
@@ -1943,7 +1943,7 @@ class ParserController extends Controller
                 }
 
                 // 读取数据
-                if (!$data = $this->model->getSlides(escape_string($gid), escape_string($num), $start)) {
+                if (!$data = $this->model->getSlides($gid, (int) $num, $start)) {
                     $content = str_replace($matches[0][$i], '', $content);
                     continue;
                 }
@@ -2030,7 +2030,7 @@ class ParserController extends Controller
                 }
 
                 // 读取数据
-                if (!$data = $this->model->getLinks(escape_string($gid), escape_string($num), $start)) {
+                if (!$data = $this->model->getLinks($gid, (int) $num, $start)) {
                     $content = str_replace($matches[0][$i], '', $content);
                     continue;
                 }
@@ -2121,7 +2121,7 @@ class ParserController extends Controller
                 }
 
                 // 读取数据
-                if (!$data = $this->model->getMessage(escape_string($num), $page, $start, $lg)) {
+                if (!$data = $this->model->getMessage((int) $num, $page, $start, $lg)) {
                     $content = str_replace($matches[0][$i], '', $content);
                     continue;
                 }
@@ -2243,13 +2243,13 @@ class ParserController extends Controller
                 }
 
                 // 获取表名称
-                if (!$table = $this->model->getFormTable(escape_string($fcode))) {
+                if (!$table = $this->model->getFormTable($fcode)) {
                     $content = str_replace($matches[0][$i], '', $content);
                     continue;
                 }
 
                 // 读取数据
-                if (!$data = $this->model->getForm($table, escape_string($num), $page, $start)) {
+                if (!$data = $this->model->getForm($table, (int) $num, $page, $start)) {
                     $content = str_replace($matches[0][$i], '', $content);
                     continue;
                 }
@@ -3258,6 +3258,11 @@ class ParserController extends Controller
     {
         if (! $path) {
             return '';
+        }
+        $cutParams = array_intersect_key($params, array_flip(array('substr', 'len', 'lencn', 'more')));
+        if (isset($cutParams['substr']) || isset($cutParams['len']) || isset($cutParams['lencn'])) {
+            $url = $this->parserAssetUrl($path, array_diff_key($params, $cutParams));
+            return $this->adjustLabelData($cutParams, $url);
         }
         // 统一为不含 SITE_DIR 的站点相对路径，避免二级目录下与 ROOT_PATH 重复拼接
         // http(s)：CDN 地址可经 upload_local_path 还原为本地相对路径再缩放

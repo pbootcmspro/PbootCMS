@@ -29,6 +29,9 @@ return TestAssert::runSuite(function () {
     TestAssert::false($cfg === false, 'config.html readable');
     TestAssert::contains($cfg, "fetch('{url./admin/Ai/ping}'", 'AI ping uses fetch');
     TestAssert::contains($cfg, "'X-Requested-With': 'XMLHttpRequest'", 'fetch sets X-Requested-With for is_ajax()');
+    TestAssert::contains($cfg, "'ai_api_base=' + encodeURIComponent(fieldVal('ai_api_base'))", 'ping POST includes form draft ai_api_base');
+    TestAssert::contains($cfg, "'ai_provider=' + encodeURIComponent(fieldVal('ai_provider'))", 'ping POST includes form draft ai_provider');
+    TestAssert::contains($cfg, 'title="按页面当前填写测试，无需先提交"', 'aiPingBtn title hints ping uses current form values');
 
     echo "=== failure UI reads framework Response::json data string ===\n";
 

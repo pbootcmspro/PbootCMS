@@ -351,10 +351,9 @@ class ContentModel extends Model
         $list = array();
         $lastId = 0;
         $pageSize = 500;
-        $pattern = '/<img\s+.*?src=\s?[\'|\"](.*?(\.gif|\.jpg|\.jpeg|\.png|\.webp))[\'|\"].*?[\/]?>/i';
 
         do {
-            $rows = parent::table('ay_content')->field('id,ico,pics,content')
+            $rows = parent::table('ay_content')->field('id,ico,pics,content,enclosure')
                 ->where("id>$lastId")
                 ->order('id ASC')
                 ->limit($pageSize)
@@ -362,17 +361,44 @@ class ContentModel extends Model
             if (!$rows) {
                 break;
             }
+            $ids = array();
+            foreach ($rows as $value) {
+                $ids[] = (int) $value['id'];
+            }
+            $extMap = array();
+            $extRows = parent::table('ay_content_ext')->in('contentid', $ids)->select(1);
+            foreach ((array) $extRows as $ext) {
+                $paths = array();
+                foreach ($ext as $field => $fieldValue) {
+                    if ($field === 'extid' || $field === 'contentid') {
+                        continue;
+                    }
+                    $paths = array_merge($paths, $this->extractUploadPaths(decode_string((string) $fieldValue)));
+                }
+                $extMap[(int) $ext['contentid']] = $paths;
+            }
             foreach ($rows as $value) {
                 $lastId = (int) $value['id'];
-                preg_match_all($pattern, decode_string($value['content']), $match);
                 $list[] = array(
                     'ico' => $value['ico'],
                     'pics' => explode(',', (string) $value['pics']),
-                    'content_img' => isset($match[1]) ? $match[1] : array()
+                    'content_img' => $this->extractUploadPaths(decode_string((string) $value['content'])),
+                    'enclosure' => $this->extractUploadPaths((string) $value['enclosure']),
+                    'ext' => isset($extMap[$lastId]) ? $extMap[$lastId] : array()
                 );
             }
         } while (count($rows) === $pageSize);
 
         return $list;
+    }
+
+    private function extractUploadPaths($text)
+    {
+        if ($text === '') {
+            return array();
+        }
+        $marker = preg_quote(ltrim(substr(STATIC_DIR, strlen(SITE_DIR)), '/') . '/upload/', '~');
+        preg_match_all('~' . $marker . '[^\s\'"<>()?#,;&]+~i', $text, $match);
+        return $match[0];
     }
 }

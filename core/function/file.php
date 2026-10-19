@@ -338,6 +338,17 @@ function ueditor_merge_upload_config($config)
     return $config;
 }
 
+// 远程抓图开关：仅明确为 0 时禁用；配置缓存缺失时回源 ay_config
+function ueditor_catch_remote_enabled()
+{
+    $value = Config::get('ueditor_catch_remote');
+    if ($value === null) {
+        $model = new \core\basic\Model();
+        $value = $model->table('ay_config')->where(array('name' => 'ueditor_catch_remote'))->value('value');
+    }
+    return (string) $value !== '0';
+}
+
 // 从文件名解析扩展名
 function upload_ext_from_filename($filename)
 {

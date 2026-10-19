@@ -47,7 +47,7 @@ class AiController extends Controller
         if (! extension_loaded('openssl') || ! function_exists('openssl_decrypt')) {
             $this->jsonError('服务端 OpenSSL 扩展不可用，无法读取 API Key');
         }
-        $cfg = $this->getProviderConfig();
+        $cfg = $this->applyPingDraft($this->getProviderConfig());
         if (! $cfg['api_key']) {
             if (is_string($cipher) && $cipher !== '') {
                 $this->jsonError('API Key 解密失败，请重新保存 API Key');
@@ -56,7 +56,7 @@ class AiController extends Controller
         }
         $rs = $this->callAi(array(
             array('role' => 'user', 'content' => '你好，请回复"连接成功"。'),
-        ), 256);
+        ), 256, null, $cfg);
         if ($rs['code'] !== 1) {
             if (strpos((string) ($rs['msg'] ?? ''), 'finish_reason=length') !== false) {
                 $this->jsonOk(array('reply' => 'API 连接正常（响应被截断，请适当增大「最大Token」）'));
@@ -407,11 +407,15 @@ class AiController extends Controller
      * 统一 AI 调用入口
      * @param array $messages OpenAI 风格 messages
      * @param int|null $maxTokens 单次最大 token
+     * @param string|null $modelOverride 临时覆盖模型
+     * @param array|null $cfg 已解析配置（如 ping 草稿）；null 则读已保存配置
      * @return array {code:0/1, msg, data}
      */
-    private function callAi(array $messages, $maxTokens = null, $modelOverride = null)
+    private function callAi(array $messages, $maxTokens = null, $modelOverride = null, $cfg = null)
     {
-        $cfg = $this->getProviderConfig();
+        if ($cfg === null) {
+            $cfg = $this->getProviderConfig();
+        }
         if (! $cfg['api_key']) {
             return $this->errResult('AI API Key 未配置');
         }
@@ -431,6 +435,41 @@ class AiController extends Controller
             $this->log('[AI] 调用异常：' . $e->getMessage(), 'error');
             return $this->errResult('AI 服务调用异常');
         }
+    }
+
+    /**
+     * 测试连接：用 POST 表单草稿覆盖已保存配置（不落库）
+     */
+    private function applyPingDraft(array $cfg)
+    {
+        if (isset($_POST['ai_provider'])) {
+            $providerKey = trim((string) post('ai_provider', 'var'));
+            if (isset(self::$providers[$providerKey])) {
+                $cfg['provider'] = $providerKey;
+                $cfg['path'] = self::$providers[$providerKey]['path'];
+            }
+        }
+        $defaults = self::$providers[$cfg['provider']];
+        if (isset($_POST['ai_api_base'])) {
+            $base = trim((string) post('ai_api_base'));
+            $cfg['base'] = $base !== '' ? $base : $defaults['base'];
+        } elseif (isset($_POST['ai_provider'])) {
+            $savedBase = trim((string) $this->config('ai_api_base'));
+            if ($savedBase === '') {
+                $cfg['base'] = $defaults['base'];
+            }
+        }
+        if (isset($_POST['ai_model'])) {
+            $model = trim((string) post('ai_model'));
+            $cfg['model'] = $model !== '' ? $model : $defaults['model'];
+        }
+        if (isset($_POST['ai_api_key'])) {
+            $key = (string) post('ai_api_key');
+            if ($key !== '' && ! is_masked_secret($key)) {
+                $cfg['api_key'] = $key;
+            }
+        }
+        return $cfg;
     }
 
     /**
@@ -894,6 +933,8 @@ class AiController extends Controller
     {
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+        curl_setopt($ch, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload, JSON_UNESCAPED_UNICODE));
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);

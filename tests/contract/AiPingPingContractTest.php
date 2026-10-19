@@ -34,7 +34,7 @@ return TestAssert::runSuite(function () {
 
     TestAssert::contains($body, "extension_loaded('openssl')", 'ping checks openssl extension');
     TestAssert::contains($body, '服务端 OpenSSL 扩展不可用', 'ping openssl error message');
-    $posCfg = strpos($body, '$cfg = $this->getProviderConfig();');
+    $posCfg = strpos($body, 'getProviderConfig()');
     $posSsl = strpos($body, "extension_loaded('openssl')");
     TestAssert::true($posSsl !== false && $posCfg !== false && $posSsl < $posCfg, 'openssl check runs before getProviderConfig');
 
@@ -46,7 +46,7 @@ return TestAssert::runSuite(function () {
 
     echo "=== ping uses adequate max_tokens ===\n";
 
-    TestAssert::contains($body, '), 256);', 'ping callAi max_tokens is 256 not 32');
+    TestAssert::contains($body, '), 256, null, $cfg);', 'ping callAi max_tokens is 256 not 32');
     TestAssert::notContains($body, '), 32);', 'ping no longer uses 32-token limit');
 
     echo "=== finish_reason=length treated as connectivity ok ===\n";
@@ -54,4 +54,12 @@ return TestAssert::runSuite(function () {
     TestAssert::contains($body, 'finish_reason=length', 'ping handles truncated response');
     TestAssert::contains($body, '$this->jsonOk(array(\'reply\' =>', 'ping jsonOk on length truncation');
     TestAssert::contains($body, 'API 连接正常（响应被截断', 'ping truncation user message');
+
+    echo "=== ping applies form draft without saving ===\n";
+
+    TestAssert::contains($body, 'applyPingDraft', 'ping merges POST draft via applyPingDraft');
+    TestAssert::contains($body, ', null, $cfg)', 'ping passes draft cfg into callAi');
+    TestAssert::contains($src, 'private function applyPingDraft(array $cfg)', 'applyPingDraft defined');
+    TestAssert::contains($src, "isset(\$_POST['ai_api_base'])", 'draft reads ai_api_base from POST');
+    TestAssert::contains($src, 'is_masked_secret($key)', 'draft ignores masked API key');
 });

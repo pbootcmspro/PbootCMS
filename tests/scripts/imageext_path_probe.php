@@ -7,7 +7,7 @@ declare(strict_types=1);
  *
  * 用法: php tests/scripts/imageext_path_probe.php <site_dir> <action> <json_payload>
  * site_dir: '' | '/cms' | '/a/b'
- * action: normalize | fstkey | resolve
+ * action: normalize | fstkey | resolve | redundant | cleanup_all
  */
 
 $siteDir = isset($argv[1]) ? (string) $argv[1] : '';
@@ -30,11 +30,48 @@ define('CONF_PATH', ROOT_PATH . 'config');
 
 require CORE_PATH . '/function/handle.php';
 require CORE_PATH . '/function/helper.php';
+require CORE_PATH . '/function/file.php';
 require CORE_PATH . '/basic/Basic.php';
 spl_autoload_register('core\basic\Basic::autoLoad', true, true);
 
 $ref = new ReflectionClass(\app\admin\controller\system\ImageExtController::class);
 $ctrl = $ref->newInstanceWithoutConstructor();
+
+function imageext_stub_models(ReflectionClass $ref, $ctrl)
+{
+    $stub = new class {
+        public function getImage()
+        {
+            return array();
+        }
+    };
+    $props = array(
+        'companyModel',
+        'contentSortModel',
+        'contentModel',
+        'linkModel',
+        'memberModel',
+        'siteModel',
+        'slideModel',
+        'LabelModel',
+    );
+    foreach ($props as $name) {
+        $prop = $ref->getProperty($name);
+        if (PHP_VERSION_ID < 80100) {
+            $prop->setAccessible(true);
+        }
+        $prop->setValue($ctrl, $stub);
+    }
+}
+
+function imageext_private_method(ReflectionClass $ref, $name)
+{
+    $method = $ref->getMethod($name);
+    if (PHP_VERSION_ID < 80100) {
+        $method->setAccessible(true);
+    }
+    return $method;
+}
 
 switch ($action) {
     case 'normalize':
@@ -72,6 +109,27 @@ switch ($action) {
             'ok' => $resolved !== false,
             'resolved' => $resolved === false ? '' : str_replace('\\', '/', $resolved),
         );
+        break;
+
+    case 'redundant':
+        imageext_stub_models($ref, $ctrl);
+        $map = imageext_private_method($ref, 'buildRedundantMap')->invoke($ctrl);
+        $result = array_keys($map);
+        break;
+
+    case 'cleanup_all':
+        imageext_stub_models($ref, $ctrl);
+        $map = imageext_private_method($ref, 'buildRedundantMap')->invoke($ctrl);
+        $uploadReal = imageext_private_method($ref, 'getUploadReal')->invoke($ctrl);
+        $backupBase = DOC_PATH . STATIC_DIR . '/backup/ImageExt';
+        $move = imageext_private_method($ref, 'moveToBackup');
+        $moved = array();
+        foreach ($map as $key => $fsPath) {
+            if ($move->invoke($ctrl, $fsPath, $key, $uploadReal, $backupBase)) {
+                $moved[] = $key;
+            }
+        }
+        $result = array('moved' => $moved);
         break;
 
     default:

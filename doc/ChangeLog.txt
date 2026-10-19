@@ -2,6 +2,18 @@
 官方网站：https://www.pbootcms.com
 标签手册：https://www.pbootcms.com/docs.html
 ##########################################
+PbootCMS V3.2.30 build 2026-10-20
+1. 首次登录后台新增初始化向导与环境检测，可继续使用 SQLite 或一键切换为 MySQL，新装 SQLite 默认库补齐图片清理菜单并与 MySQL 安装脚本保持一致
+2. UEditor 远程抓图新增后台开关，默认开启，关闭后编辑器保留外链且服务端拒绝抓图
+3. AI 助手测试连接改为按页面当前填写的配置测试，未保存也能验证连通性
+4. 前台 ParserModel 查询条件改为参数绑定，移除 escape_string 拼接
+5. 修复后台 AI 接口地址可使用 file:// 等非 HTTP 协议，测试连接会带出服务器本地文件内容的问题
+6. 修复清理冗余图片误将正文任意上传文件、内容附件及扩展字段中在用的文件迁走的问题
+7. 修复清理冗余图片将上传目录 .htaccess 等隐藏文件误判为冗余并迁走的问题
+8. 修复图片类标签使用 substr/len/lencn 截取时结果被多补 / 前缀、站点目录或 CDN 域名的问题
+9. 修复多栏目 scode 末尾带空段时子栏目展开丢失导致列表或搜索结果遗漏的问题
+10. 修复后台首页反复将默认库改名导致 data 目录累积孤儿 db 文件的问题
+
 PbootCMS V3.2.29 build 2026-10-09
 1. 升级内置 UEditorPlus 编辑器前端资源至 v4.5.0，抓取远程图片支持配置本地域名白名单，并修复简单上传失败回调不生效
 2. 升级后台 Font Awesome 至 6.7.2，标题颜色改用 Layui colorpicker，多图排序改用 SortableJS，栏目与菜单树形展开改为自有实现，移除 jscolor、dragsort 与 jquery.treetable

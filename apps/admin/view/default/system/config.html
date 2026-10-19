@@ -649,6 +649,15 @@
 		                </div>
 
 		                <div class="layui-form-item">
+		                     <label class="layui-form-label">远程图片抓取</label>
+		                     <div class="layui-input-block">
+		                     	<input type="radio" name="ueditor_catch_remote" value="1" {if(@[$configs.ueditor_catch_remote.value]!='0')} checked="checked" {/if} title="启用">
+								<input type="radio" name="ueditor_catch_remote" value="0" {if(@[$configs.ueditor_catch_remote.value]=='0')} checked="checked" {/if} title="禁用">
+								<span class="layui-icon layui-icon-about tips" data-content="禁用后，编辑器粘贴外部图片时保留原外链，服务端拒绝远程抓图请求。"></span>
+		                     </div>
+		                </div>
+
+		                <div class="layui-form-item">
 		                     <label class="layui-form-label">后台登录阀值</label>
 		                     <div class="layui-input-inline">
 								<input type="text" name="lock_count" value="{$configs.lock_count.value}" placeholder="请输入后台登录失败几次后锁定IP，默认5次" class="layui-input">
@@ -1054,7 +1063,7 @@
 		                <div class="layui-form-item">
 							 <div class="layui-input-block">
 							    <button class="layui-btn" lay-submit name="submit" value="ai">立即提交</button>
-							    <button type="button" class="layui-btn layui-btn-primary" id="aiPingBtn">测试连接</button>
+							    <button type="button" class="layui-btn layui-btn-primary" id="aiPingBtn" title="按页面当前填写测试，无需先提交">测试连接</button>
 							 </div>
 						</div>
 	              </form>
@@ -1071,11 +1080,30 @@
 		if (aiPingBusy) {
 			return;
 		}
-		var fc = btn.closest('form').querySelector('input[name=formcheck]');
+		var form = btn.closest('form');
+		var fc = form.querySelector('input[name=formcheck]');
 		if (!fc || !fc.value) {
 			layer.alert('表单校验令牌缺失，请刷新页面后重试');
 			return;
 		}
+		var fieldVal = function(name){
+			var el = form.querySelector('[name="' + name + '"]');
+			if (!el) {
+				return '';
+			}
+			if (el.type === 'radio') {
+				var checked = form.querySelector('[name="' + name + '"]:checked');
+				return checked ? checked.value : '';
+			}
+			return el.value || '';
+		};
+		var body = [
+			'formcheck=' + encodeURIComponent(fc.value),
+			'ai_provider=' + encodeURIComponent(fieldVal('ai_provider')),
+			'ai_api_base=' + encodeURIComponent(fieldVal('ai_api_base')),
+			'ai_model=' + encodeURIComponent(fieldVal('ai_model')),
+			'ai_api_key=' + encodeURIComponent(fieldVal('ai_api_key'))
+		].join('&');
 		aiPingBusy = true;
 		btn.disabled = true;
 		layer.msg('正在测试...', {icon:16, time:0, shade:0.1});
@@ -1086,7 +1114,7 @@
 				'Content-Type': 'application/x-www-form-urlencoded',
 				'X-Requested-With': 'XMLHttpRequest'
 			},
-			body: 'formcheck=' + encodeURIComponent(fc.value)
+			body: body
 		})
 			.then(function(r){return r.json();})
 			.then(function(r){

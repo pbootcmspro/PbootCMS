@@ -333,6 +333,11 @@ class ConfigController extends Controller
             $value = ((string) $value === '1') ? '1' : '0';
         }
 
+        // 远程抓图仅 0 为禁用，其余值归一为启用
+        if ($key == 'ueditor_catch_remote') {
+            $value = ((string) $value === '0') ? '0' : '1';
+        }
+
         // 缓存有效期须为正整数字符串（避免 (int) 截断大 TTL）
         if ($key == 'tpl_html_cache_time') {
             if ($value === null || $value === '' || $value === false) {
@@ -466,6 +471,8 @@ class ConfigController extends Controller
             $description = '';
             if ($key == 'content_iframe_whitelist') {
                 $description = 'iframe域名级白名单';
+            } elseif ($key == 'ueditor_catch_remote') {
+                $description = '远程图片抓取';
             } elseif ($key == 'image_backend') {
                 $description = '图像处理后端：auto/gd_only/prefer_imagick';
             } elseif ($key == 'tpl_html_cache') {

@@ -25,24 +25,42 @@ class Check
             error('您的服务器环境PHP.ini中magic_quotes_gpc配置为On状态，会导致数据存储异常，请设置为Off状态或切换为更高版本PHP。');
         }
 
-        // 判断目录列表函数
+        $miss = array();
         if (! function_exists('scandir')) {
-            error('您的服务器环境PHP.ini配置中已经禁用scandir函数，会导致无法正常读取配置及模板文件，请先去除。');
+            $miss[] = '已禁用 scandir 函数，会导致无法读取配置及模板文件，请在 PHP.ini 中去除。';
         }
-
-        // 检查gd扩展
         if (! extension_loaded('gd')) {
-            error('您的服务器环境不支持gd扩展,将无法使用验证码！');
+            $miss[] = '未启用 gd 扩展，将无法使用验证码。';
         }
-
-        // 检查mbstring扩展
         if (! extension_loaded('mbstring')) {
-            error('您的服务器环境不支持mbstring扩展，请先安装并启用！');
+            $miss[] = '未启用 mbstring 扩展，请先安装并启用。';
+        }
+        if (! extension_loaded('curl')) {
+            $miss[] = '未启用 curl 扩展，请先安装并启用。';
         }
 
-        // 检查curl扩展
-        if (! extension_loaded('curl')) {
-            error('您的服务器环境不支持curl扩展，请先安装并启用！');
+        $drivers = array(
+            'sqlite' => 'sqlite3',
+            'pdo_sqlite' => 'pdo_sqlite',
+            'mysqli' => 'mysqli',
+            'pdo_mysql' => 'pdo_mysql'
+        );
+        $type = Config::get('database.type');
+        if (! is_string($type)) {
+            $type = '';
+        }
+        if (isset($drivers[$type]) && ! extension_loaded($drivers[$type])) {
+            $msg = '当前数据库驱动为 ' . $type . '，但服务器未启用 ' . $drivers[$type] . ' 扩展。';
+            if ($type == 'sqlite' || $type == 'pdo_sqlite') {
+                if ($type == 'sqlite' && extension_loaded('pdo_sqlite')) {
+                    $msg .= '检测到服务器支持 pdo_sqlite 扩展，也可以把 config/database.php 中的 type 改为 pdo_sqlite。';
+                }
+                $msg .= '也可以改用 MySQL：按 README 手工导入 static/backup/sql/pbootcms.sql，并修改 config/database.php。';
+            }
+            $miss[] = $msg;
+        }
+        if ($miss) {
+            error('您的服务器环境不满足运行要求，请先处理以下问题：<br>' . implode('<br>', $miss));
         }
     }
 

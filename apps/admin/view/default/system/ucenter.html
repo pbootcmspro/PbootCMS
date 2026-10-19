@@ -4,7 +4,12 @@
 
 	{if(![$session.pwsecurity])}
 	<blockquote class="layui-elem-quote layui-text-red" id="note">
-		{if(![$session.pwsecurity])}
+		{if([$init])}
+		<p>
+			<i class="fa fa-info-circle" aria-hidden="true"></i>
+			 首次使用，请完成初始化设置。
+		</p>
+		{else}
 		<p>
 			<i class="fa fa-info-circle" aria-hidden="true"></i>
 			 您的账号密码为初始密码，存在安全隐患，必须修改密码才能查看后台主页！
@@ -12,6 +17,32 @@
 		{/if}
     </blockquote>
     {/if}
+
+	{if([$init])}
+	<fieldset class="layui-elem-field">
+		<legend>环境检测</legend>
+		<div class="layui-field-box">
+			<table class="layui-table">
+				<thead>
+					<tr>
+						<th>检测项</th>
+						<th>说明</th>
+						<th>结果</th>
+					</tr>
+				</thead>
+				<tbody>
+					{foreach $init_env(key,value)}
+					<tr>
+						<td>[value->name]</td>
+						<td>[value->note]</td>
+						<td>{if($value->ok)}通过{else}<span class="layui-text-red">不满足</span>{/if}</td>
+					</tr>
+					{/foreach}
+				</tbody>
+			</table>
+		</div>
+	</fieldset>
+	{/if}
     
 	<div class="layui-tab layui-tab-brief" lay-filter="tab">
 	  <ul class="layui-tab-title">
@@ -55,6 +86,55 @@
 	                     	<input type="password" name="rpassword"  placeholder="请输入确认密码" autocomplete="off" class="layui-input">
 	                     </div>
 	                </div>
+
+					{if([$init])}
+					<div class="layui-form-item">
+						<label class="layui-form-label">数据库</label>
+						<div class="layui-input-block">
+							<input type="radio" name="db_type" value="sqlite" title="SQLite" lay-filter="db_type" checked>
+							<input type="radio" name="db_type" value="mysql" title="MySQL" lay-filter="db_type" {if(![$init_mysql])}disabled{/if}>
+							<div class="layui-word-aux">SQLite：进入后台首页时自动改为随机文件名。</div>
+							{if(![$init_mysql])}
+							<div class="layui-word-aux">{$init_mysql_note}</div>
+							{/if}
+						</div>
+					</div>
+					<div id="db-mysql" style="display:none;">
+						<div class="layui-form-item">
+							<label class="layui-form-label">主机</label>
+							<div class="layui-input-block">
+								<input type="text" name="db_host" value="127.0.0.1" placeholder="127.0.0.1" autocomplete="off" class="layui-input">
+							</div>
+						</div>
+						<div class="layui-form-item">
+							<label class="layui-form-label">端口</label>
+							<div class="layui-input-block">
+								<input type="text" name="db_port" value="3306" placeholder="3306" autocomplete="off" class="layui-input">
+							</div>
+						</div>
+						<div class="layui-form-item">
+							<label class="layui-form-label">用户名</label>
+							<div class="layui-input-block">
+								<input type="text" name="db_user" placeholder="数据库用户名" autocomplete="off" class="layui-input">
+							</div>
+						</div>
+						<div class="layui-form-item">
+							<label class="layui-form-label">密码</label>
+							<div class="layui-input-block">
+								<input type="password" name="db_passwd" placeholder="数据库密码，可留空" autocomplete="off" class="layui-input">
+							</div>
+						</div>
+						<div class="layui-form-item">
+							<label class="layui-form-label">库名</label>
+							<div class="layui-input-block">
+								<input type="text" name="db_name" placeholder="已存在的空数据库" autocomplete="off" class="layui-input">
+							</div>
+						</div>
+						<div class="layui-form-item">
+							<div class="layui-input-block layui-word-aux">仅用于新站点。导入的是全新的初始数据，当前 SQLite 中的内容不会迁移，旧的 SQLite 文件会保留。</div>
+						</div>
+					</div>
+					{/if}
 	                
 	                <div class="layui-form-item">
 						 <div class="layui-input-block">
@@ -69,3 +149,21 @@
 </div>
 
 {include file='common/foot.html'}
+{if([$init])}
+<script type="text/javascript">
+layui.use('form', function () {
+    var form = layui.form;
+    form.on('radio(db_type)', function (data) {
+        if (data.value == 'mysql') {
+            document.getElementById('db-mysql').style.display = '';
+            document.getElementsByName('password')[0].setAttribute('lay-verify', 'required');
+            document.getElementsByName('rpassword')[0].setAttribute('lay-verify', 'required');
+        } else {
+            document.getElementById('db-mysql').style.display = 'none';
+            document.getElementsByName('password')[0].removeAttribute('lay-verify');
+            document.getElementsByName('rpassword')[0].removeAttribute('lay-verify');
+        }
+    });
+});
+</script>
+{/if}

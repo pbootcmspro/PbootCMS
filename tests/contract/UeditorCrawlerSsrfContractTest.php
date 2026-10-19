@@ -54,4 +54,38 @@ return TestAssert::runSuite(function () {
     TestAssert::true(strpos($crawler, 'set_time_limit(0)') === false, 'no unlimited set_time_limit(0)');
     TestAssert::contains($crawler, 'set_time_limit(30)', 'bounded set_time_limit(30)');
     TestAssert::contains($crawler, 'upload_should_post_process_image($full_path)', 'post-process still wired');
+
+    echo "=== catch remote switch gates crawler before Uploader ===\n";
+
+    $switchPos = strpos($crawler, 'ueditor_catch_remote_enabled(');
+    $uploaderPos = strpos($crawler, 'include ("Uploader.class.php")');
+    TestAssert::true($switchPos !== false && $uploaderPos !== false && $switchPos < $uploaderPos, 'switch checked before Uploader');
+    TestAssert::contains($crawler, '远程图片抓取未开启', 'disabled state message');
+    $echoPos = strpos($crawler, 'echo $result;');
+    $returnPos = strpos($crawler, 'return $result;');
+    TestAssert::true($echoPos !== false && $returnPos !== false && $echoPos < $returnPos && $returnPos < $uploaderPos, 'direct access echoes, include path returns');
+
+    $fileFn = file_get_contents(CORE_PATH . '/function/file.php');
+    $fnStart = strpos($fileFn, 'function ueditor_catch_remote_enabled()');
+    $fnEnd = strpos($fileFn, 'function upload_ext_from_filename(');
+    TestAssert::true($fnStart !== false && $fnEnd !== false && $fnEnd > $fnStart, 'ueditor_catch_remote_enabled defined in file.php');
+    $fnBody = substr($fileFn, $fnStart, $fnEnd - $fnStart);
+    TestAssert::contains($fnBody, "array('name' => 'ueditor_catch_remote')", 'config name is bound');
+    TestAssert::true(strpos($fnBody, "name='") === false, 'config name is not concatenated into SQL');
+    TestAssert::contains($fnBody, "(string) \$value !== '0'", 'only explicit 0 disables');
+
+    echo "=== admin switch UI and editor flag ===\n";
+
+    $configHtml = file_get_contents(APP_PATH . '/admin/view/default/system/config.html');
+    TestAssert::contains($configHtml, 'name="ueditor_catch_remote"', 'security tab posts ueditor_catch_remote');
+    TestAssert::contains($configHtml, 'name="ueditor_catch_remote" value="1"', 'enable option');
+    TestAssert::contains($configHtml, 'name="ueditor_catch_remote" value="0"', 'disable option');
+    TestAssert::contains($configHtml, "@[\$configs.ueditor_catch_remote.value]!='0'", 'empty or missing shows enabled');
+
+    $editorHtml = file_get_contents(APP_PATH . '/admin/view/default/common/ueditor.html');
+    $configJs = strpos($editorHtml, 'ueditor.config.js');
+    $flag = strpos($editorHtml, 'window.UEDITOR_CONFIG.catchRemoteImageEnable = false;');
+    $allJs = strpos($editorHtml, 'ueditor.all.js');
+    TestAssert::true($configJs !== false && $flag !== false && $allJs !== false && $configJs < $flag && $flag < $allJs, 'flag set after config.js and before ueditor.all.js');
+    TestAssert::contains($editorHtml, '{if(!ueditor_catch_remote_enabled())}', 'editor flag follows the same switch');
 });

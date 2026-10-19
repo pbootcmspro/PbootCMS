@@ -386,13 +386,13 @@ class Model
      * @param mixed $where
      *            设置条件，可以为字符串、数组,
      *            字符串模式：如"id<1","name like %1",
-     *            数组模式：array('username'=>'xie',"realname like '%谢%'")
+     *            数组模式：array('username'=>'xie')；字符串键的值为数组时生成 IN
      * @param string $inConnect
      *            调用本方法时$where参数数组内部的条件默认使用AND连接
      * @param string $outConnect
      *            调用本方法时与前面条件使用AND连接
      * @param boolean $fuzzy
-     *            条件是否为模糊匹配，即in匹配
+     *            条件是否为模糊匹配；仅标量值生效
      * @return \core\basic\Model
      */
     final public function where($where, $inConnect = 'AND', $outConnect = 'AND', $fuzzy = false)
@@ -416,7 +416,17 @@ class Model
                 }
                 if (!is_int($key)) {
                     $safeKey = $this->safeField($key);
-                    if ($fuzzy) {
+                    if (is_array($value)) {
+                        if (!$value) {
+                            $where_string .= '1=0 ';
+                        } else {
+                            $placeholders = array();
+                            foreach ($value as $item) {
+                                $placeholders[] = $this->addBind($item);
+                            }
+                            $where_string .= $safeKey . ' IN (' . implode(',', $placeholders) . ') ';
+                        }
+                    } elseif ($fuzzy) {
                         $bindPlaceholder = $this->addBind('%' . $value . '%');
                         $where_string .= $safeKey . " like " . $bindPlaceholder . " ";
                     } else {

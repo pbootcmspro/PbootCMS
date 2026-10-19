@@ -74,9 +74,11 @@
 
 其中最低版本要求适用于新安装及全包升级；使用后台在线升级的存量站点不受影响，仍可继续运行于原有PHP版本。
 
-如果需要启用Mysql版本，请导入目录下数据库文件/static/backup/sql/pbootcms.sql，并修改config/database数据库连接文件信息。
+如果需要启用Mysql版本，请导入目录下数据库文件/static/backup/sql/pbootcms.sql，并修改config/database数据库连接文件信息。服务器没有 sqlite3 或 pdo_sqlite 扩展时，按此方式手工配置 MySQL。
 
 系统后台默认访问路径：http://ip/admin.php   账号：admin   密码：123456，
+
+首次登录后会进入初始化设置，可以选择继续使用 SQLite，或切换到 MySQL（需要 mysqli 扩展）。切换会导入一份全新的初始数据，不会迁移当前 SQLite 中的内容；旧的 SQLite 文件会保留，确认无误后可以手工删除 data/pbootcms.db。不要把已经使用过的站点改回默认密码后再切换，安装包中的 static/backup/sql/pbootcms.sql 不会随在线升级更新，可能与当前程序版本不一致。
 
 
 ##  升级说明：

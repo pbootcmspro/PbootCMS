@@ -160,7 +160,7 @@ class ImageExtController extends Controller
         $fileList = get_dir(DOC_PATH . STATIC_DIR . '/upload');
         $fileMap = [];
         array_walk_recursive($fileList, function ($fsPath) use (&$fileMap, $fsBase, $staticSeg) {
-            if (!empty($fsPath)) {
+            if (!empty($fsPath) && strpos(basename($fsPath), '.') !== 0) {
                 $resolved = realpath($fsPath);
                 $lookupPath = $resolved !== false
                     ? str_replace('\\', '/', $resolved)
@@ -226,7 +226,7 @@ class ImageExtController extends Controller
         if (!is_string($path) || $path === '') {
             return '';
         }
-        $path = str_replace('\\', '/', $path);
+        $path = preg_replace('/[?#].*$/s', '', str_replace('\\', '/', $path));
         // 去除协议与主机部分，如 http://host/...
         $path = preg_replace('#^[a-zA-Z][a-zA-Z0-9+.\-]*://[^/]+#', '', $path);
         if ($path === '' || $path[0] !== '/') {

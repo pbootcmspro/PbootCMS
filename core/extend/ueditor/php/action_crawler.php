@@ -6,7 +6,8 @@
  * Time: 下午19:18
  */
 // 防止直接访问：未通过 controller.php 引入时执行独立验证
-if (!isset($CONFIG)) {
+$ueditor_crawler_direct = ! isset($CONFIG);
+if ($ueditor_crawler_direct) {
     require_once '../../../init.php';
     error_reporting(0);
     if (!session('sid')) {
@@ -21,6 +22,18 @@ if (!isset($CONFIG)) {
     }
     $CONFIG = json_decode(preg_replace("/\/\*[\s\S]+?\*\//", "", file_get_contents("config.json")), true);
     $CONFIG = ueditor_merge_upload_config($CONFIG);
+}
+
+if (! ueditor_catch_remote_enabled()) {
+    $result = json_encode(array(
+        'state' => '远程图片抓取未开启',
+        'list' => array()
+    ));
+    if ($ueditor_crawler_direct) {
+        echo $result;
+        exit;
+    }
+    return $result;
 }
 
 set_time_limit(30);

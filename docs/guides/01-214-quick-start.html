@@ -6,6 +6,7 @@
     <div class="bd-callout bd-callout-info">
         <h4>后台访问</h4>
         <p>系统后台默认访问路径：http://域名/admin.php  账号：admin  密码：123456</p>
+        <p>首次登录后会进入初始化设置，可以选择继续使用 SQLite，或切换到 MySQL（需要 mysqli 扩展）。切换会导入一份全新的初始数据，不会迁移当前 SQLite 中的内容；旧的 SQLite 文件会保留。</p>
     </div>
     <div class="bd-callout bd-callout-info">
         <h4>快速入门视频</h4>
@@ -38,7 +39,7 @@
     </div>
     <div class="bd-callout bd-callout-info">
         <h4>数据库选择</h4>
-        <p>默认采用sqlite数据库，不需要做导入和配置操作，如果需要启用mysql版本，请导入数据库文件（/static/backup/sql/pbootcms.sql）并修改数据库连接文件信息（/config/database.php）</p>
+        <p>默认采用sqlite数据库，不需要做导入和配置操作，如果需要启用mysql版本，请导入数据库文件（/static/backup/sql/pbootcms.sql）并修改数据库连接文件信息（/config/database.php）。服务器没有 sqlite3 或 pdo_sqlite 扩展时，只能按此方式手工配置 MySQL。首次登录的初始化设置也可以切换到 MySQL（需要 mysqli 扩展）。不要把已经使用过的站点改回默认密码后再切换，static/backup/sql/pbootcms.sql 不会随在线升级更新。MySQL 站点确认无误后，可以手工删除 data/pbootcms.db。</p>
     </div>
     <div class="bd-callout bd-callout-info">
         <h4>在线演示</h4>

@@ -29,6 +29,23 @@ function parser_thumb_probe(string $siteDir, array $payload): array
     return is_array($data) ? $data : array();
 }
 
+function parser_asset_cut_probe(string $siteDir, array $payload): array
+{
+    $php = PHP_BINARY ?: 'php';
+    $script = TEST_ROOT . 'scripts' . DIRECTORY_SEPARATOR . 'parser_asset_cut_probe.php';
+    $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $cmd = escapeshellarg($php) . ' '
+        . escapeshellarg($script) . ' '
+        . escapeshellarg($siteDir) . ' '
+        . escapeshellarg(base64_encode($json));
+    $output = shell_exec($cmd);
+    if (! is_string($output) || $output === '') {
+        return array();
+    }
+    $data = json_decode(trim($output), true);
+    return is_array($data) ? $data : array();
+}
+
 function parser_thumb_assert_ok(array $data, string $siteDir, string $label)
 {
     TestAssert::true(isset($data['url']) && $data['url'] !== '', $label . ': url returned');
@@ -116,5 +133,74 @@ return TestAssert::runSuite(function () {
             $cdnData['url'],
             'cdn thumb stays local under SITE_DIR (not CDN)'
         );
+    }
+
+    echo "=== substr/len/lencn cut on output URL ===\n";
+    $ico = '/static/upload/image/20210927/1632753302477588.png';
+    $outer = 'https://img.example.com/upload/1632753302477588.png';
+    $deploys = array(
+        array('name' => 'root', 'site' => '', 'path' => $ico, 'cdn' => '', 'full' => $ico),
+        array('name' => 'subdir /cms', 'site' => '/cms', 'path' => $ico, 'cdn' => '', 'full' => '/cms' . $ico),
+        array('name' => 'cdn', 'site' => '', 'path' => $ico, 'cdn' => $cdn, 'full' => $cdn . $ico),
+        array('name' => 'outer root', 'site' => '', 'path' => $outer, 'cdn' => '', 'full' => $outer),
+        array('name' => 'outer subdir /cms', 'site' => '/cms', 'path' => $outer, 'cdn' => '', 'full' => $outer),
+    );
+    $expected = array(
+        'root' => array(
+            'substr=47,4' => '.png',
+            'substr=-4' => '8.png',
+            'substr=2' => 'static/upload/image/20210927/1632753302477588.png',
+            'len=10' => '/static/up···',
+            'lencn=10' => '/static/upload/image···',
+        ),
+        'subdir /cms' => array(
+            'substr=47,4' => '7588',
+            'substr=-4' => '8.png',
+            'substr=2' => 'cms/static/upload/image/20210927/1632753302477588.png',
+            'len=10' => '/cms/stati···',
+            'lencn=10' => '/cms/static/upload/i···',
+        ),
+        'cdn' => array(
+            'substr=47,4' => '2109',
+            'substr=-4' => '8.png',
+            'substr=2' => 'ttps://cdn.example.com/static/upload/image/20210927/1632753302477588.png',
+            'len=10' => 'https://cd···',
+            'lencn=10' => 'https://cdn.example.···',
+        ),
+        'outer' => array(
+            'substr=47,4' => '8.pn',
+            'substr=-4' => '8.png',
+            'substr=2' => 'ttps://img.example.com/upload/1632753302477588.png',
+            'len=10' => 'https://im···',
+            'lencn=10' => 'https://img.example.···',
+        ),
+    );
+    $expected['outer root'] = $expected['outer'];
+    $expected['outer subdir /cms'] = $expected['outer'];
+
+    foreach ($deploys as $deploy) {
+        $cases = $expected[$deploy['name']];
+        $cases[''] = $deploy['full'];
+        foreach ($cases as $param => $want) {
+            $label = $deploy['name'] . ' / ' . ($param === '' ? 'no cut' : $param);
+            $data = parser_asset_cut_probe($deploy['site'], array(
+                'path' => $deploy['path'],
+                'param' => $param,
+                'cdn' => $deploy['cdn'],
+            ));
+            foreach (array('content', 'list', 'label') as $entry) {
+                TestAssert::same($want, isset($data[$entry]) ? $data[$entry] : null, $label . ' / ' . $entry);
+            }
+        }
+    }
+
+    echo "=== resize then cut thumb URL ===\n";
+    foreach (array('' => 'runtime/image/w40_h30_probe_thumb_13.jpg', '/cms' => 'cms/runtime/image/w40_h30_probe_thumb_13.jpg') as $site => $want) {
+        $data = parser_thumb_probe($site, array(
+            'path' => $canonical,
+            'params' => array('width' => 40, 'height' => 30, 'substr' => '2'),
+            'cleanup' => true,
+        ));
+        TestAssert::same($want, isset($data['url']) ? $data['url'] : null, 'resize+substr=2 site=' . ($site === '' ? 'root' : $site));
     }
 });

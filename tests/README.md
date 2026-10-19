@@ -45,4 +45,5 @@ php tests/unit/ValidateIfConditionTest.php
 - Issue #223 — 批量复制内容清空自定义 URL 名称（`ContentCopyFilenameTest`）
 - Issue #273 — 内置表格读取器替换为 SimpleXLSX 1.1.19（`SimpleXlsxReaderTest`）
 - Issue #283 — 编译文件、页面缓存与配置缓存原子写入，冷启动补注入配置缓存（`WriteFileAtomicTest` / `RuntimeCacheAtomicWriteContractTest`）
+- Issue #298 — 清理冗余图片收集正文任意上传文件、附件与内容扩展字段引用（`ImageExtRefCollectTest`）
 

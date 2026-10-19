@@ -37,7 +37,9 @@ class ParserModel extends Model
         if ($urlname == 'list' || $urlname == 'about') {
             return true;
         }
-        return parent::table('ay_model')->where("urlname='$urlname'")->find();
+        return parent::table('ay_model')->where(array(
+            'urlname' => $urlname
+        ))->find();
     }
 
     // 站点配置信息
@@ -61,7 +63,6 @@ class ParserModel extends Model
     // 单个分类信息，不区分语言，兼容跨语言
     public function getSort($scode)
     {
-        $scode = escape_string($scode);
         $field = array(
             'a.*',
             'c.name AS parentname',
@@ -87,7 +88,10 @@ class ParserModel extends Model
             )
         );
         return parent::table('ay_content_sort a')->field($field)
-            ->where("a.scode='$scode' OR a.filename='$scode'")
+            ->where(array(
+                'a.scode' => $scode,
+                'a.filename' => $scode
+            ), 'OR')
             ->join($join)
             ->find();
     }
@@ -128,14 +132,11 @@ class ParserModel extends Model
         // 获取多分类子类
         $arr = explode(',', $scode);
         foreach ($arr as $value) {
-            $scodes = $this->getSubScodes(trim($value));
+            $this->getSubScodes(trim($value));
         }
 
         // 拼接条件
-        $where1 = array(
-            "scode in (" . implode_quot(',', $scodes) . ")",
-            "subscode='$scode'"
-        );
+        $where1 = $this->contentScodeCondition($scode, $this->scodes);
         $where2 = array(
             "acode='" . get_lg() . "'",
             'status=1',
@@ -251,29 +252,16 @@ class ParserModel extends Model
         }
     }
 
-/*     // 分类子类集
-    private function getSubScodes($scode)
-    {
-        if (! $scode) {
-            return;
-        }
-        $this->scodes[] = $scode;
-        $subs = parent::table('ay_content_sort')->where("pcode='$scode'")->column('scode');
-        if ($subs) {
-            foreach ($subs as $value) {
-                $this->getSubScodes($value);
-            }
-        }
-        return $this->scodes;
-    } */
-	// 分类子类集
+    // 分类子类集
     public function getSubScodes($scode)
     {
         if (! $scode) {
             return;
         }
         $this->scodes[] = $scode;
-        $subs = parent::table('ay_content_sort')->where("pcode='$scode'")
+        $subs = parent::table('ay_content_sort')->where(array(
+            'pcode' => $scode
+        ))
             ->where("outlink=''")
             ->column('scode');
         if ($subs) {
@@ -283,6 +271,19 @@ class ParserModel extends Model
         }
         return $this->scodes;
     }
+
+    private function contentScodeCondition($scode, $scodes, $alias = '')
+    {
+        $prefix = ($alias !== '') ? $alias . '.' : '';
+        if (! is_array($scodes)) {
+            $scodes = array();
+        }
+        return array(
+            $prefix . 'scode' => array_values($scodes),
+            $prefix . 'subscode' => $scode
+        );
+    }
+
 	// 清除静态缓存时，获取全部栏目编码
     public function getScodes($type)
     {
@@ -335,7 +336,9 @@ class ParserModel extends Model
     // 获取筛选字段数据
     public function getSelect($field)
     {
-        return parent::table('ay_extfield')->where("name='$field'")->value('value');
+        return parent::table('ay_extfield')->where(array(
+            'name' => $field
+        ))->value('value');
     }
 
     // 获取内容扩展表中真实存在的扩展字段
@@ -356,7 +359,6 @@ class ParserModel extends Model
     // 列表内容，分页以參數形式帶入，不区分语言，兼容跨语言
     public function getList($scode, $num, $order, $filter = array(), $tags = array(), $select = array(), $fuzzy = false, $start = 1, $lfield = null, $lg = null, bool $page = false)
     {
-        $scode = escape_string($scode);
         $ext_table = false;
         if ($lfield) {
             $extFields = null;
@@ -502,13 +504,10 @@ class ParserModel extends Model
             $this->scodes = array(); // 先清空
             $arr = explode(',', $scode); // 传递有多个分类时进行遍历
             foreach ($arr as $value) {
-                $scodes = $this->getSubScodes(trim($value));
+                $this->getSubScodes(trim($value));
             }
             // 拼接条件
-            $scode_arr = array(
-                "a.scode in (" . implode_quot(',', $scodes) . ")",
-                "a.subscode='$scode'"
-            );
+            $scode_arr = $this->contentScodeCondition($scode, $this->scodes, 'a');
         }
 
         $where = array(
@@ -574,7 +573,6 @@ class ParserModel extends Model
     // 内容详情，不区分语言，兼容跨语言
     public function getContent($id)
     {
-        $id = escape_string($id);
         $field = array(
             'a.*',
             'b.name as sortname',
@@ -615,9 +613,14 @@ class ParserModel extends Model
                 'LEFT'
             )
         );
-        $where = ctype_digit((string) $id) ? "a.id='$id' OR a.filename='$id'" : "a.filename='$id'";
+        $where = ctype_digit((string) $id) ? array(
+            'a.id' => $id,
+            'a.filename' => $id
+        ) : array(
+            'a.filename' => $id
+        );
         $result = parent::table('ay_content a')->field($field)
-            ->where($where)
+            ->where($where, 'OR')
             ->where('a.status=1')
             ->where("a.date<'" . date('Y-m-d H:i:s') . "'")
             ->join($join)
@@ -629,7 +632,6 @@ class ParserModel extends Model
     // 单篇详情,不区分语言，兼容跨语言
     public function getAbout($scode)
     {
-        $scode = escape_string($scode);
         $field = array(
             'a.*',
             'b.name as sortname',
@@ -670,7 +672,10 @@ class ParserModel extends Model
             )
         );
         $result = parent::table('ay_content a')->field($field)
-            ->where("a.scode='$scode' OR b.filename='$scode'")
+            ->where(array(
+                'a.scode' => $scode,
+                'b.filename' => $scode
+            ), 'OR')
             ->where('a.status=1')
             ->join($join)
             ->decode()
@@ -689,7 +694,9 @@ class ParserModel extends Model
         );
         $result = parent::table('ay_content a')->field($field . ',picstitle')
             ->join($join)
-            ->where("a.id='$id'")
+            ->where(array(
+                'a.id' => $id
+            ))
             ->where('a.status=1')
             ->where("a.date<'" . date('Y-m-d H:i:s') . "'")
             ->find();
@@ -699,7 +706,9 @@ class ParserModel extends Model
     // 指定内容多选调用
     public function getContentCheckbox($id, $field)
     {
-        $result = parent::table('ay_content_ext')->where("contentid='$id'")->value($field);
+        $result = parent::table('ay_content_ext')->where(array(
+            'contentid' => $id
+        ))->value($field);
         return $result;
     }
 
@@ -707,7 +716,9 @@ class ParserModel extends Model
     public function getContentTags($id)
     {
         $result = parent::table('ay_content')->field('scode,tags')
-            ->where("id='$id'")
+            ->where(array(
+                'id' => $id
+            ))
             ->where('status=1')
             ->where("date<'" . date('Y-m-d H:i:s') . "'")
             ->find();
@@ -737,10 +748,7 @@ class ParserModel extends Model
             $scodes = $this->getSubScodes(trim($scode)); // 获取子类
 
             // 拼接条件
-            $scode_arr = array(
-                "a.scode in (" . implode_quot(',', $scodes) . ")",
-                "a.subscode='$scode'"
-            );
+            $scode_arr = $this->contentScodeCondition($scode, $scodes, 'a');
         }
 
         $result = parent::table('ay_content a')->where("c.type=2 AND a.tags<>''")
@@ -785,7 +793,7 @@ class ParserModel extends Model
             );
 
             $this->pre[$key] = parent::table('ay_content a')->field($field)
-                ->where("a.id<$id")
+                ->where('a.id<' . (int) $id)
                 ->join($join)
                 ->in('a.scode', $scodes)
                 ->where("a.acode='" . get_lg() . "'")
@@ -830,7 +838,7 @@ class ParserModel extends Model
             );
 
             $this->next[$key] = parent::table('ay_content a')->field($field)
-                ->where("a.id>$id")
+                ->where('a.id>' . (int) $id)
                 ->join($join)
                 ->in('a.scode', $scodes)
                 ->where("a.acode='" . get_lg() . "'")
@@ -845,7 +853,9 @@ class ParserModel extends Model
     // 幻灯片
     public function getSlides($gid, $num, $start = 1)
     {
-        $result = parent::table('ay_slide')->where("gid='$gid'")
+        $result = parent::table('ay_slide')->where(array(
+            'gid' => $gid
+        ))
             ->order('sorting ASC,id ASC')
             ->limit($start - 1, $num)
             ->select();
@@ -855,7 +865,9 @@ class ParserModel extends Model
     // 友情链接
     public function getLinks($gid, $num, $start = 1)
     {
-        $result = parent::table('ay_link')->where("gid='$gid'")
+        $result = parent::table('ay_link')->where(array(
+            'gid' => $gid
+        ))
             ->order('sorting ASC,id ASC')
             ->limit($start - 1, $num)
             ->select();
@@ -934,7 +946,9 @@ class ParserModel extends Model
         );
 
         return parent::table('ay_form a')->field($field)
-            ->where("a.fcode='$fcode'")
+            ->where(array(
+                'a.fcode' => $fcode
+            ))
             ->join($join)
             ->order('b.sorting ASC,b.id ASC')
             ->select();
@@ -943,7 +957,9 @@ class ParserModel extends Model
     // 获取表单表名称
     public function getFormTable($fcode)
     {
-        return parent::table('ay_form')->where("fcode='$fcode'")->value('table_name');
+        return parent::table('ay_form')->where(array(
+            'fcode' => $fcode
+        ))->value('table_name');
     }
 
     // 获取表单数据
@@ -1010,8 +1026,10 @@ class ParserModel extends Model
         if ($page) {
             return parent::table('ay_member_comment a')->field($field)
                 ->join($join)
-                ->where("a.contentid='$contentid'")
-                ->where('a.pid=' . $pid)
+                ->where(array(
+                    'a.contentid' => $contentid,
+                    'a.pid' => (int) $pid
+                ))
                 ->where("a.status=1")
                 ->order($order)
                 ->page(1, $num, $start)
@@ -1019,8 +1037,10 @@ class ParserModel extends Model
         } else {
             return parent::table('ay_member_comment a')->field($field)
                 ->join($join)
-                ->where("a.contentid='$contentid'")
-                ->where('a.pid=' . $pid)
+                ->where(array(
+                    'a.contentid' => $contentid,
+                    'a.pid' => (int) $pid
+                ))
                 ->where("a.status=1")
                 ->order($order)
                 ->limit($start - 1, $num)
@@ -1061,14 +1081,18 @@ class ParserModel extends Model
         if ($page) {
             return parent::table('ay_member_comment a')->field($field)
                 ->join($join)
-                ->where("uid='" . session('pboot_uid') . "'")
+                ->where(array(
+                    'uid' => session('pboot_uid')
+                ))
                 ->order($order)
                 ->page(1, $num, $start)
                 ->select();
         } else {
             return parent::table('ay_member_comment a')->field($field)
                 ->join($join)
-                ->where("uid='" . session('pboot_uid') . "'")
+                ->where(array(
+                    'uid' => session('pboot_uid')
+                ))
                 ->order($order)
                 ->limit($start - 1, $num)
                 ->select();
@@ -1078,8 +1102,9 @@ class ParserModel extends Model
     // 删除评论
     public function delComment($id)
     {
-        return parent::table('ay_member_comment')->where("uid='" . session('pboot_uid') . "'")
-            ->where("id=$id")
-            ->delete();
+        return parent::table('ay_member_comment')->where(array(
+            'uid' => session('pboot_uid'),
+            'id' => (int) $id
+        ))->delete();
     }
 }
