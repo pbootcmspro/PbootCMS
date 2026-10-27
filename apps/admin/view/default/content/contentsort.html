@@ -10,7 +10,7 @@
 	  </ul>
 	  <div class="layui-tab-content">
 	  	   <div class="layui-tab-item layui-show">
-	  	   		 <form action="{url./admin/ContentSort/mod}" method="post" id="sortForm" name="sortForm">
+                 <form action="{url./admin/ContentSort/mod}" method="post" id="sortForm" name="sortForm" onkeydown="if(event.keyCode==13) return false;">
 	  	   		 <input type="hidden" name="formcheck" value="{$formcheck}" > 
 	  	   		 <table class="layui-table" id="sortTable">
 	  	   		 	  <thead>
@@ -89,12 +89,13 @@
 		                {/foreach}
 		                </tbody>
 	  	   		 </table>
-	  	   		 <button type="submit" name="submit" value="sorting" class="layui-btn">保存排序</button>
+                 <button type="button" class="ajax-sorting layui-btn">保存排序</button>
 	  	   		 <button type="submit" name="submit" onclick="return setDelAction();" class="layui-btn">批量删除</button>
 	  	   		 <script>
 		     		function setDelAction(){
-		     			document.sortForm.action = "{url./admin/ContentSort/del}"; 
-		     			return confirm("您确定要删除选中的栏目么？");
+                        if (!confirm("您确定要删除选中的栏目么？")) return false;
+                        document.sortForm.action = "{url./admin/ContentSort/del}";
+                        return true;
 		     		}
 		     	</script>
 	  	   		</form>

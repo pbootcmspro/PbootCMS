@@ -86,4 +86,11 @@ return TestAssert::runSuite(function () {
     TestAssert::contains($ucenter, '首次使用，请完成初始化设置。', 'init banner present');
     TestAssert::contains($ucenter, '您的账号密码为初始密码，存在安全隐患，必须修改密码才能查看后台主页！', 'existing password warning kept');
     TestAssert::contains($ucenter, 'name="db_type"', 'database choice is on the init form');
+    TestAssert::contains($ucenter, 'fa-circle-check', 'env result shows pass icon');
+    TestAssert::contains($ucenter, 'fa-circle-xmark', 'env result shows fail icon');
+    TestAssert::contains($ucenter, '通过', 'env result keeps pass text');
+    TestAssert::contains($ucenter, '不满足', 'env result keeps fail text');
+    TestAssert::contains($ucenter, 'SQLite：进入后台首页时自动改为随机文件名。', 'sqlite hint keeps home rename');
+    TestAssert::notContains($ucenter, '<link', 'ucenter adds no stylesheet');
+    TestAssert::notContains($ucenter, '<script src', 'ucenter adds no external script');
 });

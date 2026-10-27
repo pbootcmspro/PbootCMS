@@ -130,7 +130,7 @@ class LinkController extends Controller
                             $this->model->modLink($value, "sorting=" . $sorting[$key]);
                         }
                         $this->log('批量修改链接排序成功！');
-                        success('修改成功！', - 1);
+                        json(1, array('sorting' => array_values($sorting)));
                     } else {
                         alert_back('排序失败，无任何内容！');
                     }

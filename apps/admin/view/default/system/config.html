@@ -1041,7 +1041,7 @@
 		                     <div class="layui-input-inline" style="width:480px;">
 		                     	<input type="text" name="ai_model" value="{$configs.ai_model.value}" placeholder="如 deepseek-v4-flash / qwen-plus-latest / claude-sonnet-4-20250514" class="layui-input">
 		                     </div>
-		                     <span class="layui-icon layui-icon-about tips" data-content="留空则按服务商默认模型：DeepSeek=deepseek-v4-flash / 通义千问=qwen-plus-latest / Claude=claude-sonnet-4-20250514。若填写 deepseek-v4-pro 等推理模型，系统将自动改用 flash 以保证正文输出。"></span>
+		                     <span class="layui-icon layui-icon-about tips" data-content="留空则按服务商默认模型：DeepSeek=deepseek-v4-flash / 通义千问=qwen-plus-latest / Claude=claude-sonnet-4-20250514。生成文章、续写改写与 TDK 在 DeepSeek 推理模型（如 deepseek-v4-pro）上会自动改用 deepseek-v4-flash。图片 Alt 同样避开推理模型。测试连接仍使用当前填写的模型。"></span>
 		                </div>
 
 		                <div class="layui-form-item">

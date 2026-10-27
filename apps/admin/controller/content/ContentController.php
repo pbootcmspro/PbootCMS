@@ -317,7 +317,7 @@ class ContentController extends Controller
                             $this->model->modContent($value, "sorting=" . $sorting[$key]);
                         }
                         $this->log('修改内容排序成功！');
-                        success('修改成功！', -1);
+                        json(1, array('sorting' => array_values($sorting)));
                     } else {
                         alert_back('排序失败，无任何内容！');
                     }

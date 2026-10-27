@@ -297,10 +297,24 @@ class TextLogReader
             'time' => '',
             'action' => '',
             'provider' => '',
+            'model' => '',
             'user' => '',
+            'scene' => '',
+            'task' => '',
+            'configured' => '',
             'detail' => ''
         );
-        if (preg_match('/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[([^\]]+)\] provider=(\S+) user=(\S+)(?: (.*))?$/', $line, $m)) {
+        if (preg_match('/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[([^\]]+)\] provider=(\S+) model=(\S+) user=(\S+) scene=(\S+) task=(\S+)(?: configured=(\S+))?(?: (.*))?$/', $line, $m)) {
+            $row['time'] = $m[1];
+            $row['action'] = $m[2];
+            $row['provider'] = $m[3];
+            $row['model'] = $m[4];
+            $row['user'] = $m[5];
+            $row['scene'] = $m[6];
+            $row['task'] = $m[7];
+            $row['configured'] = isset($m[8]) ? $m[8] : '';
+            $row['detail'] = isset($m[9]) ? $m[9] : '';
+        } elseif (preg_match('/^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \[([^\]]+)\] provider=(\S+) user=(\S+)(?: (.*))?$/', $line, $m)) {
             $row['time'] = $m[1];
             $row['action'] = $m[2];
             $row['provider'] = $m[3];
@@ -309,10 +323,56 @@ class TextLogReader
         } else {
             $row['detail'] = $line;
         }
+        $row['model_show'] = self::aiFilledLabel($row['model']);
+        if ($row['configured'] !== '') {
+            $row['model_show'] .= '（配置 ' . $row['configured'] . '）';
+        }
+        $row['scene_show'] = self::aiSceneLabel($row['scene']);
+        $row['task_show'] = self::aiTaskLabel($row['task']);
         foreach ($row as $key => $value) {
             $row[$key] = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
         }
         return $row;
+    }
+
+    private static function aiFilledLabel($value)
+    {
+        if ($value === '' || $value === '-') {
+            return '-';
+        }
+        return $value;
+    }
+
+    private static function aiSceneLabel($scene)
+    {
+        $map = array(
+            'generate' => '生成文章',
+            'rewrite' => '文本处理',
+            'tdk' => 'TDK',
+            'alt' => '图片Alt',
+            'ping' => '测试连接'
+        );
+        if ($scene === '' || $scene === '-') {
+            return '-';
+        }
+        return isset($map[$scene]) ? $map[$scene] : $scene;
+    }
+
+    private static function aiTaskLabel($task)
+    {
+        $map = array(
+            'continue' => '续写',
+            'rewrite' => '改写',
+            'shorten' => '缩写',
+            'polish' => '润色',
+            'text' => '文本',
+            'url' => '图片URL',
+            'base64' => '本地图'
+        );
+        if ($task === '' || $task === '-') {
+            return '-';
+        }
+        return isset($map[$task]) ? $map[$task] : $task;
     }
 
     private static function normalizePath($path)

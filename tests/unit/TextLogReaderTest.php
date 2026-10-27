@@ -120,7 +120,7 @@ return TestAssert::runSuite(function () {
         TestAssert::same(7, count($short), 'short line padded to 7');
         TestAssert::same('', $short['ua'], 'missing ua is empty');
 
-        echo "=== parseLine ai: 5 cols, unmatched to detail ===\n";
+        echo "=== parseLine ai: legacy line and structured fields ===\n";
 
         $aiRow = \core\log\TextLogReader::parseLine(
             'ai',
@@ -131,6 +131,23 @@ return TestAssert::runSuite(function () {
         TestAssert::same('deepseek', $aiRow['provider'], 'ai provider');
         TestAssert::same('admin', $aiRow['user'], 'ai user');
         TestAssert::same('title=&lt;b&gt;Hi&lt;/b&gt;', $aiRow['detail'], 'ai detail escaped');
+        TestAssert::same('-', $aiRow['model_show'], 'legacy line has no model');
+        TestAssert::same('-', $aiRow['scene_show'], 'legacy line has no scene');
+        TestAssert::same('-', $aiRow['task_show'], 'legacy line has no task');
+
+        $structured = \core\log\TextLogReader::parseLine(
+            'ai',
+            '2026-10-24 15:00:00 [error] provider=deepseek model=deepseek-v4-flash user=admin scene=rewrite task=continue configured=deepseek-v4-pro 正文为空'
+        );
+        TestAssert::same('error', $structured['action'], 'structured action');
+        TestAssert::same('deepseek-v4-flash', $structured['model'], 'structured model');
+        TestAssert::same('rewrite', $structured['scene'], 'structured scene');
+        TestAssert::same('continue', $structured['task'], 'structured task');
+        TestAssert::same('deepseek-v4-pro', $structured['configured'], 'structured configured model');
+        TestAssert::same('deepseek-v4-flash（配置 deepseek-v4-pro）', $structured['model_show'], 'model show includes configured');
+        TestAssert::same('文本处理', $structured['scene_show'], 'scene label');
+        TestAssert::same('续写', $structured['task_show'], 'task label');
+        TestAssert::same('正文为空', $structured['detail'], 'structured detail excludes fields');
 
         $raw = \core\log\TextLogReader::parseLine('ai', '<script>alert(1)</script>');
         TestAssert::same('&lt;script&gt;alert(1)&lt;/script&gt;', $raw['detail'], 'unmatched line escaped');
@@ -256,7 +273,11 @@ return TestAssert::runSuite(function () {
         TestAssert::contains((string) $textView, '该日期无日志', 'empty day tip');
         TestAssert::contains((string) $textView, '{$text_shown}', 'truncate uses shown');
         TestAssert::contains((string) $textView, '{if([$text_show_day])}', 'day block nested under month');
-        TestAssert::notContains((string) $textView, '即将开放', 'no spider placeholder');
+        TestAssert::contains((string) $textView, '[value->model_show]', 'ai table shows model');
+        TestAssert::contains((string) $textView, '[value->scene_show]', 'ai table shows scene');
+        TestAssert::contains((string) $textView, '[value->task_show]', 'ai table shows task');
+        TestAssert::contains((string) $textView, '>模型<', 'ai table model header');
+        TestAssert::contains((string) $textView, '>任务<', 'ai table task header');
         TestAssert::notContains((string) $textView, '最后 2000 行', 'truncate tip not hardcoded 2000');
 
         $route = file_get_contents(APP_PATH . '/common/route.php');

@@ -285,7 +285,7 @@
     // 初始化编辑器宽度,默认 1000
     // ,initialFrameWidth:1000
     // 初始化编辑器高度,默认 320
-    ,initialFrameHeight:500
+    ,initialFrameHeight:600
 
     // 编辑器初始化结束后,编辑区域是否是只读的，默认是false
     ,readonly : false
@@ -501,7 +501,7 @@
     ,maxInputCount:1
 
     // 是否自动长高,默认true
-    ,autoHeightEnabled:true
+    ,autoHeightEnabled:false
 
     //scaleEnabled
     //是否可以拉伸长高,默认true(当开启时，自动长高失效)

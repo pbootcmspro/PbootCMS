@@ -286,9 +286,10 @@ function long2ip_safe($value): string
 }
 
 /**
- * 安全关闭 cURL 句柄：PHP 7 为 resource 需 curl_close；PHP 8+ 为 CurlHandle 对象且 PHP 8.5 起 curl_close 废弃。
+ * 安全关闭 cURL 句柄：PHP 7 为 resource 需关闭；PHP 8+ 为 CurlHandle 对象且 PHP 8.5 起关闭函数废弃。
+ * 必须按引用接收。PHP 7.0 对函数内的值传递句柄执行关闭，不会关掉调用方的句柄。
  */
-function curl_safe_close($ch)
+function curl_safe_close(&$ch)
 {
     if (is_resource($ch)) {
         curl_close($ch);

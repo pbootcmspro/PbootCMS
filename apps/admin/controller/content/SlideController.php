@@ -119,7 +119,7 @@ class SlideController extends Controller
                             $this->model->modSlide($value, "sorting=" . $sorting[$key]);
                         }
                         $this->log('批量修改轮播图排序成功！');
-                        success('修改成功！', - 1);
+                        json(1, array('sorting' => array_values($sorting)));
                     } else {
                         alert_back('排序失败，无任何内容！');
                     }

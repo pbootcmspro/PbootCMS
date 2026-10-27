@@ -6,6 +6,20 @@
 <script type="text/javascript" charset="utf-8" src="{CORE_DIR}/extend/ueditor/ueditor.all.js"> </script>
 <script type="text/javascript" charset="utf-8" src="{CORE_DIR}/extend/ueditor/lang/zh-cn/zh-cn.js"></script>
 <script>
+// 全屏会改写编辑区 body 高度，退出时还原，避免短文留下空白滚动区
+UE.plugins['pbootfullscreenheight'] = function () {
+	var editor = this;
+	var bodyHeight;
+	editor.addListener('beforefullscreenchange', function (type, fullscreen) {
+		if (fullscreen) {
+			bodyHeight = editor.body.style.height;
+		} else if (bodyHeight !== undefined) {
+			editor.body.style.height = bodyHeight;
+			bodyHeight = undefined;
+		}
+	});
+};
+
 // iframe 白名单清洗仅在前台渲染（filter_html）执行；后台编辑器不清洗，否则保存时会永久删除历史 iframe
 
 // UEditor htmlparser 无引号 src 会在 / 处截断；与 PHP normalize_iframe_unquoted_src 一致，补全全部无引号 src

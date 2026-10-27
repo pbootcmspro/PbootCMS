@@ -221,6 +221,22 @@
 			var $t = $('input[name=title]');
 			return $t.length ? ($t.val() || '') : '';
 		}
+		function aiErrorText(r, fallback){
+			var msg = '';
+			if (r && r.msg) {
+				msg = String(r.msg);
+			} else if (r && typeof r.data === 'string') {
+				msg = r.data;
+			}
+			if (msg.indexOf('Maximum execution time') !== -1) {
+				return 'AI 请求超时，请缩短原文或改用非推理模型后重试';
+			}
+			var desc = msg.match(/Desc:\s*([^;\n]+)/);
+			if (desc && desc[1]) {
+				return desc[1].replace(/^\s+|\s+$/g, '');
+			}
+			return msg || fallback || '请求失败';
+		}
 		function aiCall(url, payload, cb){
 			payload.formcheck = FORMCHECK;
 			$('#aiLoading').show();
@@ -230,10 +246,14 @@
 				success: function(r){
 					$('#aiLoading').hide();
 					if(r && r.code === 1){ cb(r.data); }
-					else{ layer.msg((r && r.msg) ? r.msg : (r && r.data ? r.data : '请求失败')); }
+					else{ layer.msg(aiErrorText(r, '请求失败')); }
 				},
 				error: function(xhr, st){
 					$('#aiLoading').hide();
+					if (st === 'timeout') {
+						layer.msg('AI 请求超时，请缩短原文或改用非推理模型后重试');
+						return;
+					}
 					layer.msg('请求失败：' + (st || '未知错误'));
 				}
 			});
@@ -420,10 +440,14 @@
 					if(r && r.code===1 && r.data && r.data.alt){
 						cb(null, r.data.alt);
 					}else{
-						cb((r && r.msg) ? r.msg : 'Alt 生成失败');
+						cb(aiErrorText(r, 'Alt 生成失败'));
 					}
 				},
 				error: function(xhr, st){
+					if (st === 'timeout') {
+						cb('AI 请求超时，请缩短原文或改用非推理模型后重试');
+						return;
+					}
 					cb('请求失败：' + (st || '网络错误'));
 				}
 			});

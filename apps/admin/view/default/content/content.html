@@ -148,7 +148,7 @@
 				     	{/if}
 				     	
 				     	{if(check_level('mod'))}
-				     		<button type="submit" name="submit" value="sorting" class="layui-btn layui-btn-sm">保存排序</button>
+                            <button type="button" class="ajax-sorting layui-btn layui-btn-sm">保存排序</button>
 					     	{if([$baidu_zz_token])}
 					     		<button type="submit" name="submit" value="baiduzz" class="layui-btn layui-btn-sm">百度普通推送</button>
 					     	{/if}
@@ -162,8 +162,9 @@
 			     	 </div>
 			     	<script>
 			     		function setDelAction(){
-			     			document.contentForm.action = "{url./admin/Content/del}"; 
-			     			return confirm("您确定要删除选中的内容么？");
+                            if (!confirm("您确定要删除选中的内容么？")) return false;
+                            document.contentForm.action = "{url./admin/Content/del}";
+                            return true;
 			     		}
 			     	</script>
 			     	

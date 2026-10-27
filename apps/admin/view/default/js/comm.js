@@ -123,6 +123,60 @@ $(document).ready(function (e) {
         return false;
     })
 
+    // 排序保存成功后提示并刷新当前列表
+    if (typeof layui !== 'undefined') {
+        layui.use('layer', function () {
+            var layer = layui.layer;
+            $('.ajax-sorting').each(function () {
+                var button = $(this);
+                var form = button.closest('form');
+                var sortUrl = form.attr('action');
+                button.on('click', function () {
+                    var data = form.serializeArray();
+                    var inputs = form.find('input[name="sorting[]"]');
+                    var editable = inputs.filter(':not([readonly])');
+                    var buttons = form.find(':submit:enabled, .ajax-sorting:enabled');
+                    var label = button.text();
+                    var saved = false;
+                    data.push({name: 'submit', value: 'sorting'});
+                    editable.prop('readOnly', true);
+                    buttons.prop('disabled', true);
+                    button.text('保存中…');
+                    $.ajax({
+                        type: 'POST',
+                        url: sortUrl,
+                        dataType: 'json',
+                        timeout: 30000,
+                        data: data,
+                        success: function (response) {
+                            if (response && response.code == 1 && response.data && Array.isArray(response.data.sorting) && response.data.sorting.length === inputs.length) {
+                                inputs.each(function (index) { $(this).val(response.data.sorting[index]); });
+                                saved = true;
+                                layer.msg('排序已保存', {icon: 1, time: 800}, function () {
+                                    window.location.reload();
+                                });
+                            } else if (response && response.code == 0 && typeof response.data === 'string') {
+                                layer.alert($('<div>').text(response.data).html(), {icon: 2});
+                            } else {
+                                layer.alert('返回数据异常，无法确认保存结果，请检查后重试。', {icon: 2});
+                            }
+                        },
+                        error: function () {
+                            layer.alert('请求失败或登录已失效，无法确认保存结果，请检查后重试。', {icon: 2});
+                        },
+                        complete: function () {
+                            if (saved) return;
+                            editable.prop('readOnly', false);
+                            buttons.prop('disabled', false);
+                            button.text(label);
+                        }
+                    });
+                    return false;
+                });
+            });
+        });
+    }
+
     $('#sortTable, #menuTable').each(function () {
         initAdminTreeTable(this, {
             column: 1,

@@ -644,7 +644,7 @@ function post_indexnow($key, $key_location, $urls, $expected_host = null)
     $rs['code'] = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $rs['errno'] = curl_errno($ch);
     $rs['error'] = curl_error($ch);
-    curl_close($ch);
+    curl_safe_close($ch);
     return $rs;
 }
 

@@ -35,7 +35,7 @@
 					<tr>
 						<td>[value->name]</td>
 						<td>[value->note]</td>
-						<td>{if($value->ok)}通过{else}<span class="layui-text-red">不满足</span>{/if}</td>
+						<td>{if($value->ok)}<span style="color:#16b777;"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> 通过</span>{else}<span class="layui-text-red"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i> 不满足</span>{/if}</td>
 					</tr>
 					{/foreach}
 				</tbody>

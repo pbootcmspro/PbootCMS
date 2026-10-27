@@ -36,6 +36,26 @@ class AiController extends Controller
         ),
     );
 
+    const AI_OPERATION_BUDGET = 75;
+
+    const AI_TAIL_MARGIN = 5;
+
+    const AI_HTTP_MAX = 60;
+
+    const AI_CONNECT_MAX = 5;
+
+    private $aiScene = '';
+
+    private $aiTask = '';
+
+    private $aiModel = '';
+
+    private $aiConfigured = '';
+
+    private $aiDeadline = 0;
+
+    private $aiPhpBudgetUntil = 0;
+
     /**
      * 健康检查（POST），配置页「测试连接」；需系统配置权限 + 限流 + formcheck
      */
@@ -54,6 +74,7 @@ class AiController extends Controller
             }
             $this->jsonError('未配置 API Key');
         }
+        $this->beginAiCall('ping');
         $rs = $this->callAi(array(
             array('role' => 'user', 'content' => '你好，请回复"连接成功"。'),
         ), 256, null, $cfg);
@@ -78,6 +99,7 @@ class AiController extends Controller
         if (! $title) {
             $this->jsonError('标题不能为空');
         }
+        $this->beginAiCall('generate');
         $messages = array(
             array('role' => 'system', 'content' => '你是一名专业中文 SEO 文章写作助手，擅长撰写结构清晰、信息丰富的企业网站文章。请使用规范的 HTML 段落标签 <p> 输出内容，不要使用 Markdown，也不要包含 <html>、<body> 等结构标签。'),
             array('role' => 'user', 'content' => '请围绕标题《' . $title . '》撰写一篇 600~1000 字的中文文章，要求：1) 结构清晰，分 3~5 段；2) 第一段为引言；3) 每段使用 <p> 标签包裹；4) 不要输出标题本身；5) 内容真实、可读性强。'),
@@ -110,6 +132,7 @@ class AiController extends Controller
         if (! in_array($mode, $allow, true)) {
             $this->jsonError('不支持的处理方式');
         }
+        $this->beginAiCall('rewrite', $mode);
         $promptMap = array(
             'continue' => '请在保持原文风格、上下文连贯的前提下，对以下文本进行续写，新增 200~400 字内容，仅返回续写部分，使用 <p> 段落包裹：',
             'rewrite' => '请保留原意的前提下，对以下文本进行重新组织和改写，使其表达更加流畅自然，仅返回改写后的全文，使用 <p> 段落包裹：',
@@ -128,7 +151,7 @@ class AiController extends Controller
         if ($html === '') {
             $this->jsonError('AI 返回的处理结果为空');
         }
-        $this->aiWriteLog('rewrite', 'mode=' . $mode);
+        $this->aiWriteLog('rewrite');
         $this->jsonOk(array('content' => $html));
     }
 
@@ -144,6 +167,7 @@ class AiController extends Controller
         if (! $title && ! $content) {
             $this->jsonError('请提供文章标题或正文');
         }
+        $this->beginAiCall('tdk');
         $messages = array(
             array('role' => 'system', 'content' => '你是一名资深 SEO 顾问，擅长根据中文文章生成符合搜索引擎收录与用户点击习惯的 Title / Description / Keywords。'),
             array('role' => 'user', 'content' => '请根据以下文章信息生成 SEO 三要素，严格以 JSON 形式返回（只输出 JSON，不要任何解释、不要包裹 markdown）：\n标题：' . $title . "\n正文：" . $content . "\n\n输出 JSON 字段说明：\n- title：不超过 30 个汉字；\n- description：60~120 个汉字；\n- keywords：3~8 个，使用英文逗号分隔。"),
@@ -191,29 +215,27 @@ class AiController extends Controller
         $textPrompt = '文章标题：' . $title . "\n"
             . ($content ? '正文摘要：' . $content . "\n" : '')
             . '请为文内配图生成一条 alt 描述。';
+        $this->beginAiCall('alt', 'text');
         $cfg = $this->getProviderConfig();
         $img = $this->resolveAltImageForVision($imageSrc);
-        $visionMode = 'text';
         $rs = null;
         $altVisionMaxTokens = 1024;
         $altTextCall = $this->resolveAltTextCall($cfg);
         $visionSupported = $this->providerSupportsVisionApi($cfg);
         if ($img && $visionSupported) {
+            $this->aiTask = $img['kind'];
             $messages = $this->buildVisionMessages($systemPrompt, $textPrompt, $img, $cfg);
             $this->consumeRateLimit();
             $rs = $this->callAiVision($messages, $altVisionMaxTokens);
-            if ($rs['code'] === 1 && trim((string) ($rs['data'] ?? '')) !== '') {
-                $visionMode = $img['kind'];
-            }
         }
         if (! $rs || $rs['code'] !== 1 || trim((string) ($rs['data'] ?? '')) === '') {
+            $this->aiTask = 'text';
             $messages = array(
                 array('role' => 'system', 'content' => $systemPrompt),
                 array('role' => 'user', 'content' => $textPrompt),
             );
             $this->consumeRateLimit();
             $rs = $this->callAi($messages, $altTextCall['max_tokens'], $altTextCall['model']);
-            $visionMode = 'text';
         }
         if ($rs['code'] !== 1) {
             $this->jsonError($rs['msg']);
@@ -223,7 +245,7 @@ class AiController extends Controller
             $this->jsonError('AI 未能生成有效的 Alt 描述');
         }
         $alt = $this->safeText($altRaw, 60);
-        $this->aiWriteLog('alt', 'mode=' . $visionMode . ' title=' . mb_substr($title, 0, 30));
+        $this->aiWriteLog('alt', 'title=' . mb_substr($title, 0, 30));
         $this->jsonOk(array('alt' => $alt));
     }
 
@@ -364,7 +386,7 @@ class AiController extends Controller
         $hasAnthropic = (bool) preg_match('#/messages(?:/|$)#', $url);
 
         if ($protocol === 'openai_compat' && ! $hasOpenAi) {
-            $this->aiWriteLog('error:config', 'openai_compat url missing chat/completions');
+            $this->aiWriteLog('error', 'openai_compat url missing chat/completions');
             if ($cfg['provider'] === 'claude') {
                 return $this->errResult(
                     '当前服务商为 Claude，API URL 需填写完整端点，例如：'
@@ -378,7 +400,7 @@ class AiController extends Controller
             );
         }
         if ($protocol === 'anthropic' && ! $hasAnthropic) {
-            $this->aiWriteLog('error:config', 'anthropic url missing messages');
+            $this->aiWriteLog('error', 'anthropic url missing messages');
             return $this->errResult(
                 'Anthropic 协议要求 URL 包含 /messages，'
                 . '示例：https://网关域名/v1/messages'
@@ -419,9 +441,14 @@ class AiController extends Controller
         if (! $cfg['api_key']) {
             return $this->errResult('AI API Key 未配置');
         }
+        $configuredModel = $cfg['model'];
         if ($modelOverride !== null && $modelOverride !== '') {
             $cfg['model'] = $modelOverride;
         }
+        if ($this->shouldUseFlashForText($cfg)) {
+            $cfg['model'] = 'deepseek-v4-flash';
+        }
+        $this->rememberAiModel($cfg['model'], $configuredModel);
         if ($maxTokens === null) {
             $maxTokens = $cfg['max_tokens'];
         }
@@ -431,7 +458,7 @@ class AiController extends Controller
             }
             return $this->invokeProvider($cfg, $messages, $maxTokens);
         } catch (\Throwable $e) {
-            $this->aiWriteLog('error:exception', $e->getMessage());
+            $this->aiWriteLog('error', $e->getMessage());
             $this->log('[AI] 调用异常：' . $e->getMessage(), 'error');
             return $this->errResult('AI 服务调用异常');
         }
@@ -482,13 +509,14 @@ class AiController extends Controller
             return $this->errResult('AI API Key 未配置');
         }
         $cfg['model'] = $this->resolveVisionModel($cfg);
+        $this->rememberAiModel($cfg['model']);
         try {
             if (! isset(self::$providers[$cfg['provider']])) {
                 return $this->errResult('不支持的服务商：' . $cfg['provider']);
             }
             return $this->invokeProvider($cfg, $messages, $maxTokens);
         } catch (\Throwable $e) {
-            $this->aiWriteLog('error:exception', 'vision ' . $e->getMessage());
+            $this->aiWriteLog('error', 'vision ' . $e->getMessage());
             $this->log('[AI] 视觉调用异常：' . $e->getMessage(), 'error');
             return $this->errResult('AI 视觉服务调用异常');
         }
@@ -576,20 +604,73 @@ class AiController extends Controller
     }
 
     /**
-     * Alt 文本回退：推理模型改用轻量 deepseek-v4-flash 模型，避免 token 耗尽在 reasoning 上
+     * Alt 文本回退：DeepSeek 推理模型改用 Flash，保留 Flash 的 1024 token 输出额度
      */
     private function resolveAltTextCall(array $cfg)
     {
         $model = $cfg['model'];
         if ($cfg['provider'] === 'deepseek' && $this->isReasoningModel($model)) {
-            return array('model' => 'deepseek-v4-flash', 'max_tokens' => 1024);
+            $model = 'deepseek-v4-flash';
         }
-        return array('model' => $model, 'max_tokens' => 256);
+        $maxTokens = ($cfg['provider'] === 'deepseek' && stripos($model, 'flash') !== false) ? 1024 : 256;
+        return array('model' => $model, 'max_tokens' => $maxTokens);
     }
 
     private function isReasoningModel($model)
     {
-        return (bool) preg_match('/reasoner|(?:^|[\-_])r1(?:[\-_]|$)|deepseek-v\d/i', (string) $model);
+        $model = strtolower((string) $model);
+        if ($model === '' || strpos($model, 'flash') !== false) {
+            return false;
+        }
+        return (bool) preg_match('/reasoner|(?:^|[\-_])r1(?:[\-_]|$)|thinking|deepseek-v\d.*pro/', $model);
+    }
+
+    private function shouldUseFlashForText(array $cfg)
+    {
+        if (! in_array($this->aiScene, array('generate', 'rewrite', 'tdk'), true)) {
+            return false;
+        }
+        return $cfg['provider'] === 'deepseek' && $this->isReasoningModel($cfg['model']);
+    }
+
+    private function shouldDisableThinking(array $cfg)
+    {
+        // Flash 默认也启用思考，文本与 Alt 场景需显式关闭；测试连接保留模型默认行为。
+        return $cfg['provider'] === 'deepseek'
+            && in_array($this->aiScene, array('generate', 'rewrite', 'tdk', 'alt'), true);
+    }
+
+    private function beginAiCall($scene, $task = '')
+    {
+        $this->aiScene = (string) $scene;
+        $this->aiTask = (string) $task;
+        $this->aiModel = '';
+        $this->aiConfigured = '';
+        $this->aiDeadline = microtime(true) + self::AI_OPERATION_BUDGET;
+        $this->aiPhpBudgetUntil = 0;
+    }
+
+    private function rememberAiModel($actual, $configured = '')
+    {
+        $actual = (string) $actual;
+        $configured = (string) $configured;
+        $this->aiModel = $actual;
+        if ($configured !== '' && $configured !== $actual) {
+            $this->aiConfigured = $configured;
+        } else {
+            $this->aiConfigured = '';
+        }
+    }
+
+    private function emptyByLengthMessage(array $cfg, $key, $reason)
+    {
+        $model = isset($cfg['model']) ? $cfg['model'] : '';
+        if (isset($cfg['provider']) && $cfg['provider'] === 'deepseek' && $this->isReasoningModel($model)) {
+            $hint = '推理模型把输出额度用在思考上，正文为空。请改用 deepseek-v4-flash，或增大「最大 Token」';
+        } else {
+            $hint = '推理模型把输出额度用在思考上，正文为空。请增大「最大 Token」';
+        }
+        return $hint . '（' . $key . '=' . $reason . '）';
     }
 
     /**
@@ -723,13 +804,32 @@ class AiController extends Controller
         $file = $dir . '/' . date('Ymd') . '.log';
         $user = session('username') ?: ('uid:' . (session('id') ?: '0'));
         $provider = $this->config('ai_provider') ?: 'deepseek';
-        $line = date('Y-m-d H:i:s') . ' [' . $action . '] provider=' . $provider . ' user=' . $user;
+        $line = date('Y-m-d H:i:s') . ' [' . $action . ']'
+            . ' provider=' . $this->aiLogToken($provider)
+            . ' model=' . $this->aiLogToken($this->aiModel)
+            . ' user=' . $this->aiLogToken($user)
+            . ' scene=' . $this->aiLogToken($this->aiScene)
+            . ' task=' . $this->aiLogToken($this->aiTask);
+        if ($this->aiConfigured !== '') {
+            $line .= ' configured=' . $this->aiLogToken($this->aiConfigured);
+        }
         if ($detail !== '') {
             $detail = preg_replace('/sk-[a-zA-Z0-9]+/i', 'sk-***', (string) $detail);
-            $line .= ' ' . mb_substr(strip_tags($detail), 0, 200);
+            $detail = preg_replace('/\s+/', ' ', strip_tags($detail));
+            $line .= ' ' . mb_substr(trim($detail), 0, 200);
         }
         $line .= PHP_EOL;
         $this->aiAppendLog($file, $line);
+    }
+
+    private function aiLogToken($value)
+    {
+        $value = trim(strip_tags((string) $value));
+        $value = preg_replace('/\s+/', '_', $value);
+        if ($value === '' || strpos($value, '=') !== false) {
+            return '-';
+        }
+        return $value;
     }
 
     private function aiAppendLog($path, $content)
@@ -760,6 +860,9 @@ class AiController extends Controller
             'max_tokens' => (int) $maxTokens,
             'stream' => false,
         );
+        if ($this->shouldDisableThinking($cfg)) {
+            $payload['thinking'] = array('type' => 'disabled');
+        }
         if (! $this->shouldOmitTemperature($cfg)) {
             $payload['temperature'] = 0.7;
         }
@@ -773,28 +876,34 @@ class AiController extends Controller
         }
         $body = json_decode($resp['data'], true);
         if (! is_array($body)) {
-            $this->aiWriteLog('error:openai', 'model=' . $cfg['model'] . ' invalid json');
+            $this->aiWriteLog('error', 'invalid json');
             return $this->errResult('AI 响应非 JSON');
         }
         if (isset($body['error'])) {
             $msg = is_array($body['error']) ? ($body['error']['message'] ?? json_encode($body['error'])) : (string) $body['error'];
-            $this->aiWriteLog('error:openai', 'model=' . $cfg['model'] . ' ' . $msg);
+            $this->aiWriteLog('error', $msg);
             return $this->errResult('AI 服务返回错误：' . $msg);
         }
         if (empty($body['choices']) || ! is_array($body['choices'])) {
-            $this->aiWriteLog('error:openai', 'model=' . $cfg['model'] . ' no choices');
+            $this->aiWriteLog('error', 'no choices');
             $mismatch = $this->diagnoseAnthropicShapeInBody($body);
             return $this->errResult($mismatch ?: 'AI 响应无有效 内容');
         }
-        if (! isset($body['choices'][0]['message']['content'])) {
-            $this->aiWriteLog('error:openai', 'model=' . $cfg['model'] . ' missing content');
+        $finish = isset($body['choices'][0]['finish_reason']) ? (string) $body['choices'][0]['finish_reason'] : '';
+        $message = (isset($body['choices'][0]['message']) && is_array($body['choices'][0]['message']))
+            ? $body['choices'][0]['message']
+            : array();
+        if (! array_key_exists('content', $message) || $message['content'] === null) {
+            if ($finish === 'length') {
+                $msg = $this->emptyByLengthMessage($cfg, 'finish_reason', 'length');
+                $this->aiWriteLog('error', $msg);
+                return $this->errResult($msg);
+            }
+            $this->aiWriteLog('error', 'missing content');
             $mismatch = $this->diagnoseAnthropicShapeInBody($body);
             return $this->errResult($mismatch ?: 'AI 响应字段缺失');
         }
-        if (isset($body['choices'][0]['finish_reason']) && $body['choices'][0]['finish_reason'] === 'length') {
-            $this->aiWriteLog('truncated', 'openai_compat finish_reason=length');
-        }
-        $content = $body['choices'][0]['message']['content'];
+        $content = $message['content'];
         if (is_array($content)) {
             $parts = array();
             foreach ($content as $part) {
@@ -808,10 +917,17 @@ class AiController extends Controller
             $content = (string) $content;
         }
         if (trim($content) === '') {
-            $reason = $body['choices'][0]['finish_reason'] ?? 'unknown';
-            $msg = 'AI 返回内容为空（finish_reason=' . $reason . '）';
-            $this->aiWriteLog('error:openai', 'model=' . $cfg['model'] . ' ' . $msg);
+            if ($finish === 'length') {
+                $msg = $this->emptyByLengthMessage($cfg, 'finish_reason', 'length');
+            } else {
+                $reason = $finish !== '' ? $finish : 'unknown';
+                $msg = 'AI 返回内容为空（finish_reason=' . $reason . '）';
+            }
+            $this->aiWriteLog('error', $msg);
             return $this->errResult($msg);
+        }
+        if ($finish === 'length') {
+            $this->aiWriteLog('truncated', 'finish_reason=length');
         }
         return $this->okResult($content);
     }
@@ -840,6 +956,9 @@ class AiController extends Controller
             'max_tokens' => (int) $maxTokens,
             'messages' => $msgs,
         );
+        if ($this->shouldDisableThinking($cfg)) {
+            $payload['thinking'] = array('type' => 'disabled');
+        }
         if ($system) {
             $payload['system'] = $system;
         }
@@ -854,33 +973,44 @@ class AiController extends Controller
         }
         $body = json_decode($resp['data'], true);
         if (! is_array($body)) {
-            $this->aiWriteLog('error:claude', 'model=' . $cfg['model'] . ' invalid json');
+            $this->aiWriteLog('error', 'invalid json');
             return $this->errResult('AI 响应非 JSON');
         }
         if (isset($body['error'])) {
             $msg = is_array($body['error']) && isset($body['error']['message']) ? $body['error']['message'] : json_encode($body['error']);
-            $this->aiWriteLog('error:claude', 'model=' . $cfg['model'] . ' ' . $msg);
+            $this->aiWriteLog('error', $msg);
             return $this->errResult('AI 服务返回错误：' . $msg);
         }
         if (empty($body['content']) || ! is_array($body['content'])) {
-            $this->aiWriteLog('error:claude', 'model=' . $cfg['model'] . ' no content');
+            $stop = isset($body['stop_reason']) ? (string) $body['stop_reason'] : '';
+            if ($stop === 'max_tokens') {
+                $msg = $this->emptyByLengthMessage($cfg, 'stop_reason', 'max_tokens');
+                $this->aiWriteLog('error', $msg);
+                return $this->errResult($msg);
+            }
+            $this->aiWriteLog('error', 'no content');
             $mismatch = $this->diagnoseOpenAiShapeInBody($body);
             return $this->errResult($mismatch ?: 'AI 响应无有效 内容');
         }
         if (! isset($body['content'][0]['text'])) {
-            $this->aiWriteLog('error:claude', 'model=' . $cfg['model'] . ' missing text');
+            $this->aiWriteLog('error', 'missing text');
             $mismatch = $this->diagnoseOpenAiShapeInBody($body);
             return $this->errResult($mismatch ?: 'AI 响应字段缺失');
         }
-        if (isset($body['stop_reason']) && $body['stop_reason'] === 'max_tokens') {
-            $this->aiWriteLog('truncated', 'claude stop_reason=max_tokens');
-        }
         $content = $body['content'][0]['text'];
+        $stop = isset($body['stop_reason']) ? (string) $body['stop_reason'] : '';
         if (! is_string($content) || trim($content) === '') {
-            $reason = $body['stop_reason'] ?? 'unknown';
-            $msg = 'AI 返回内容为空（stop_reason=' . $reason . '）';
-            $this->aiWriteLog('error:claude', 'model=' . $cfg['model'] . ' ' . $msg);
+            if ($stop === 'max_tokens') {
+                $msg = $this->emptyByLengthMessage($cfg, 'stop_reason', 'max_tokens');
+            } else {
+                $reason = $stop !== '' ? $stop : 'unknown';
+                $msg = 'AI 返回内容为空（stop_reason=' . $reason . '）';
+            }
+            $this->aiWriteLog('error', $msg);
             return $this->errResult($msg);
+        }
+        if ($stop === 'max_tokens') {
+            $this->aiWriteLog('truncated', 'stop_reason=max_tokens');
         }
         return $this->okResult($content);
     }
@@ -926,11 +1056,115 @@ class AiController extends Controller
         return '';
     }
 
+    private function aiResolveHttpWait()
+    {
+        $now = microtime(true);
+        $desired = $this->aiDesiredWait($now);
+        if ($desired < 1) {
+            return 0;
+        }
+        $phpLeft = $this->aiPhpSecondsLeft($now);
+        if ($phpLeft === null) {
+            return $desired;
+        }
+        $need = $desired + self::AI_TAIL_MARGIN;
+        if (($phpLeft + 0.001) < $need) {
+            if ($this->aiTryExtendTimeLimit($need)) {
+                return $desired;
+            }
+            $now = microtime(true);
+            $desired = $this->aiDesiredWait($now);
+            if ($desired < 1) {
+                return 0;
+            }
+            $phpLeft = $this->aiPhpSecondsLeft($now);
+            if ($phpLeft === null) {
+                return $desired;
+            }
+            $wait = (int) floor(min($desired, $phpLeft - self::AI_TAIL_MARGIN));
+            if ($wait < 1) {
+                return 0;
+            }
+            return $wait;
+        }
+        return $desired;
+    }
+
+    private function aiDesiredWait($now)
+    {
+        if ($this->aiDeadline <= 0) {
+            return 0;
+        }
+        $opLeft = $this->aiDeadline - $now - self::AI_TAIL_MARGIN;
+        $desired = (int) floor(min(self::AI_HTTP_MAX, $opLeft));
+        if ($desired < 1) {
+            return 0;
+        }
+        return $desired;
+    }
+
+    private function aiPhpSecondsLeft($now)
+    {
+        if ($this->aiPhpBudgetUntil > 0) {
+            return $this->aiPhpBudgetUntil - $now;
+        }
+        $limit = (int) ini_get('max_execution_time');
+        if ($limit <= 0) {
+            return null;
+        }
+        $start = isset($_SERVER['REQUEST_TIME_FLOAT']) ? (float) $_SERVER['REQUEST_TIME_FLOAT'] : $now;
+        return $limit - ($now - $start);
+    }
+
+    private function aiCanSetTimeLimit()
+    {
+        if (! function_exists('set_time_limit')) {
+            return false;
+        }
+        $disabled = ini_get('disable_functions');
+        if (! is_string($disabled) || trim($disabled) === '') {
+            return true;
+        }
+        $names = explode(',', strtolower($disabled));
+        foreach ($names as $name) {
+            if (trim($name) === 'set_time_limit') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private function aiTryExtendTimeLimit($seconds)
+    {
+        $seconds = (int) $seconds;
+        if ($seconds < 1 || ! $this->aiCanSetTimeLimit()) {
+            return false;
+        }
+        $ok = set_time_limit($seconds);
+        if ($ok !== true) {
+            return false;
+        }
+        $this->aiPhpBudgetUntil = microtime(true) + $seconds;
+        return true;
+    }
+
+    private function aiTimeoutMessage()
+    {
+        return 'AI 请求超时，请缩短原文或改用非推理模型后重试';
+    }
+
     /**
      * 通用 cURL POST JSON
      */
     private function httpPostJson($url, array $payload, array $headers)
     {
+        $wait = $this->aiResolveHttpWait();
+        if ($wait < 1) {
+            $msg = $this->aiTimeoutMessage();
+            $this->aiWriteLog('error', $msg);
+            return $this->errResult($msg);
+        }
+        $connect = min(self::AI_CONNECT_MAX, $wait);
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
@@ -939,8 +1173,8 @@ class AiController extends Controller
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload, JSON_UNESCAPED_UNICODE));
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, $connect);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $wait);
         curl_setopt($ch, CURLOPT_USERAGENT, 'PbootCMS-AI/1.0');
         if (strpos($url, 'https://') === 0) {
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
@@ -951,21 +1185,25 @@ class AiController extends Controller
         if ($output === false) {
             $err = curl_error($ch);
             $errno = curl_errno($ch);
-            curl_close($ch);
-            $msg = '网络请求失败(' . $errno . ')：' . $err;
-            $this->aiWriteLog('error:http', $msg);
+            curl_safe_close($ch);
+            if ((int) $errno === 28) {
+                $msg = $this->aiTimeoutMessage();
+            } else {
+                $msg = '网络请求失败(' . $errno . ')：' . $err;
+            }
+            $this->aiWriteLog('error', $msg);
             return $this->errResult($msg);
         }
         $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        curl_safe_close($ch);
         if ($status < 200 || $status >= 300) {
             $snippet = mb_substr(strip_tags((string) $output), 0, 200);
             $msg = 'AI 服务 HTTP ' . $status . '：' . $snippet;
-            $this->aiWriteLog('error:http', $msg);
+            $this->aiWriteLog('error', $msg);
             return $this->errResult($msg);
         }
         if (trim((string) $output) === '') {
-            $this->aiWriteLog('error:http', 'empty response');
+            $this->aiWriteLog('error', 'empty response');
             return $this->errResult('AI 服务返回空响应');
         }
         return $this->okResult($output);
