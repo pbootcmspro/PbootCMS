@@ -249,6 +249,17 @@ class ContentSortModel extends Model
             ->find();
     }
 
+    // 检查URL名称是否已被内容占用，路由先匹配栏目，撞名会让该内容无法访问
+    public function checkContentFilename($filename)
+    {
+        return parent::table('ay_content')->field('id')
+            ->where(array(
+                'filename' => $filename,
+                'acode' => session('acode')
+            ))
+            ->find();
+    }
+
     // 检查URL名字冲突
     public function checkUrlname($filename)
     {

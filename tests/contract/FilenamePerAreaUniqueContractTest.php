@@ -56,6 +56,26 @@ return TestAssert::runSuite(function () {
     TestAssert::contains($src['ContentSortController'], '本语言下其他栏目', '栏目报错文案');
     TestAssert::contains($src['ContentController'], '本语言下其他内容', '内容报错文案');
 
+    echo "=== 栏目与内容之间交叉查重 ===\n";
+    // 路由先试 getSort() 再试 getContent()，栏目与内容撞名会让该内容永久访问不到
+    $pos = strpos($src['ContentSortModel'], 'public function checkContentFilename');
+    TestAssert::true($pos !== false, 'ContentSortModel 有 checkContentFilename');
+    $body = substr($src['ContentSortModel'], $pos, 400);
+    TestAssert::contains($body, "table('ay_content')", '栏目侧查 ay_content');
+    TestAssert::contains($body, "'acode' => session('acode')", '栏目侧交叉查重带 acode');
+
+    $pos = strpos($src['ContentModel'], 'public function checkSortFilename');
+    TestAssert::true($pos !== false, 'ContentModel 有 checkSortFilename');
+    $body = substr($src['ContentModel'], $pos, 400);
+    TestAssert::contains($body, "table('ay_content_sort')", '内容侧查 ay_content_sort');
+    TestAssert::contains($body, "'acode' => session('acode')", '内容侧交叉查重带 acode');
+
+    // 新增与修改两条路径都要拦
+    TestAssert::same(2, substr_count($src['ContentSortController'], '$this->model->checkContentFilename('), '栏目新增与修改各交叉查重一次');
+    TestAssert::same(2, substr_count($src['ContentController'], '$this->model->checkSortFilename('), '内容新增与修改各交叉查重一次');
+    TestAssert::contains($src['ContentSortController'], '已被本语言下某篇内容使用', '栏目交叉撞名文案');
+    TestAssert::contains($src['ContentController'], '已被本语言下某个栏目使用', '内容交叉撞名文案');
+
     echo "=== 路由侧优先当前语言 ===\n";
     $parser = file_get_contents(APP_PATH . '/home/model/ParserModel.php');
     TestAssert::false($parser === false, 'ParserModel readable');

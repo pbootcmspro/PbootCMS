@@ -211,6 +211,11 @@ class ContentSortController extends Controller
                 if ($filename && $this->model->checkFilename($filename)) {
                     alert_back('URL名称已被本语言下其他栏目使用，请换一个名称！');
                 }
+
+                // 路由先匹配栏目，与内容撞名会让该内容无法访问
+                if ($filename && $this->model->checkContentFilename($filename)) {
+                    alert_back('URL名称已被本语言下某篇内容使用，请换一个名称！');
+                }
                 
                 // 构建数据
                 $data = array(
@@ -416,6 +421,11 @@ class ContentSortController extends Controller
             // 同语言内重复时直接报错，不再静默加随机后缀
             if ($filename && $this->model->checkFilename($filename, "scode<>'$scode'")) {
                 alert_back('URL名称已被本语言下其他栏目使用，请换一个名称！');
+            }
+
+            // 路由先匹配栏目，与内容撞名会让该内容无法访问
+            if ($filename && $this->model->checkContentFilename($filename)) {
+                alert_back('URL名称已被本语言下某篇内容使用，请换一个名称！');
             }
             
             // 构建数据

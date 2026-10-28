@@ -336,6 +336,17 @@ class ContentModel extends Model
             ->find();
     }
 
+    // 检查URL名称是否已被栏目占用，路由先匹配栏目，撞名会让本内容无法访问
+    public function checkSortFilename($filename)
+    {
+        return parent::table('ay_content_sort')->field('id')
+            ->where(array(
+                'filename' => $filename,
+                'acode' => session('acode')
+            ))
+            ->find();
+    }
+
     // 检查自定义URL名称是否与已有内容ID冲突
     public function checkFilenameConflictId($filename, $excludeId = 0)
     {
