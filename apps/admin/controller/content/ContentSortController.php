@@ -207,11 +207,9 @@ class ContentSortController extends Controller
                     alert_back('该内容栏目编号已经存在，不能再使用！');
                 }
                 
-                // 检查自定义URL名称
-                if ($filename) {
-                    while ($this->model->checkFilename($filename)) {
-                        $filename = $filename . '-' . mt_rand(1, 20);
-                    }
+                // 检查自定义URL名称，同语言内重复时直接报错，不再静默加随机后缀
+                if ($filename && $this->model->checkFilename($filename)) {
+                    alert_back('URL名称已被本语言下其他栏目使用，请换一个名称！');
                 }
                 
                 // 构建数据
@@ -415,10 +413,9 @@ class ContentSortController extends Controller
                 resize_img(ROOT_PATH . $ico, '', $this->config('ico.max_width'), $this->config('ico.max_height'));
             }
             
-            if ($filename) {
-                while ($this->model->checkFilename($filename, "scode<>'$scode'")) {
-                    $filename = $filename . '-' . mt_rand(1, 20);
-                }
+            // 同语言内重复时直接报错，不再静默加随机后缀
+            if ($filename && $this->model->checkFilename($filename, "scode<>'$scode'")) {
+                alert_back('URL名称已被本语言下其他栏目使用，请换一个名称！');
             }
             
             // 构建数据

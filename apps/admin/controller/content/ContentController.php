@@ -151,11 +151,9 @@ class ContentController extends Controller
                 resize_img(ROOT_PATH . $ico, '', $this->config('ico.max_width'), $this->config('ico.max_height'));
             }
 
-            // 检查自定义URL名称
-            if ($filename) {
-                while ($this->model->checkFilename($filename)) {
-                    $filename = $filename . '-' . mt_rand(1, 20);
-                }
+            // 检查自定义URL名称，同语言内重复时直接报错，不再静默加随机后缀
+            if ($filename && $this->model->checkFilename($filename)) {
+                alert_back('内容URL名称已被本语言下其他内容使用，请换一个名称!');
             }
 
             // 记住新增栏目
@@ -533,10 +531,9 @@ class ContentController extends Controller
                 resize_img(ROOT_PATH . $ico, '', $this->config('ico.max_width'), $this->config('ico.max_height'));
             }
 
-            if ($filename) {
-                while ($this->model->checkFilename($filename, "id<>$id")) {
-                    $filename = $filename . '-' . mt_rand(1, 20);
-                }
+            // 同语言内重复时直接报错，不再静默加随机后缀
+            if ($filename && $this->model->checkFilename($filename, "id<>$id")) {
+                alert_back('内容URL名称已被本语言下其他内容使用，请换一个名称!');
             }
 
             // 构建数据
