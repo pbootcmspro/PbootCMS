@@ -60,7 +60,7 @@ class ParserModel extends Model
         return parent::table('ay_label')->decode()->column('value,type', 'name');
     }
 
-    // 单个分类信息，不区分语言，兼容跨语言
+    // 单个分类信息，优先当前语言，查不到再跨语言兜底
     public function getSort($scode)
     {
         $field = array(
@@ -87,6 +87,21 @@ class ParserModel extends Model
                 'LEFT'
             )
         );
+        // 不同语言允许同名 filename，先在当前语言内匹配，避免命中别的语言后被
+        // switchLg() 切走语言；当前语言没有时再跨语言查一次，保留跨语言访问能力
+        $current = parent::table('ay_content_sort a')->field($field)
+            ->where(array(
+                'a.scode' => $scode,
+                'a.filename' => $scode
+            ), 'OR')
+            ->where(array(
+                'a.acode' => get_lg()
+            ))
+            ->join($join)
+            ->find();
+        if ($current) {
+            return $current;
+        }
         return parent::table('ay_content_sort a')->field($field)
             ->where(array(
                 'a.scode' => $scode,
@@ -570,7 +585,7 @@ class ParserModel extends Model
         return false;
     }
 
-    // 内容详情，不区分语言，兼容跨语言
+    // 内容详情，优先当前语言，查不到再跨语言兜底
     public function getContent($id)
     {
         $field = array(
@@ -619,14 +634,38 @@ class ParserModel extends Model
         ) : array(
             'a.filename' => $id
         );
-        $result = parent::table('ay_content a')->field($field)
+        // 不同语言允许同名 filename，先在当前语言内匹配，避免命中别的语言后被
+        // switchLg() 切走语言；当前语言没有时再跨语言查一次，保留跨语言访问能力
+        $result = $this->findContentRow($field, $join, $where, get_lg());
+        if (! $result) {
+            $result = $this->findContentRow($field, $join, $where, '');
+        }
+        return $result;
+    }
+
+    /**
+     * 按条件取单条内容，$acode 非空时限定数据区域
+     *
+     * @param array $field
+     * @param array $join
+     * @param array $where id/filename 匹配条件，内部以 OR 连接
+     * @param string $acode 数据区域编码，空字符串表示不限语言
+     * @return object|bool
+     */
+    private function findContentRow($field, $join, $where, $acode)
+    {
+        $builder = parent::table('ay_content a')->field($field)
             ->where($where, 'OR')
             ->where('a.status=1')
-            ->where("a.date<'" . date('Y-m-d H:i:s') . "'")
-            ->join($join)
+            ->where("a.date<'" . date('Y-m-d H:i:s') . "'");
+        if ($acode !== '') {
+            $builder->where(array(
+                'a.acode' => $acode
+            ));
+        }
+        return $builder->join($join)
             ->decode()
             ->find();
-        return $result;
     }
 
     // 单篇详情,不区分语言，兼容跨语言

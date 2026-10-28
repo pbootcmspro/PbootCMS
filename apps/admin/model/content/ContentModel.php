@@ -324,11 +324,14 @@ class ContentModel extends Model
         return parent::table('ay_content_ext')->delete($ids, 'contentid');
     }
 
-    // 检查自定义URL名称
+    // 检查自定义URL名称，仅在同一数据区域内查重，不同语言允许同名
     public function checkFilename($filename, $where = array())
     {
         return parent::table('ay_content')->field('id')
-            ->where("filename='$filename'")
+            ->where(array(
+                'filename' => $filename,
+                'acode' => session('acode')
+            ))
             ->where($where)
             ->find();
     }
