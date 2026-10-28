@@ -580,6 +580,41 @@ function filter_area_domain($domain)
 }
 
 /**
+ * 按请求域名匹配绑定的数据区域编码
+ *
+ * 两侧都规范化后再比较：库中域名可能是早期未经 filter_area_domain() 过滤时
+ * 写入的（带 http:// 、尾部斜杠或大写字母），请求域名也可能带端口或大写主机名，
+ * 直接字符串相等会漏匹配，导致绑定域名的语言退回默认语言
+ *
+ * @param mixed $lgs 区域配置映射，acode => 区域数据
+ * @param mixed $http_host 原始请求主机名，一般取 $_SERVER['HTTP_HOST']
+ * @return string|null 匹配到的区域编码，未匹配返回 null
+ */
+function match_area_bind_acode($lgs, $http_host)
+{
+    if (! is_array($lgs) || count($lgs) < 2) {
+        return null; // 单区域无需绑定
+    }
+    $parsed = parse_http_host($http_host);
+    if ($parsed === null) {
+        return null;
+    }
+    foreach ($lgs as $value) {
+        if (is_object($value)) {
+            $value = (array) $value;
+        }
+        if (! is_array($value) || empty($value['acode']) || empty($value['domain'])) {
+            continue;
+        }
+        $bind = filter_area_domain($value['domain']);
+        if ($bind !== false && $bind !== '' && $bind === $parsed['host']) {
+            return (string) $value['acode'];
+        }
+    }
+    return null;
+}
+
+/**
  * 规范化主机名（域名或 IPv4/IPv6 字面量）
  *
  * @param string $host
