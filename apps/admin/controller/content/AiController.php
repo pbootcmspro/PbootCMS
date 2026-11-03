@@ -12,30 +12,6 @@ use core\basic\Controller;
 class AiController extends Controller
 {
 
-    // 服务商默认接入参数
-    private static $providers = array(
-        'deepseek' => array(
-            'name' => 'DeepSeek',
-            'base' => 'https://api.deepseek.com/chat/completions',
-            'path' => '',
-            'model' => 'deepseek-v4-flash',
-        ),
-        'qwen' => array(
-            'name' => '通义千问',
-            'base' => 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
-            'path' => '',
-            'model' => 'qwen-plus-latest',
-            'vision_model' => 'qwen-vl-max',
-        ),
-        'claude' => array(
-            'name' => 'Claude',
-            'base' => 'https://api.anthropic.com/v1/messages',
-            'path' => '',
-            'model' => 'claude-sonnet-4-20250514',
-            'vision_model' => 'claude-sonnet-4-20250514',
-        ),
-    );
-
     const AI_OPERATION_BUDGET = 75;
 
     const AI_TAIL_MARGIN = 5;
@@ -56,35 +32,63 @@ class AiController extends Controller
 
     private $aiPhpBudgetUntil = 0;
 
+    private $aiProvider = '';
+
+    private $aiSecrets = array();
+
+    private $aiHttpSent = false;
+
     /**
-     * 健康检查（POST），配置页「测试连接」；需系统配置权限 + 限流 + formcheck
+     * 健康检查（POST），配置页「测试连接」；需系统配置权限 + 限流 + formcheck，不要求已启用、不保存草稿
      */
     public function ping()
     {
         $this->guardConfigAccess();
-        $this->guard();
+        $this->consumeRateLimit();
         $cipher = $this->config('ai_api_key');
         if (! extension_loaded('openssl') || ! function_exists('openssl_decrypt')) {
             $this->jsonError('服务端 OpenSSL 扩展不可用，无法读取 API Key');
         }
-        $cfg = $this->applyPingDraft($this->getProviderConfig());
-        if (! $cfg['api_key']) {
-            if (is_string($cipher) && $cipher !== '') {
-                $this->jsonError('API Key 解密失败，请重新保存 API Key');
-            }
-            $this->jsonError('未配置 API Key');
-        }
         $this->beginAiCall('ping');
+        $saved = $this->getProviderConfig();
+        $draft = $this->readPingDraft();
+        $cfg = $this->mergeAiDraft($saved, $draft);
+        $this->setAiConfigContext($cfg);
+        $this->rememberAiModel($cfg['model']);
+        if (! $cfg['ok']) {
+            $this->pingFail('配置无效：' . $cfg['error'], $cfg, false);
+        }
+        if ($draft['api_key'] === '') {
+            if (! $cfg['api_key']) {
+                if (is_string($cipher) && $cipher !== '') {
+                    $this->pingFail('API Key 解密失败，请重新保存 API Key', $cfg, false);
+                }
+                $this->pingFail('未配置 API Key', $cfg, false);
+            }
+            $savedEndpoint = ai_provider_endpoint($saved['provider'], $saved['raw_base']);
+            if (! ai_endpoint_same_host($savedEndpoint, $cfg['endpoint'])) {
+                $this->pingFail('API URL 的主机或端口与已保存配置不同，请重新输入完整 API Key 后再测试', $cfg, false);
+            }
+        }
         $rs = $this->callAi(array(
             array('role' => 'user', 'content' => '你好，请回复"连接成功"。'),
         ), 256, null, $cfg);
+        $requested = $this->aiHttpSent;
         if ($rs['code'] !== 1) {
-            if (strpos((string) ($rs['msg'] ?? ''), 'finish_reason=length') !== false) {
-                $this->jsonOk(array('reply' => 'API 连接正常（响应被截断，请适当增大「最大Token」）'));
+            if (isset($rs['reason']) && $rs['reason'] === 'length') {
+                $this->aiWriteLog('ping', 'truncated');
+                $this->jsonOk(array_merge($this->pingSummary($cfg, $requested), array(
+                    'reply' => 'API 连接正常（响应被截断；测试连接使用固定输出上限，不受「最大Token」影响）'
+                )));
             }
-            $this->jsonError($rs['msg']);
+            $msg = $rs['msg'];
+            if (! $requested && strpos($msg, '未发出请求') === false) {
+                $msg .= '（未发出请求）';
+            }
+            $this->jsonError($msg, $this->pingSummary($cfg, $requested));
         }
-        $this->jsonOk(array('reply' => $rs['data']));
+        $this->aiWriteLog('ping');
+        $this->jsonOk(array_merge($this->pingSummary($cfg, $requested), array('reply' => $this->aiRedact($rs['data']))));
     }
 
     /**
@@ -217,11 +221,12 @@ class AiController extends Controller
             . '请为文内配图生成一条 alt 描述。';
         $this->beginAiCall('alt', 'text');
         $cfg = $this->getProviderConfig();
+        $this->setAiConfigContext($cfg);
         $img = $this->resolveAltImageForVision($imageSrc);
         $rs = null;
         $altVisionMaxTokens = 1024;
         $altTextCall = $this->resolveAltTextCall($cfg);
-        $visionSupported = $this->providerSupportsVisionApi($cfg);
+        $visionSupported = $cfg['ok'] && $this->providerSupportsVisionApi($cfg);
         if ($img && $visionSupported) {
             $this->aiTask = $img['kind'];
             $messages = $this->buildVisionMessages($systemPrompt, $textPrompt, $img, $cfg);
@@ -343,70 +348,66 @@ class AiController extends Controller
      */
     private function getProviderConfig()
     {
-        $providerKey = $this->config('ai_provider') ?: 'deepseek';
-        if (! isset(self::$providers[$providerKey])) {
+        $providerKey = (string) $this->config('ai_provider');
+        $defs = ai_provider_defs();
+        if (! isset($defs[$providerKey])) {
             $providerKey = 'deepseek';
         }
-        $defaults = self::$providers[$providerKey];
-        $base = $this->config('ai_api_base');
-        $model = $this->config('ai_model');
         $maxTokens = (int) $this->config('ai_max_tokens');
-        $apiKey = aes_decrypt($this->config('ai_api_key'));
-        return array(
-            'provider' => $providerKey,
-            'base' => $base ?: $defaults['base'],
-            'path' => $defaults['path'],
-            'model' => $model ?: $defaults['model'],
-            'api_key' => $apiKey,
-            'max_tokens' => $maxTokens > 0 ? $maxTokens : 2048,
+        return $this->buildAiConfig(
+            $providerKey,
+            ai_input_unescape($this->config('ai_api_base')),
+            ai_input_unescape($this->config('ai_model')),
+            aes_decrypt($this->config('ai_api_key')),
+            $maxTokens > 0 ? $maxTokens : 2048
         );
     }
 
     /**
-     * 按 API URL 自动解析协议：官方 Anthropic Messages → anthropic，其余 → openai_compat
+     * 由服务商与未补全的 URL/模型（已还原转义）构建有效配置
      */
-    private function resolveProtocol(array $cfg)
+    private function buildAiConfig($provider, $rawBase, $rawModel, $apiKey, $maxTokens)
     {
-        $url = strtolower(rtrim($cfg['base'], '/') . ($cfg['path'] ?? ''));
-        if (preg_match('#/messages(?:/|$)#', $url)) {
-            return 'anthropic';
-        }
-        return 'openai_compat';
+        $eff = ai_effective_config($provider, $rawBase, $rawModel);
+        return array(
+            'ok' => $eff['ok'],
+            'error' => $eff['error'],
+            'provider' => (string) $provider,
+            'raw_base' => (string) $rawBase,
+            'raw_model' => (string) $rawModel,
+            'base' => $eff['base'],
+            'model' => $eff['model'],
+            'endpoint' => $eff['endpoint'],
+            'api_key' => (string) $apiKey,
+            'max_tokens' => (int) $maxTokens,
+        );
     }
 
     /**
-     * 请求前校验自动推断的协议与 URL 是否匹配
-     * @return array|null errResult 或 null 表示通过
+     * 补齐未经 buildAiConfig 的配置（如直接传入的 base/model），保证都有解析后的端点
      */
-    private function validateAiConfig(array $cfg)
+    private function resolveAiConfig(array $cfg)
     {
-        $url = strtolower(rtrim($cfg['base'], '/') . ($cfg['path'] ?? ''));
-        $protocol = $cfg['protocol'];
-        $hasOpenAi = (strpos($url, 'chat/completions') !== false);
-        $hasAnthropic = (bool) preg_match('#/messages(?:/|$)#', $url);
+        if (isset($cfg['endpoint']) && isset($cfg['ok'])) {
+            return $cfg;
+        }
+        $built = $this->buildAiConfig(
+            isset($cfg['provider']) ? $cfg['provider'] : '',
+            isset($cfg['base']) ? $cfg['base'] : '',
+            isset($cfg['model']) ? $cfg['model'] : '',
+            isset($cfg['api_key']) ? $cfg['api_key'] : '',
+            isset($cfg['max_tokens']) ? $cfg['max_tokens'] : 2048
+        );
+        return array_merge($cfg, $built);
+    }
 
-        if ($protocol === 'openai_compat' && ! $hasOpenAi) {
-            $this->aiWriteLog('error', 'openai_compat url missing chat/completions');
-            if ($cfg['provider'] === 'claude') {
-                return $this->errResult(
-                    '当前服务商为 Claude，API URL 需填写完整端点，例如：'
-                    . ' OpenAI 兼容 https://网关/v1/chat/completions'
-                    . ' 或 Anthropic 原生 https://网关/v1/messages'
-                );
-            }
-            return $this->errResult(
-                'OpenAI 兼容协议要求 URL 包含 /chat/completions，'
-                . '示例：https://网关域名/v1/chat/completions'
-            );
-        }
-        if ($protocol === 'anthropic' && ! $hasAnthropic) {
-            $this->aiWriteLog('error', 'anthropic url missing messages');
-            return $this->errResult(
-                'Anthropic 协议要求 URL 包含 /messages，'
-                . '示例：https://网关域名/v1/messages'
-            );
-        }
-        return null;
+    /**
+     * 协议由统一端点解析给出：Anthropic Messages → anthropic，其余 → openai_compat
+     */
+    private function resolveProtocol(array $cfg)
+    {
+        $cfg = $this->resolveAiConfig($cfg);
+        return $cfg['endpoint']['protocol'];
     }
 
     /**
@@ -414,15 +415,147 @@ class AiController extends Controller
      */
     private function invokeProvider(array $cfg, array $messages, $maxTokens)
     {
-        $cfg['protocol'] = $this->resolveProtocol($cfg);
-        $check = $this->validateAiConfig($cfg);
-        if ($check !== null) {
-            return $check;
-        }
-        if ($cfg['protocol'] === 'anthropic') {
+        if ($cfg['endpoint']['protocol'] === 'anthropic') {
             return $this->callClaude($cfg, $messages, $maxTokens);
         }
         return $this->callOpenAiCompat($cfg, $messages, $maxTokens);
+    }
+
+    /**
+     * 本次请求上下文：日志 provider 与脱敏使用本次有效配置
+     */
+    private function setAiConfigContext(array $cfg)
+    {
+        $defs = ai_provider_defs();
+        if (isset($cfg['provider']) && isset($defs[$cfg['provider']])) {
+            $this->aiProvider = $cfg['provider'];
+        }
+        if (! empty($cfg['api_key'])) {
+            $this->aiRememberSecret((string) $cfg['api_key'], true);
+            $encoded = rawurlencode((string) $cfg['api_key']);
+            if ($encoded !== (string) $cfg['api_key']) {
+                $this->aiRememberSecret($encoded, true);
+            }
+        }
+        $url = (isset($cfg['endpoint']['url']) && $cfg['endpoint']['url'] !== '') ? $cfg['endpoint']['url'] : (isset($cfg['base']) ? (string) $cfg['base'] : '');
+        $parts = $url !== '' ? parse_url($url) : false;
+        if (is_array($parts)) {
+            foreach (array('user', 'pass') as $k) {
+                if (isset($parts[$k]) && $parts[$k] !== '') {
+                    $this->aiRememberSecret($parts[$k], true);
+                }
+            }
+            if (isset($parts['fragment']) && $parts['fragment'] !== '') {
+                $this->aiRememberSecret($parts['fragment']);
+            }
+            if (isset($parts['query']) && $parts['query'] !== '') {
+                $this->aiRememberSecret($parts['query']);
+                foreach (explode('&', $parts['query']) as $pair) {
+                    $pos = strpos($pair, '=');
+                    $name = $pos === false ? $pair : substr($pair, 0, $pos);
+                    $value = $pos === false ? '' : substr($pair, $pos + 1);
+                    if ($value === '') {
+                        continue;
+                    }
+                    $decodedName = rawurldecode(urldecode($name));
+                    $sensitive = (bool) preg_match('/(^|[_\-])(key|apikey|api_key|token|access_token|secret|password|passwd|pwd|pass|auth|sig|signature|credential)$/i', $decodedName);
+                    if ($sensitive || strlen($value) >= 8) {
+                        $this->aiRememberSecret($value, $sensitive);
+                    }
+                }
+            }
+        }
+        $this->aiSecrets = array_values(array_unique(array_filter($this->aiSecrets, function ($s) {
+            return is_string($s) && $s !== '';
+        })));
+        usort($this->aiSecrets, function ($a, $b) {
+            return strlen($b) - strlen($a);
+        });
+    }
+
+    /**
+     * 登记敏感串及其 URL / JSON 转义变体；敏感项忽略长度下限
+     */
+    private function aiRememberSecret($secret, $force = false)
+    {
+        $secret = (string) $secret;
+        if ($secret === '') {
+            return;
+        }
+        $variants = array($secret);
+        $decoded = rawurldecode($secret);
+        if ($decoded !== $secret) {
+            $variants[] = $decoded;
+        }
+        $decoded2 = urldecode($secret);
+        if ($decoded2 !== $secret && $decoded2 !== $decoded) {
+            $variants[] = $decoded2;
+        }
+        foreach ($variants as $v) {
+            if ($v === '') {
+                continue;
+            }
+            if (! $force && strlen($v) < 4) {
+                continue;
+            }
+            $this->aiSecrets[] = $v;
+            $json = json_encode($v);
+            if (is_string($json) && strlen($json) >= 2) {
+                $escaped = substr($json, 1, -1);
+                if ($escaped !== $v) {
+                    $this->aiSecrets[] = $escaped;
+                }
+            }
+        }
+    }
+
+    /**
+     * 从上游错误体提取可读文本：JSON 先解码再拼接标量，非 JSON 原样返回
+     */
+    private function aiErrorText($raw)
+    {
+        if (is_array($raw)) {
+            $data = $raw;
+        } elseif (is_string($raw)) {
+            if (trim($raw) === '') {
+                return '';
+            }
+            $data = json_decode($raw, true);
+            if (is_string($data)) {
+                return $data;
+            }
+            if (! is_array($data)) {
+                return $raw;
+            }
+        } else {
+            return (string) $raw;
+        }
+        $parts = array();
+        array_walk_recursive($data, function ($v) use (&$parts) {
+            if (is_string($v) || is_int($v) || is_float($v)) {
+                $parts[] = (string) $v;
+            }
+        });
+        return implode(' ', $parts);
+    }
+
+    /**
+     * 提示与日志脱敏：当前 Key、URL 中的 userinfo / 查询串 / fragment
+     */
+    private function aiRedact($text)
+    {
+        $text = (string) $text;
+        foreach ($this->aiSecrets as $secret) {
+            if (strlen($secret) >= 8) {
+                $text = str_replace($secret, '***', $text);
+            } else {
+                $text = preg_replace('/(?<![A-Za-z0-9])' . preg_quote($secret, '/') . '(?![A-Za-z0-9])/', '***', $text);
+            }
+        }
+        $text = preg_replace('/sk-[a-zA-Z0-9_\-]+/i', 'sk-***', $text);
+        $text = preg_replace('/\b((?:api[_-]?key|access[_-]?token|token|secret|password|passwd|pwd|signature|sig)\s*["\']?\s*[:=]\s*["\']?)[^\s"\'&;,]+/i', '$1***', $text);
+        $text = preg_replace('/\bBearer\s+[^\s"\']+/i', 'Bearer ***', $text);
+        return preg_replace('#(https?://)[^/\s@"\'<>]+@#i', '$1***@', $text);
     }
 
     /**
@@ -438,10 +571,15 @@ class AiController extends Controller
         if ($cfg === null) {
             $cfg = $this->getProviderConfig();
         }
+        $cfg = $this->resolveAiConfig($cfg);
+        $this->setAiConfigContext($cfg);
+        $configuredModel = $cfg['model'];
+        if (! $cfg['ok']) {
+            return $this->invalidConfigResult($cfg);
+        }
         if (! $cfg['api_key']) {
             return $this->errResult('AI API Key 未配置');
         }
-        $configuredModel = $cfg['model'];
         if ($modelOverride !== null && $modelOverride !== '') {
             $cfg['model'] = $modelOverride;
         }
@@ -453,50 +591,90 @@ class AiController extends Controller
             $maxTokens = $cfg['max_tokens'];
         }
         try {
-            if (! isset(self::$providers[$cfg['provider']])) {
-                return $this->errResult('不支持的服务商：' . $cfg['provider']);
-            }
             return $this->invokeProvider($cfg, $messages, $maxTokens);
         } catch (\Throwable $e) {
             $this->aiWriteLog('error', $e->getMessage());
-            $this->log('[AI] 调用异常：' . $e->getMessage(), 'error');
+            $this->log('[AI] 调用异常：' . $this->aiRedact($e->getMessage()), 'error');
             return $this->errResult('AI 服务调用异常');
         }
     }
 
-    /**
-     * 测试连接：用 POST 表单草稿覆盖已保存配置（不落库）
-     */
-    private function applyPingDraft(array $cfg)
+    private function invalidConfigResult(array $cfg)
     {
+        $this->rememberAiModel($cfg['model']);
+        $msg = 'AI 配置无效：' . $cfg['error'] . '（未发出请求）';
+        $this->aiWriteLog('error', $msg);
+        return $this->errResult($msg);
+    }
+
+    /**
+     * 测试连接草稿：读取页面当前填写值并还原转义；Key 为空或脱敏占位视为沿用已保存 Key
+     */
+    private function readPingDraft()
+    {
+        $draft = array(
+            'provider' => null,
+            'base' => null,
+            'model' => null,
+            'api_key' => '',
+        );
         if (isset($_POST['ai_provider'])) {
-            $providerKey = trim((string) post('ai_provider', 'var'));
-            if (isset(self::$providers[$providerKey])) {
-                $cfg['provider'] = $providerKey;
-                $cfg['path'] = self::$providers[$providerKey]['path'];
-            }
+            $draft['provider'] = trim((string) post('ai_provider'));
         }
-        $defaults = self::$providers[$cfg['provider']];
         if (isset($_POST['ai_api_base'])) {
-            $base = trim((string) post('ai_api_base'));
-            $cfg['base'] = $base !== '' ? $base : $defaults['base'];
-        } elseif (isset($_POST['ai_provider'])) {
-            $savedBase = trim((string) $this->config('ai_api_base'));
-            if ($savedBase === '') {
-                $cfg['base'] = $defaults['base'];
-            }
+            $draft['base'] = ai_input_unescape(post('ai_api_base'));
         }
         if (isset($_POST['ai_model'])) {
-            $model = trim((string) post('ai_model'));
-            $cfg['model'] = $model !== '' ? $model : $defaults['model'];
+            $draft['model'] = ai_input_unescape(post('ai_model'));
         }
         if (isset($_POST['ai_api_key'])) {
             $key = (string) post('ai_api_key');
             if ($key !== '' && ! is_masked_secret($key)) {
-                $cfg['api_key'] = $key;
+                $draft['api_key'] = $key;
             }
         }
-        return $cfg;
+        return $draft;
+    }
+
+    /**
+     * 草稿覆盖已保存配置后再统一校验（不落库）；旧配置不完整不影响草稿修复
+     */
+    private function mergeAiDraft(array $saved, array $draft)
+    {
+        $provider = ($draft['provider'] !== null && $draft['provider'] !== '') ? $draft['provider'] : $saved['provider'];
+        $base = $draft['base'] !== null ? $draft['base'] : $saved['raw_base'];
+        $model = $draft['model'] !== null ? $draft['model'] : $saved['raw_model'];
+        $apiKey = $draft['api_key'] !== '' ? $draft['api_key'] : $saved['api_key'];
+        return $this->buildAiConfig($provider, $base, $model, $apiKey, $saved['max_tokens']);
+    }
+
+    /**
+     * 测试连接结果的安全摘要：本次服务商、请求模型、脱敏地址，及是否已发出请求
+     */
+    private function pingSummary(array $cfg, $requested)
+    {
+        $defs = ai_provider_defs();
+        $provider = isset($defs[$cfg['provider']]) ? $cfg['provider'] : '';
+        $endpoint = '地址无效';
+        if (! empty($cfg['endpoint']['ok'])) {
+            $endpoint = $cfg['endpoint']['summary'];
+        } elseif ($cfg['base'] === '') {
+            $endpoint = '未填写';
+        }
+        return array(
+            'provider' => $provider,
+            'provider_name' => $provider !== '' ? $defs[$provider]['name'] : '不支持的服务商',
+            'model' => $this->aiModel !== '' ? $this->aiModel : (string) $cfg['model'],
+            'endpoint' => $this->aiRedact($endpoint),
+            'requested' => (bool) $requested,
+        );
+    }
+
+    private function pingFail($msg, array $cfg, $requested)
+    {
+        $msg = $requested ? $msg : $msg . '（未发出请求）';
+        $this->aiWriteLog('error', $msg);
+        $this->jsonError($this->aiRedact($msg), $this->pingSummary($cfg, $requested));
     }
 
     /**
@@ -505,15 +683,16 @@ class AiController extends Controller
     private function callAiVision(array $messages, $maxTokens = 64)
     {
         $cfg = $this->getProviderConfig();
+        $this->setAiConfigContext($cfg);
+        if (! $cfg['ok']) {
+            return $this->invalidConfigResult($cfg);
+        }
         if (! $cfg['api_key']) {
             return $this->errResult('AI API Key 未配置');
         }
         $cfg['model'] = $this->resolveVisionModel($cfg);
         $this->rememberAiModel($cfg['model']);
         try {
-            if (! isset(self::$providers[$cfg['provider']])) {
-                return $this->errResult('不支持的服务商：' . $cfg['provider']);
-            }
             return $this->invokeProvider($cfg, $messages, $maxTokens);
         } catch (\Throwable $e) {
             $this->aiWriteLog('error', 'vision ' . $e->getMessage());
@@ -585,20 +764,29 @@ class AiController extends Controller
     private function resolveVisionModel(array $cfg)
     {
         $model = $cfg['model'];
-        if (preg_match('/vl|vision|4o|gemini/i', $model)) {
+        if ($this->isVisionModelName($model)) {
             return $model;
         }
-        $defaults = self::$providers[$cfg['provider']] ?? array();
-        return $defaults['vision_model'] ?? $model;
+        $defs = ai_provider_defs();
+        $vision = isset($defs[$cfg['provider']]['vision_model']) ? $defs[$cfg['provider']]['vision_model'] : '';
+        return $vision !== '' ? $vision : $model;
     }
 
     /**
-     * 官方 API 是否支持多模态视觉（DeepSeek chat/completions 仅文本，传 image_url 会 HTTP 400）
+     * 按模型名称启发式识别视觉模型（非对模型真实能力的完整判断）
+     */
+    private function isVisionModelName($model)
+    {
+        return (bool) preg_match('/vl|vision|4o|gemini/i', (string) $model);
+    }
+
+    /**
+     * 是否尝试多模态视觉：DeepSeek chat/completions 仅文本；OpenAI 兼容按模型名识别，不改用其他模型
      */
     private function providerSupportsVisionApi(array $cfg)
     {
-        if ($cfg['provider'] === 'deepseek') {
-            return false;
+        if ($cfg['provider'] === 'openai') {
+            return $this->isVisionModelName($cfg['model']);
         }
         return in_array($cfg['provider'], array('qwen', 'claude'), true);
     }
@@ -648,6 +836,9 @@ class AiController extends Controller
         $this->aiConfigured = '';
         $this->aiDeadline = microtime(true) + self::AI_OPERATION_BUDGET;
         $this->aiPhpBudgetUntil = 0;
+        $this->aiProvider = '';
+        $this->aiSecrets = array();
+        $this->aiHttpSent = false;
     }
 
     private function rememberAiModel($actual, $configured = '')
@@ -665,10 +856,12 @@ class AiController extends Controller
     private function emptyByLengthMessage(array $cfg, $key, $reason)
     {
         $model = isset($cfg['model']) ? $cfg['model'] : '';
+        $fixedLimit = in_array($this->aiScene, array('ping', 'alt'), true);
+        $hint = '推理模型把输出额度用在思考上，正文为空。';
         if (isset($cfg['provider']) && $cfg['provider'] === 'deepseek' && $this->isReasoningModel($model)) {
-            $hint = '推理模型把输出额度用在思考上，正文为空。请改用 deepseek-v4-flash，或增大「最大 Token」';
+            $hint .= $fixedLimit ? '请改用 deepseek-v4-flash' : '请改用 deepseek-v4-flash，或增大「最大 Token」';
         } else {
-            $hint = '推理模型把输出额度用在思考上，正文为空。请增大「最大 Token」';
+            $hint .= $fixedLimit ? '当前场景使用固定输出上限，请改用非推理模型' : '请增大「最大 Token」';
         }
         return $hint . '（' . $key . '=' . $reason . '）';
     }
@@ -803,7 +996,7 @@ class AiController extends Controller
         }
         $file = $dir . '/' . date('Ymd') . '.log';
         $user = session('username') ?: ('uid:' . (session('id') ?: '0'));
-        $provider = $this->config('ai_provider') ?: 'deepseek';
+        $provider = $this->aiProvider !== '' ? $this->aiProvider : ($this->config('ai_provider') ?: 'deepseek');
         $line = date('Y-m-d H:i:s') . ' [' . $action . ']'
             . ' provider=' . $this->aiLogToken($provider)
             . ' model=' . $this->aiLogToken($this->aiModel)
@@ -814,7 +1007,7 @@ class AiController extends Controller
             $line .= ' configured=' . $this->aiLogToken($this->aiConfigured);
         }
         if ($detail !== '') {
-            $detail = preg_replace('/sk-[a-zA-Z0-9]+/i', 'sk-***', (string) $detail);
+            $detail = $this->aiRedact($detail);
             $detail = preg_replace('/\s+/', ' ', strip_tags($detail));
             $line .= ' ' . mb_substr(trim($detail), 0, 200);
         }
@@ -853,7 +1046,7 @@ class AiController extends Controller
      */
     private function callOpenAiCompat($cfg, array $messages, $maxTokens)
     {
-        $url = rtrim($cfg['base'], '/') . $cfg['path'];
+        $url = $cfg['endpoint']['url'];
         $payload = array(
             'model' => $cfg['model'],
             'messages' => $messages,
@@ -880,7 +1073,11 @@ class AiController extends Controller
             return $this->errResult('AI 响应非 JSON');
         }
         if (isset($body['error'])) {
-            $msg = is_array($body['error']) ? ($body['error']['message'] ?? json_encode($body['error'])) : (string) $body['error'];
+            if (is_array($body['error'])) {
+                $msg = isset($body['error']['message']) ? (string) $body['error']['message'] : $this->aiErrorText($body['error']);
+            } else {
+                $msg = (string) $body['error'];
+            }
             $this->aiWriteLog('error', $msg);
             return $this->errResult('AI 服务返回错误：' . $msg);
         }
@@ -897,7 +1094,7 @@ class AiController extends Controller
             if ($finish === 'length') {
                 $msg = $this->emptyByLengthMessage($cfg, 'finish_reason', 'length');
                 $this->aiWriteLog('error', $msg);
-                return $this->errResult($msg);
+                return $this->errResult($msg, 'length');
             }
             $this->aiWriteLog('error', 'missing content');
             $mismatch = $this->diagnoseAnthropicShapeInBody($body);
@@ -924,7 +1121,7 @@ class AiController extends Controller
                 $msg = 'AI 返回内容为空（finish_reason=' . $reason . '）';
             }
             $this->aiWriteLog('error', $msg);
-            return $this->errResult($msg);
+            return $this->errResult($msg, $finish === 'length' ? 'length' : '');
         }
         if ($finish === 'length') {
             $this->aiWriteLog('truncated', 'finish_reason=length');
@@ -937,7 +1134,7 @@ class AiController extends Controller
      */
     private function callClaude($cfg, array $messages, $maxTokens)
     {
-        $url = rtrim($cfg['base'], '/') . $cfg['path'];
+        $url = $cfg['endpoint']['url'];
         // Claude 区分 system 与 messages
         $system = '';
         $msgs = array();
@@ -977,7 +1174,11 @@ class AiController extends Controller
             return $this->errResult('AI 响应非 JSON');
         }
         if (isset($body['error'])) {
-            $msg = is_array($body['error']) && isset($body['error']['message']) ? $body['error']['message'] : json_encode($body['error']);
+            if (is_array($body['error'])) {
+                $msg = isset($body['error']['message']) ? (string) $body['error']['message'] : $this->aiErrorText($body['error']);
+            } else {
+                $msg = (string) $body['error'];
+            }
             $this->aiWriteLog('error', $msg);
             return $this->errResult('AI 服务返回错误：' . $msg);
         }
@@ -986,7 +1187,7 @@ class AiController extends Controller
             if ($stop === 'max_tokens') {
                 $msg = $this->emptyByLengthMessage($cfg, 'stop_reason', 'max_tokens');
                 $this->aiWriteLog('error', $msg);
-                return $this->errResult($msg);
+                return $this->errResult($msg, 'length');
             }
             $this->aiWriteLog('error', 'no content');
             $mismatch = $this->diagnoseOpenAiShapeInBody($body);
@@ -1007,7 +1208,7 @@ class AiController extends Controller
                 $msg = 'AI 返回内容为空（stop_reason=' . $reason . '）';
             }
             $this->aiWriteLog('error', $msg);
-            return $this->errResult($msg);
+            return $this->errResult($msg, $stop === 'max_tokens' ? 'length' : '');
         }
         if ($stop === 'max_tokens') {
             $this->aiWriteLog('truncated', 'stop_reason=max_tokens');
@@ -1020,7 +1221,7 @@ class AiController extends Controller
      */
     private function shouldOmitTemperature(array $cfg)
     {
-        if ($cfg['provider'] === 'claude') {
+        if ($cfg['provider'] === 'claude' || $cfg['provider'] === 'openai') {
             return true;
         }
         return (bool) preg_match('/claude/i', $cfg['model']);
@@ -1181,6 +1382,7 @@ class AiController extends Controller
             curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
             curl_setopt($ch, CURLOPT_CAINFO, CORE_PATH . '/cacert.pem');
         }
+        $this->aiHttpSent = true;
         $output = curl_exec($ch);
         if ($output === false) {
             $err = curl_error($ch);
@@ -1197,7 +1399,8 @@ class AiController extends Controller
         $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_safe_close($ch);
         if ($status < 200 || $status >= 300) {
-            $snippet = mb_substr(strip_tags((string) $output), 0, 200);
+            $text = $this->aiErrorText((string) $output);
+            $snippet = mb_substr(trim(preg_replace('/\s+/', ' ', strip_tags($this->aiRedact($text)))), 0, 200);
             $msg = 'AI 服务 HTTP ' . $status . '：' . $snippet;
             $this->aiWriteLog('error', $msg);
             return $this->errResult($msg);
@@ -1289,9 +1492,13 @@ class AiController extends Controller
         return array('code' => 1, 'msg' => '', 'data' => $data);
     }
 
-    private function errResult($msg)
+    private function errResult($msg, $reason = '')
     {
-        return array('code' => 0, 'msg' => $msg, 'data' => null);
+        $rs = array('code' => 0, 'msg' => $this->aiRedact($msg), 'data' => null);
+        if ($reason !== '') {
+            $rs['reason'] = $reason;
+        }
+        return $rs;
     }
 
     /**
@@ -1311,13 +1518,13 @@ class AiController extends Controller
     /**
      * 输出 JSON：失败
      */
-    private function jsonError($msg)
+    private function jsonError($msg, $data = null)
     {
         @ob_clean();
         echo json_encode(array(
             'code' => 0,
             'msg' => $msg,
-            'data' => null,
+            'data' => $data,
         ), JSON_UNESCAPED_UNICODE);
         exit();
     }

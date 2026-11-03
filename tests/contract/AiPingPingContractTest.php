@@ -49,17 +49,24 @@ return TestAssert::runSuite(function () {
     TestAssert::contains($body, '), 256, null, $cfg);', 'ping callAi max_tokens is 256 not 32');
     TestAssert::notContains($body, '), 32);', 'ping no longer uses 32-token limit');
 
-    echo "=== finish_reason=length treated as connectivity ok ===\n";
+    echo "=== truncation is judged by structured reason, not by message text ===\n";
 
-    TestAssert::contains($body, 'finish_reason=length', 'ping handles truncated response');
-    TestAssert::contains($body, '$this->jsonOk(array(\'reply\' =>', 'ping jsonOk on length truncation');
+    TestAssert::contains($body, "\$rs['reason'] === 'length'", 'ping checks structured truncation reason');
+    TestAssert::notContains($body, "strpos((string) (\$rs['msg']", 'ping no longer matches error text');
     TestAssert::contains($body, 'API 连接正常（响应被截断', 'ping truncation user message');
+    TestAssert::notContains($body, '请适当增大', 'ping truncation does not ask for a larger max token');
+
+    echo "=== ping does not require AI enabled ===\n";
+
+    TestAssert::notContains($body, '$this->guard();', 'ping skips enabled check');
+    TestAssert::contains($body, '$this->guardConfigAccess();', 'ping keeps config permission');
+    TestAssert::contains($body, '$this->consumeRateLimit();', 'ping keeps rate limit');
 
     echo "=== ping applies form draft without saving ===\n";
 
-    TestAssert::contains($body, 'applyPingDraft', 'ping merges POST draft via applyPingDraft');
+    TestAssert::contains($body, 'readPingDraft()', 'ping reads POST draft');
+    TestAssert::contains($body, 'mergeAiDraft(', 'ping merges draft over saved config');
     TestAssert::contains($body, ', null, $cfg)', 'ping passes draft cfg into callAi');
-    TestAssert::contains($src, 'private function applyPingDraft(array $cfg)', 'applyPingDraft defined');
-    TestAssert::contains($src, "isset(\$_POST['ai_api_base'])", 'draft reads ai_api_base from POST');
     TestAssert::contains($src, 'is_masked_secret($key)', 'draft ignores masked API key');
+    TestAssert::notContains($body, 'modValue', 'ping never writes config');
 });

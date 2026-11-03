@@ -82,12 +82,14 @@ class Pdo implements Builder
     public function conn($cfg)
     {
         if (get_db_type() == 'sqlite' && ! extension_loaded('pdo_sqlite')) {
+            db_env_block();
             if (extension_loaded('SQLite3')) {
                 error('未检测到您服务器环境的pdo_sqlite数据库扩展，请检查php.ini中是否已经开启该扩展！<br>另外，检测到您服务器支持sqlite3扩展，您也可以修改数据库配置连接驱动为sqlite试试！');
             } else {
                 error('未检测到您服务器环境的pdo_sqlite数据库扩展，请检查php.ini中是否已经开启对应的数据库扩展！');
             }
         } elseif (get_db_type() == 'mysql' && ! extension_loaded('pdo_mysql')) {
+            db_env_block();
             if (extension_loaded('mysqli')) {
                 error('未检测到您服务器环境的pdo_mysqli数据库扩展，请检查php.ini中是否已经开启该扩展！<br>另外，检测到您服务器支持mysqli扩展，您也可以修改数据库配置连接驱动为mysqli试试！');
             } else {
@@ -102,6 +104,7 @@ class Pdo implements Builder
                 try {
                     $conn = new \PDO($dsn, $cfg['user'], $cfg['passwd']);
                 } catch (\PDOException $e) {
+                    db_env_block();
                     error('PDO方式连接MySQL数据库错误：' . iconv('gbk', 'utf-8', $e->getMessage()));
                 }
                 break;
@@ -110,6 +113,7 @@ class Pdo implements Builder
                 try {
                     $conn = new \PDO($dsn);
                 } catch (\PDOException $e) {
+                    db_env_block();
                     error('PDO方式连接Sqlite数据库错误：' . iconv('gbk', 'utf-8', $e->getMessage()));
                 }
                 break;
@@ -118,6 +122,7 @@ class Pdo implements Builder
                 try {
                     $conn = new \PDO($dsn, $cfg['user'], $cfg['passwd']);
                 } catch (\PDOException $e) {
+                    db_env_block();
                     error('PDO方式连接Pgsql数据库错误：' . iconv('gbk', 'utf-8', $e->getMessage()));
                 }
                 break;
@@ -126,6 +131,7 @@ class Pdo implements Builder
                 try {
                     $conn = new \PDO($dsn, $cfg['user'], $cfg['passwd']);
                 } catch (\PDOException $e) {
+                    db_env_block();
                     error('PDO方式连接数据库错误：' . iconv('gbk', 'utf-8', $e->getMessage()));
                 }
                 break;
@@ -146,6 +152,7 @@ class Pdo implements Builder
             if ($cfg['type'] == 'pdo_mysql') {
                 $this->master->exec("SET sql_mode='NO_ENGINE_SUBSTITUTION'");
             }
+            db_env_note('master', $this->master);
         }
         if (! $this->begin) {
             $this->master->beginTransaction(); // PDO原生方法，保持不变
@@ -181,6 +188,7 @@ class Pdo implements Builder
                     if ($cfg['type'] == 'pdo_mysql') {
                         $this->master->exec("SET sql_mode='NO_ENGINE_SUBSTITUTION'"); // MySql写入规避严格模式
                     }
+                    db_env_note('master', $this->master);
                 }
                 
                 // sqlite时自动启动事务
@@ -222,6 +230,7 @@ class Pdo implements Builder
                         }
                     }
                     $this->slave = $this->conn($cfg);
+                    db_env_note('slave', $this->slave);
                 }
                 if (!empty($params)) {
                     $stmt = $this->slave->prepare($sql);
@@ -414,6 +423,7 @@ class Pdo implements Builder
         }
         // 详情只入日志；非调试模式对外仅给通用文案，避免暴露表名/列名/约束名
         @error_log('[PbootCMS][pdo] 执行SQL发生错误！错误：' . $raw . ' 语句：' . $sql);
+        db_env_pin($conn);
         if (Config::get('debug')) {
             error('执行SQL发生错误！' . $err);
         } else {

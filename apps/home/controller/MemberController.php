@@ -289,7 +289,12 @@ class MemberController extends HomeBaseController
                 session('retrieve_checkcode_failures', $verify['failures']);
                 alert_back('验证码错误！');
             }
-            $where = array('username' => $username);
+            if (! is_string($username) || $username === '') {
+                alert_back('用户账号不能为空！');
+            }
+            $where = array(
+                'username' => $username
+            );
             $userInfo = object_to_array($this->model->checkUsername($where));
             if(!$userInfo){
                 alert_back('该用户不存在！');
@@ -297,10 +302,12 @@ class MemberController extends HomeBaseController
             if(empty($userInfo['useremail']) || strcasecmp($userInfo['useremail'], $email) !== 0){
                 alert_back('与注册邮箱不匹配，请联系管理员！');
             }
-            $data = [
+            $data = array(
                 'password' => md5(md5($password))
-            ];
-            $this->model->updatePassword($where,$data);
+            );
+            $this->model->updatePassword(array(
+                'id' => $userInfo['id']
+            ), $data);
             clear_retrieve_code_session();
             alert_location('修改成功！', Url::home('member/login'), 1);
         } else {

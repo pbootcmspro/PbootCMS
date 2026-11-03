@@ -1,9 +1,8 @@
 <?php
 /**
- * @copyright (C)2016-2099 Hnaoyun Inc.
- * @author XingMeng
- * @email hnxsh@foxmail.com
- * @date 2019年10月05日
+ * @copyright (C)2016-2099
+ * @author pbootcms
+ * @email support@pbootcms.com
  *  会员模型类
  */
 namespace app\admin\model\member;
@@ -53,9 +52,20 @@ class MemberModel extends Model
     }
 
     // 检查会员
-    public function checkMember($where)
+    public function checkMember($account, $excludeId = 0)
     {
-        return parent::table('ay_member')->where($where)->find();
+        if (! is_string($account) && ! is_int($account)) {
+            return true;
+        }
+        $query = parent::table('ay_member')->where(array(
+            'username' => $account,
+            'useremail' => $account,
+            'usermobile' => $account
+        ), 'OR');
+        if ($excludeId) {
+            $query->whereCompare('id', '<>', (int) $excludeId);
+        }
+        return !!$query->find();
     }
 
     // 获取最后一个code
@@ -78,7 +88,9 @@ class MemberModel extends Model
         );
         return parent::table('ay_member a')->field($field)
             ->join($join)
-            ->where("a.id=$id")
+            ->where(array(
+                'a.id' => (int) $id
+            ))
             ->find();
     }
 
@@ -91,7 +103,9 @@ class MemberModel extends Model
     // 删除会员
     public function delMember($id)
     {
-        return parent::table('ay_member')->where("id=$id")->delete();
+        return parent::table('ay_member')->where(array(
+            'id' => (int) $id
+        ))->delete();
     }
 
     // 删除会员
@@ -103,12 +117,30 @@ class MemberModel extends Model
     // 修改会员
     public function modMember($id, $data)
     {
-        return parent::table('ay_member')->where("id=$id")->update($data);
+        if (! is_array($data) || ! $data) {
+            return false;
+        }
+        return parent::table('ay_member')->where(array(
+            'id' => (int) $id
+        ))->update($data);
+    }
+
+    public function modMemberStatus($id, $status)
+    {
+        if ($status !== 0 && $status !== 1 && $status !== '0' && $status !== '1') {
+            return false;
+        }
+        return $this->modMember($id, array(
+            'status' => (int) $status
+        ));
     }
 
     // 修改会员
     public function modMemberList($ids, $data)
     {
+        if (! is_array($data) || ! $data) {
+            return false;
+        }
         return parent::table('ay_member')->in('id', $ids)->update($data);
     }
 

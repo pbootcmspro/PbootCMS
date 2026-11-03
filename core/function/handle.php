@@ -531,6 +531,12 @@ function parse_info_tpl($info_tpl, $string, $jump_url = null, $time = 0)
             $timeout_js = '';
         }
         $tpl_content = str_replace('{js}', $timeout_js, $tpl_content);
+        if (strpos($tpl_content, '{dbtype}') !== false || strpos($tpl_content, '{dbdriver}') !== false || strpos($tpl_content, '{dbversion}') !== false) {
+            $db_env = db_env_format();
+            $tpl_content = str_replace('{dbtype}', $db_env['type'], $tpl_content);
+            $tpl_content = str_replace('{dbdriver}', $db_env['driver'], $tpl_content);
+            $tpl_content = str_replace('{dbversion}', $db_env['version'], $tpl_content);
+        }
         $tpl_content = str_replace('{info}', $string, $tpl_content);
         $tpl_content = str_replace('{url}', $jump_url ?? '', $tpl_content);
         $tpl_content = str_replace('{time}', $time, $tpl_content);
@@ -2262,6 +2268,232 @@ function get_db_type()
             $db = null;
     }
     return $db;
+}
+
+/**
+ * 当前请求数据库环境元数据（仅内存，不跨请求）
+ *
+ * @return array{master:string,slave:string,mode:string,noted:int,reads:int}
+ */
+function &db_env_store()
+{
+    static $store = array(
+        'master' => '',
+        'slave' => '',
+        'mode' => '',
+        'noted' => 0,
+        'reads' => 0
+    );
+    return $store;
+}
+
+/**
+ * @return array{master:string,slave:string,mode:string,noted:int,reads:int}
+ */
+function db_env_state()
+{
+    $store = db_env_store();
+    return array(
+        'master' => $store['master'],
+        'slave' => $store['slave'],
+        'mode' => $store['mode'],
+        'noted' => (int) $store['noted'],
+        'reads' => (int) $store['reads']
+    );
+}
+
+function db_env_reset()
+{
+    $store = &db_env_store();
+    $store['master'] = '';
+    $store['slave'] = '';
+    $store['mode'] = '';
+    $store['noted'] = 0;
+    $store['reads'] = 0;
+}
+
+/**
+ * @param string $role master|slave
+ * @param mixed $conn
+ */
+function db_env_note($role, $conn)
+{
+    if ($role !== 'master' && $role !== 'slave') {
+        return;
+    }
+    $store = &db_env_store();
+    $store['noted'] ++;
+    if ($store[$role] !== '') {
+        return;
+    }
+    $driver = db_env_config_driver();
+    if ($driver === '') {
+        return;
+    }
+    $version = db_env_read_version($conn);
+    if ($version === '') {
+        return;
+    }
+    $store[$role] = $version;
+}
+
+/**
+ * @param string $role master|slave
+ */
+function db_env_pin($role)
+{
+    if ($role !== 'master' && $role !== 'slave') {
+        return;
+    }
+    $store = &db_env_store();
+    $store['mode'] = $role;
+}
+
+function db_env_block()
+{
+    $store = &db_env_store();
+    $store['mode'] = 'block';
+}
+
+/**
+ * @return array{type:string,driver:string,version:string}
+ */
+function db_env_format()
+{
+    $unknown = '未识别';
+    $missing = '未获取';
+    $driver = db_env_config_driver();
+    if ($driver === '') {
+        return array(
+            'type' => $unknown,
+            'driver' => $unknown,
+            'version' => $missing
+        );
+    }
+    $type = db_env_type_label($driver);
+    if ($type === '') {
+        return array(
+            'type' => $unknown,
+            'driver' => $unknown,
+            'version' => $missing
+        );
+    }
+    $store = db_env_store();
+    $version = '';
+    if ($store['mode'] === 'block') {
+        $version = '';
+    } elseif ($store['mode'] === 'master' || $store['mode'] === 'slave') {
+        $version = $store[$store['mode']];
+    } else {
+        $version = $store['master'];
+    }
+    if ($version === '') {
+        $version = $missing;
+    }
+    return array(
+        'type' => htmlspecialchars($type, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+        'driver' => htmlspecialchars($driver, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+        'version' => htmlspecialchars($version, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+    );
+}
+
+/**
+ * @return string 白名单驱动名；未知为空串
+ */
+function db_env_config_driver()
+{
+    if (! class_exists('core\\basic\\Config', false)) {
+        return '';
+    }
+    $type = Config::get('database.type');
+    if (! is_string($type)) {
+        return '';
+    }
+    switch ($type) {
+        case 'sqlite':
+        case 'pdo_sqlite':
+        case 'mysqli':
+        case 'pdo_mysql':
+        case 'pdo_pgsql':
+            return $type;
+        default:
+            return '';
+    }
+}
+
+/**
+ * @param string $driver
+ * @return string
+ */
+function db_env_type_label($driver)
+{
+    switch ($driver) {
+        case 'sqlite':
+        case 'pdo_sqlite':
+            return 'SQLite';
+        case 'mysqli':
+        case 'pdo_mysql':
+            return 'MySQL';
+        case 'pdo_pgsql':
+            return 'PostgreSQL';
+        default:
+            return '';
+    }
+}
+
+/**
+ * @param mixed $conn
+ * @return string
+ */
+function db_env_read_version($conn)
+{
+    $store = &db_env_store();
+    $store['reads'] ++;
+    $raw = '';
+    try {
+        if (class_exists('SQLite3', false) && $conn instanceof \SQLite3) {
+            $info = @$conn->version();
+            if (is_array($info) && isset($info['versionString'])) {
+                $raw = (string) $info['versionString'];
+            }
+        } elseif (class_exists('mysqli', false) && $conn instanceof \mysqli) {
+            if (function_exists('mysqli_get_server_info')) {
+                $info = @mysqli_get_server_info($conn);
+                if (is_string($info)) {
+                    $raw = $info;
+                }
+            }
+        } elseif (class_exists('PDO', false) && $conn instanceof \PDO) {
+            $info = @$conn->getAttribute(\PDO::ATTR_SERVER_VERSION);
+            if (is_string($info)) {
+                $raw = $info;
+            }
+        }
+    } catch (\Throwable $e) {
+        $raw = '';
+    }
+    return db_env_sanitize_version($raw);
+}
+
+/**
+ * @param string $raw
+ * @return string
+ */
+function db_env_sanitize_version($raw)
+{
+    if (! is_string($raw) || $raw === '') {
+        return '';
+    }
+    $raw = preg_replace('/[\x00-\x1F\x7F]+/', '', $raw);
+    if (! is_string($raw) || $raw === '') {
+        return '';
+    }
+    if (function_exists('mb_substr')) {
+        $raw = mb_substr($raw, 0, 64, 'UTF-8');
+    } else {
+        $raw = substr($raw, 0, 64);
+    }
+    return is_string($raw) ? $raw : '';
 }
 
 // 获取间隔的月份的起始及结束日期

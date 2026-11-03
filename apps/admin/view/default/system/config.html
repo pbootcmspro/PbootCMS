@@ -1009,9 +1009,11 @@
 		                <div class="layui-form-item">
 		                     <label class="layui-form-label">AI服务商</label>
 		                     <div class="layui-input-block">
-		                     	<input type="radio" name="ai_provider" value="deepseek" {if([$configs.ai_provider.value]=='deepseek'||[$configs.ai_provider.value]=='')} checked="checked" {/if} title="DeepSeek">
-								<input type="radio" name="ai_provider" value="qwen" {if([$configs.ai_provider.value]=='qwen')} checked="checked" {/if} title="通义千问">
-								<input type="radio" name="ai_provider" value="claude" {if([$configs.ai_provider.value]=='claude')} checked="checked" {/if} title="Claude">
+		                        <input type="radio" name="ai_provider" value="deepseek" lay-filter="ai_provider" {if([$configs.ai_provider.value]=='deepseek'||[$configs.ai_provider.value]=='')} checked="checked" {/if} title="DeepSeek">
+								<input type="radio" name="ai_provider" value="qwen" lay-filter="ai_provider" {if([$configs.ai_provider.value]=='qwen')} checked="checked" {/if} title="通义千问">
+								<input type="radio" name="ai_provider" value="claude" lay-filter="ai_provider" {if([$configs.ai_provider.value]=='claude')} checked="checked" {/if} title="Claude">
+								<input type="radio" name="ai_provider" value="openai" lay-filter="ai_provider" {if([$configs.ai_provider.value]=='openai')} checked="checked" {/if} title="OpenAI 兼容（其他服务）">
+		                        <span class="layui-icon layui-icon-about tips" data-content="OpenAI 兼容（其他服务）用于其他提供非流式 Chat Completions 接口（Bearer 鉴权）的服务，API URL 与模型必填；不保证兼容所有模型与网关。"></span>
 		                     </div>
 		                </div>
 
@@ -1031,17 +1033,18 @@
 		                <div class="layui-form-item">
 		                     <label class="layui-form-label">API URL</label>
 		                     <div class="layui-input-inline" style="width:480px;">
-		                     	<input type="text" name="ai_api_base" value="{$configs.ai_api_base.value}" placeholder="完整 API 地址；OpenAI 中转填 .../v1/chat/completions，留空用官方默认" class="layui-input">
+		                        <input type="text" name="ai_api_base" id="ai_api_base" value="{$configs.ai_api_base.value}" placeholder="留空使用官方默认" class="layui-input">
+		                        <div id="aiBaseHint" style="display:none;color:#FF5722;font-size:12px;line-height:1.8;padding-top:6px;"></div>
 		                     </div>
-		                     <span class="layui-icon layui-icon-about tips" data-content="留空使用服务商官方默认。系统根据 URL 自动选择协议：仅 Anthropic 官方 Messages 走原生协议，其余（含 Claude 第三方中转）走 OpenAI 兼容，中转请填 /v1/chat/completions。"></span>
+		                     <span class="layui-icon layui-icon-about tips" data-content="可填 base URL（如 https://网关/v1）或完整端点。以 /messages 结尾或 Anthropic 官方根地址走 Anthropic 原生协议；其余在路径末尾补 /chat/completions 走 OpenAI 兼容，查询参数保留。仅支持 HTTP/HTTPS。"></span>
 		                </div>
 
 		                <div class="layui-form-item">
 		                     <label class="layui-form-label">AI模型</label>
 		                     <div class="layui-input-inline" style="width:480px;">
-		                     	<input type="text" name="ai_model" value="{$configs.ai_model.value}" placeholder="如 deepseek-v4-flash / qwen-plus-latest / claude-sonnet-4-20250514" class="layui-input">
+		                        <input type="text" name="ai_model" id="ai_model" value="{$configs.ai_model.value}" placeholder="留空使用默认模型" class="layui-input">
 		                     </div>
-		                     <span class="layui-icon layui-icon-about tips" data-content="留空则按服务商默认模型：DeepSeek=deepseek-v4-flash / 通义千问=qwen-plus-latest / Claude=claude-sonnet-4-20250514。生成文章、续写改写与 TDK 在 DeepSeek 推理模型（如 deepseek-v4-pro）上会自动改用 deepseek-v4-flash。图片 Alt 同样避开推理模型。测试连接仍使用当前填写的模型。"></span>
+		                     <span class="layui-icon layui-icon-about tips" data-content="DeepSeek、通义千问、Claude 留空则使用服务商默认模型；OpenAI 兼容必填。生成文章、续写改写与 TDK 在 DeepSeek 推理模型（如 deepseek-v4-pro）上会自动改用 deepseek-v4-flash，图片 Alt 文本回退同样避开推理模型；测试连接仍使用当前填写的模型。图片 Alt 按模型名（含 vl/vision/4o/gemini）识别是否尝试视觉，未识别时直接按文本生成。"></span>
 		                </div>
 
 		                <div class="layui-form-item">
@@ -1050,6 +1053,7 @@
 		                     	<input type="text" name="ai_max_tokens" value="{$configs.ai_max_tokens.value}" placeholder="默认2048" class="layui-input">
 		                     </div>
 		                     <div class="layui-form-mid layui-word-aux">tokens</div>
+		                     <span class="layui-icon layui-icon-about tips" data-content="作用于生成文章、续写改写与 TDK；图片 Alt 与测试连接使用各自固定的输出上限，不受此项影响。"></span>
 		                </div>
 
 		                <div class="layui-form-item">
@@ -1121,20 +1125,92 @@
 				layer.closeAll('loading');
 				aiPingBusy = false;
 				btn.disabled = false;
+				var info = (r && r.data && typeof r.data === 'object') ? r.data : null;
+				var detail = '';
+				if (info) {
+					detail = '\n\n服务商：' + (info.provider_name || '')
+						+ '\n' + (info.requested ? '请求模型：' : '待测试模型：') + (info.model || '')
+						+ '\n地址：' + (info.endpoint || '')
+						+ (info.requested ? '' : '\n未发出请求');
+				}
 				if(r && r.code===1){
-					layer.alert('连接成功！\nAI响应示例：\n' + (r.data && r.data.reply ? r.data.reply : ''));
+					aiAlertText('连接成功！\nAI响应示例：\n' + (info && info.reply ? info.reply : '') + detail);
 				}else{
 					var err = (r && r.msg) ? r.msg : (r && typeof r.data === 'string' ? r.data : '');
-					layer.alert('连接失败：' + (err || '未知错误'));
+					aiAlertText('连接失败：' + (err || '未知错误') + detail);
 				}
 			})
 			.catch(function(e){
 				layer.closeAll('loading');
 				aiPingBusy = false;
 				btn.disabled = false;
-				layer.alert('请求异常：' + e.message);
+				aiAlertText('请求异常：' + (e && e.message ? e.message : ''));
 			});
 	};
+	function aiAlertText(text){
+		var html = String(text)
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#39;')
+			.replace(/\r\n|\r|\n/g, '<br>');
+		layer.alert(html);
+	}
+})();
+(function(){
+	var providers = {$ai_provider_json};
+	var base = document.getElementById('ai_api_base');
+	var model = document.getElementById('ai_model');
+	var hint = document.getElementById('aiBaseHint');
+	if (!base || !model || !providers) return;
+	var form = base.closest('form');
+	var current = function(){
+		var checked = form.querySelector('input[name="ai_provider"]:checked');
+		return checked ? checked.value : 'deepseek';
+	};
+	var normalize = function(url){
+		return String(url || '').replace(/^\s+|\s+$/g, '').replace(/\/+$/, '').toLowerCase();
+	};
+	var refresh = function(){
+		var selected = current();
+		var def = providers[selected] || {};
+		if (def.required) {
+			base.placeholder = '必填，如 https://网关域名/v1 或完整端点';
+			model.placeholder = '必填，填写该服务支持的模型名';
+		} else {
+			base.placeholder = '留空使用官方默认：' + (def.base || '');
+			model.placeholder = '留空使用默认模型：' + (def.model || '');
+		}
+		var value = normalize(base.value);
+		var other = '';
+		if (value !== '') {
+			for (var k in providers) {
+				if (k !== selected && providers[k].base && normalize(providers[k].base) === value) {
+					other = providers[k].name;
+				}
+			}
+		}
+		if (other) {
+			hint.textContent = '当前 API URL 是' + other + '的官方默认地址，与所选服务商不一致，请核对。';
+			hint.style.display = '';
+		} else {
+			hint.textContent = '';
+			hint.style.display = 'none';
+		}
+	};
+	base.addEventListener('input', refresh);
+	base.addEventListener('change', refresh);
+	refresh();
+	(function bindAiProvider(){
+		if (!window.layui) {
+			setTimeout(bindAiProvider, 0);
+			return;
+		}
+		layui.use('form', function(){
+			layui.form.on('radio(ai_provider)', refresh);
+		});
+	})();
 })();
 (function(){
 	var btn = document.getElementById('indexnowKeyBtn');

@@ -46,4 +46,5 @@ php tests/unit/ValidateIfConditionTest.php
 - Issue #273 — 内置表格读取器替换为 SimpleXLSX 1.1.19（`SimpleXlsxReaderTest`）
 - Issue #283 — 编译文件、页面缓存与配置缓存原子写入，冷启动补注入配置缓存（`WriteFileAtomicTest` / `RuntimeCacheAtomicWriteContractTest`）
 - Issue #298 — 清理冗余图片收集正文任意上传文件、附件与内容扩展字段引用（`ImageExtRefCollectTest`）
+- Issue #330 — AI 端点统一解析、草稿测试与旧 Key 保护、保存前校验不部分入库、OpenAI 兼容服务商（`AiEndpointResolveTest` / `AiRequestBehaviorTest` / `AiConfigSaveValidationTest` / `node tests/ai-config-page.test.js`）
 

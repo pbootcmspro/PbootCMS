@@ -47,6 +47,8 @@ class Sqlite implements Builder
             $conn = $this->conn($cfg);
             $this->master = $conn;
             $this->slave = $conn;
+            db_env_note('master', $conn);
+            db_env_note('slave', $conn);
         }
         if (!$this->begin) {
             @$this->master->exec('begin;');
@@ -116,9 +118,11 @@ class Sqlite implements Builder
                 $conn = new \SQLite3($cfg);
                 $conn->busyTimeout(15 * 1000); // 设置繁忙延迟时间
             } catch (\Exception $e) {
+                db_env_block();
                 error("读取数据库文件失败：" . iconv('gbk', 'utf-8', $e->getMessage()));
             }
         } else {
+            db_env_block();
             if (extension_loaded('pdo_sqlite')) {
                 error('未检测到您服务器环境的sqlite3数据库扩展，请检查php.ini中是否已经开启该扩展！<br>另外，检测到您服务器支持pdo_sqlite扩展，您也可以修改数据库配置连接驱动为pdo_sqlite试试！');
             } else {
@@ -137,6 +141,8 @@ class Sqlite implements Builder
             $conn = $this->conn($cfg);
             $this->master = $conn;
             $this->slave = $conn;
+            db_env_note('master', $conn);
+            db_env_note('slave', $conn);
         }
         if (!empty($params)) {
             $sql = $this->bindParams($sql, $params);
@@ -332,6 +338,7 @@ class Sqlite implements Builder
         }
         // 详情只入日志；非调试模式对外仅给通用文案，避免暴露表名/列名/约束名
         @error_log('[PbootCMS][sqlite] 执行SQL发生错误！错误：' . $raw . ' 语句：' . $sql);
+        db_env_pin($conn);
         if (Config::get('debug')) {
             error('执行SQL发生错误！' . $err);
         } else {

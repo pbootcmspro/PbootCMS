@@ -887,3 +887,221 @@ function llms_link_line($title, $url, $note = '')
     return '- [' . $title . '](' . $url . ')' . ($note !== '' ? ': ' . $note : '');
 }
 
+// AI：服务商默认参数，配置页与实际调用共用
+function ai_provider_defs()
+{
+    return array(
+        'deepseek' => array(
+            'name' => 'DeepSeek',
+            'base' => 'https://api.deepseek.com/chat/completions',
+            'model' => 'deepseek-v4-flash',
+            'vision_model' => '',
+            'required' => false
+        ),
+        'qwen' => array(
+            'name' => '通义千问',
+            'base' => 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+            'model' => 'qwen-plus-latest',
+            'vision_model' => 'qwen-vl-max',
+            'required' => false
+        ),
+        'claude' => array(
+            'name' => 'Claude',
+            'base' => 'https://api.anthropic.com/v1/messages',
+            'model' => 'claude-sonnet-4-20250514',
+            'vision_model' => 'claude-sonnet-4-20250514',
+            'required' => false
+        ),
+        'openai' => array(
+            'name' => 'OpenAI 兼容（其他服务）',
+            'base' => '',
+            'model' => '',
+            'vision_model' => '',
+            'required' => true
+        )
+    );
+}
+
+// AI：还原 post() 与入库时的转义（htmlspecialchars + addslashes），每条输入路径只调用一次
+function ai_input_unescape($value)
+{
+    if (! is_scalar($value)) {
+        return '';
+    }
+    $value = (string) $value;
+    if ($value === '') {
+        return '';
+    }
+    return trim(htmlspecialchars_decode(stripslashes($value), ENT_QUOTES));
+}
+
+// AI：解析 API URL，得到实际请求地址与协议；base URL 与完整端点统一处理，结果幂等
+function ai_resolve_endpoint($url)
+{
+    $fail = array(
+        'ok' => false,
+        'error' => '',
+        'url' => '',
+        'protocol' => '',
+        'scheme' => '',
+        'host' => '',
+        'port' => 0,
+        'explicit_port' => false,
+        'path' => '',
+        'summary' => '地址无效'
+    );
+    $url = is_scalar($url) ? trim((string) $url) : '';
+    if ($url === '') {
+        $fail['error'] = 'API URL 不能为空';
+        return $fail;
+    }
+    if (preg_match('/[\s\x00-\x1f\x7f\\\\]/', $url)) {
+        $fail['error'] = 'API URL 不能包含空白、控制字符或反斜杠';
+        return $fail;
+    }
+    $parts = parse_url($url);
+    if (! is_array($parts) || empty($parts['scheme']) || ! isset($parts['host']) || $parts['host'] === '') {
+        $fail['error'] = 'API URL 格式无效，应为 http(s)://主机/路径';
+        return $fail;
+    }
+    $scheme = strtolower($parts['scheme']);
+    if ($scheme !== 'http' && $scheme !== 'https') {
+        $fail['error'] = 'API URL 仅支持 HTTP/HTTPS 协议';
+        return $fail;
+    }
+    if (! preg_match('/^(?:\[[0-9a-fA-F:.]+\]|[a-zA-Z0-9._%\-\x80-\xff]+)$/', $parts['host'])) {
+        $fail['error'] = 'API URL 主机名无效';
+        return $fail;
+    }
+    $explicitPort = isset($parts['port']);
+    if ($explicitPort) {
+        $port = (int) $parts['port'];
+        if ($port < 1 || $port > 65535) {
+            $fail['error'] = 'API URL 端口无效';
+            return $fail;
+        }
+    } else {
+        $port = $scheme === 'https' ? 443 : 80;
+    }
+
+    $hashPos = strpos($url, '#');
+    $noFrag = $hashPos === false ? $url : substr($url, 0, $hashPos);
+    $queryPos = strpos($noFrag, '?');
+    $query = $queryPos === false ? '' : substr($noFrag, $queryPos);
+    $path = isset($parts['path']) ? $parts['path'] : '';
+    $lower = strtolower(rtrim($url, '/'));
+
+    if ($query !== '') {
+        $asIs = $noFrag;
+    } else {
+        $trimmed = rtrim($url, '/');
+        $trimmedHash = strpos($trimmed, '#');
+        $asIs = $trimmedHash === false ? $trimmed : substr($trimmed, 0, $trimmedHash);
+    }
+
+    if (preg_match('#/messages(?:/|$)#', $lower)) {
+        $protocol = 'anthropic';
+        $request = $asIs;
+    } elseif (strpos($lower, 'chat/completions') !== false) {
+        $protocol = 'openai_compat';
+        $request = $asIs;
+    } elseif (preg_match('#/messages$#i', rtrim($path, '/'))) {
+        $protocol = 'anthropic';
+        $request = $asIs;
+    } else {
+        $beforeQuery = $queryPos === false ? $noFrag : substr($noFrag, 0, $queryPos);
+        $authority = substr($beforeQuery, 0, strlen($beforeQuery) - strlen($path));
+        if (strtolower($parts['host']) === 'api.anthropic.com' && preg_match('#^(?:/v1)?/*$#i', $path)) {
+            $protocol = 'anthropic';
+            $newPath = '/v1/messages';
+        } else {
+            $protocol = 'openai_compat';
+            $newPath = rtrim($path, '/') . '/chat/completions';
+        }
+        $request = $authority . $newPath . $query;
+    }
+
+    $requestPath = parse_url($request, PHP_URL_PATH);
+    $requestPath = is_string($requestPath) ? $requestPath : '';
+    $host = strtolower($parts['host']);
+    return array(
+        'ok' => true,
+        'error' => '',
+        'url' => $request,
+        'protocol' => $protocol,
+        'scheme' => $scheme,
+        'host' => $host,
+        'port' => $port,
+        'explicit_port' => $explicitPort,
+        'path' => $requestPath,
+        'summary' => $scheme . '://' . $host . ($explicitPort ? ':' . $port : '') . ($requestPath !== '' ? $requestPath : '/')
+    );
+}
+
+// AI：服务商与 URL（已还原转义）得到最终请求端点；URL 留空时使用服务商默认值
+function ai_provider_endpoint($provider, $base)
+{
+    $defs = ai_provider_defs();
+    $base = trim((string) $base);
+    if ($base === '' && isset($defs[$provider])) {
+        $base = $defs[$provider]['base'];
+    }
+    return ai_resolve_endpoint($base);
+}
+
+// AI：合并服务商默认值并校验，得到一份可调用的有效配置；保存、测试与正式调用共用
+function ai_effective_config($provider, $base, $model)
+{
+    $defs = ai_provider_defs();
+    $provider = (string) $provider;
+    $base = trim((string) $base);
+    $model = trim((string) $model);
+    $result = array(
+        'ok' => false,
+        'error' => '',
+        'provider' => $provider,
+        'base' => $base,
+        'model' => $model,
+        'endpoint' => ai_resolve_endpoint('')
+    );
+    if (! isset($defs[$provider])) {
+        $result['error'] = '不支持的 AI 服务商';
+        return $result;
+    }
+    $def = $defs[$provider];
+    if ($base === '') {
+        if ($def['required']) {
+            $result['error'] = '当前服务商须填写 API URL';
+            return $result;
+        }
+        $base = $def['base'];
+    }
+    if ($model === '') {
+        if ($def['required']) {
+            $result['endpoint'] = ai_resolve_endpoint($base);
+            $result['base'] = $base;
+            $result['error'] = '当前服务商须填写 AI 模型';
+            return $result;
+        }
+        $model = $def['model'];
+    }
+    $result['base'] = $base;
+    $result['model'] = $model;
+    $result['endpoint'] = ai_resolve_endpoint($base);
+    if (! $result['endpoint']['ok']) {
+        $result['error'] = $result['endpoint']['error'];
+        return $result;
+    }
+    $result['ok'] = true;
+    return $result;
+}
+
+// AI：两个端点的主机名（忽略大小写）与有效端口是否一致，用于判断能否沿用已保存 Key
+function ai_endpoint_same_host(array $a, array $b)
+{
+    if (empty($a['ok']) || empty($b['ok'])) {
+        return false;
+    }
+    return $a['host'] === $b['host'] && (int) $a['port'] === (int) $b['port'];
+}
+

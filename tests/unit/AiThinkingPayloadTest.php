@@ -47,6 +47,7 @@ namespace {
         return 0;
     }
 
+    require_once APP_PATH . '/common/function.php';
     require_once APP_PATH . '/admin/controller/content/AiController.php';
 
     return TestAssert::runSuite(function () {

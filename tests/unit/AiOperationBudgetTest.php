@@ -115,6 +115,7 @@ namespace {
         return 0;
     }
 
+    require_once APP_PATH . '/common/function.php';
     require_once APP_PATH . '/admin/controller/content/AiController.php';
 
     $aiBudgetRoot = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'pboot-ai-budget-' . getmypid();

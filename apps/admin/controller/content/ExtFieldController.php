@@ -116,8 +116,6 @@ class ExtFieldController extends Controller
                     $result = $this->model->amd("ALTER TABLE ay_content_ext ADD COLUMN $name $sqlite NULL");
                 } else {
                     $result = $this->model->amd("ALTER TABLE ay_content_ext ADD $name $mysql NULL COMMENT '$description'");
-                    //添加索引
-                    $this->model->amd("create index ay_content_{$name}_index on ay_content_ext ($name)");
                 }
             } elseif ($this->model->checkExtField($name)) { // 字段存在且已使用则 报错
                 alert_back('字段已经存在，不能重复添加！');

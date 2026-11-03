@@ -86,6 +86,7 @@ class Mysqli implements Builder
             mysqli_report(MYSQLI_REPORT_OFF);
         }
         if (! extension_loaded('mysqli')) {
+            db_env_block();
             if (extension_loaded('pdo_mysql')) {
                 error('未检测到您服务器环境的mysqli数据库扩展，请检查php.ini中是否已经开启该扩展！<br>另外，检测到您服务器支持pdo_mysql扩展，您也可以修改数据库配置连接驱动为pdo_mysql试试！');
             } else {
@@ -102,9 +103,11 @@ class Mysqli implements Builder
             $conn = @new \Mysqli($cfg['host'], $cfg['user'], $cfg['passwd'], $cfg['dbname'], $cfg['port']);
         } catch (\Throwable $e) {
             // PHP 8.1+ 可能抛 mysqli_sql_exception；统一转为友好错误页
+            db_env_block();
             error("连接数据库服务器失败：" . $e->getMessage());
         }
         if (mysqli_connect_errno()) {
+            db_env_block();
             error("连接数据库服务器失败：" . iconv('gbk', 'utf-8', mysqli_connect_error()));
         }
         $charset = Config::get('database.charset') ?: 'utf8';
@@ -119,6 +122,7 @@ class Mysqli implements Builder
             $cfg = Config::get('database');
             $this->master = $this->conn($cfg);
             $this->master->query("SET sql_mode='NO_ENGINE_SUBSTITUTION'");
+            db_env_note('master', $this->master);
         }
         if (! $this->begin) {
             $this->master->autocommit(false);
@@ -153,6 +157,7 @@ class Mysqli implements Builder
             $cfg = Config::get('database');
             $this->master = $this->conn($cfg);
             $this->master->query("SET sql_mode='NO_ENGINE_SUBSTITUTION'"); // MySql写入规避严格模式
+            db_env_note('master', $this->master);
         }
 
         // 参数绑定统一处理（消除master/slave分支中的重复调用）
@@ -184,6 +189,7 @@ class Mysqli implements Builder
                         }
                     }
                     $this->slave = $this->conn($cfg);
+                    db_env_note('slave', $this->slave);
                 }
                 $result = $this->slave->query($sql);
                 if ($result === false) {
@@ -347,6 +353,7 @@ class Mysqli implements Builder
         }
         // 详情只入日志；非调试模式对外仅给通用文案，避免暴露表名/列名/约束名
         @error_log('[PbootCMS][mysqli] 执行SQL发生错误！错误：' . $raw . ' 语句：' . $sql);
+        db_env_pin($conn);
         if (Config::get('debug')) {
             error('执行SQL发生错误！' . $err);
         } else {

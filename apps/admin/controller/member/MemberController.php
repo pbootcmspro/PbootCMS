@@ -76,15 +76,15 @@ class MemberController extends Controller
                 alert_back('手机号码格式不正确！');
             }
             
-            if ($username && $this->model->checkMember("username='$username' OR useremail='$username' OR usermobile='$username'")) {
+            if ($username && $this->model->checkMember($username)) {
                 alert_back('用户名已经存在！');
             }
             
-            if ($useremail && $this->model->checkMember("username='$useremail' OR useremail='$useremail' OR usermobile='$useremail'")) {
+            if ($useremail && $this->model->checkMember($useremail)) {
                 alert_back('邮箱账号已经存在！');
             }
             
-            if ($usermobile && $this->model->checkMember("username='$usermobile' OR useremail='$usermobile' OR usermobile='$usermobile'")) {
+            if ($usermobile && $this->model->checkMember($usermobile)) {
                 alert_back('手机号码已经存在！');
             }
             
@@ -172,7 +172,9 @@ class MemberController extends Controller
                     if (! $list) {
                         alert_back('请选择要操作的会员！');
                     }
-                    if ($this->model->modMemberList($list, "status=1")) {
+                    if ($this->model->modMemberList($list, array(
+                        'status' => 1
+                    ))) {
                         $this->log('会员批量启用成功！');
                         success('启用成功！', - 1);
                     } else {
@@ -184,7 +186,9 @@ class MemberController extends Controller
                     if (! $list) {
                         alert_back('请选择要操作的会员！');
                     }
-                    if ($this->model->modMemberList($list, "status=0")) {
+                    if ($this->model->modMemberList($list, array(
+                        'status' => 0
+                    ))) {
                         $this->log('会员批量禁用成功！');
                         success('禁用成功！', - 1);
                     } else {
@@ -194,13 +198,21 @@ class MemberController extends Controller
             }
         }
         
-        if (! $id = get('id', 'int')) {
+        if (! is_string($_GET['id'] ?? null) || ! ($id = get('id', 'int'))) {
             error('传递的参数值错误！', - 1);
         }
         
-        // 单独修改状态
-        if (($field = get('field', 'var')) && ! is_null($value = get('value', 'var'))) {
-            if ($this->model->modMember($id, "$field='$value'")) {
+        // 单独修改状态（仅允许 status=0/1）
+        if (isset($_GET['field']) || array_key_exists('value', $_GET)) {
+            $field = is_string($_GET['field'] ?? null) ? get('field', 'var') : null;
+            if ($field !== 'status') {
+                error('不允许修改该字段！', - 1);
+            }
+            $value = is_string($_GET['value'] ?? null) ? get('value', 'var') : null;
+            if ($value !== '0' && $value !== '1') {
+                error('传递的参数值错误！', - 1);
+            }
+            if ($this->model->modMemberStatus($id, $value)) {
                 location(- 1);
             } else {
                 alert_back('修改失败！');
@@ -237,15 +249,15 @@ class MemberController extends Controller
                 alert_back('手机号码格式不正确！');
             }
             
-            if ($username && $this->model->checkMember("(username='$username' OR useremail='$username' OR usermobile='$username') AND id<>$id")) {
+            if ($username && $this->model->checkMember($username, $id)) {
                 alert_back('用户名已经存在！');
             }
             
-            if ($useremail && $this->model->checkMember("(username='$useremail' OR useremail='$useremail' OR usermobile='$useremail') AND id<>$id")) {
+            if ($useremail && $this->model->checkMember($useremail, $id)) {
                 alert_back('邮箱账号已经存在！');
             }
             
-            if ($usermobile && $this->model->checkMember("(username='$usermobile' OR useremail='$usermobile' OR usermobile='$usermobile') AND id<>$id")) {
+            if ($usermobile && $this->model->checkMember($usermobile, $id)) {
                 alert_back('手机号码已经存在！');
             }
             

@@ -231,12 +231,14 @@ switch ($mode) {
         db_reset_mysqli_singleton();
         // 故意错凭据；可达主机上应走友好错误页，而非未捕获 mysqli_sql_exception
         $cfg = array(
+            'type' => 'mysqli',
             'host' => '127.0.0.1',
             'user' => 'pboot_wrong_user_' . getmypid(),
             'passwd' => 'definitely_wrong_password',
             'dbname' => 'pboot_nonexistent_db',
             'port' => 3306
         );
+        db_set_database_config($cfg);
         try {
             \core\database\Mysqli::getInstance()->conn($cfg);
             probe_print('UNEXPECTED_SURVIVE', '1');

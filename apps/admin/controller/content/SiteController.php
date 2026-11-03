@@ -54,20 +54,21 @@ class SiteController extends Controller
         );
         
         path_delete(RUN_PATH . '/config'); // 清理缓存的配置文件
+        $back = url('/admin/Site/index');
         if ($this->model->checkSite()) {
-            if ($this->model->modSite($data)) {
+            if ($this->writeOk($this->model->modSite($data), true)) {
                 $this->log('修改站点信息成功！');
-                success('修改成功！', - 1);
+                success('修改成功！', $back);
             } else {
-                location(- 1);
+                error('修改失败！', $back);
             }
         } else {
             $data['acode'] = session('acode');
-            if ($this->model->addSite($data)) {
+            if ($this->writeOk($this->model->addSite($data), false)) {
                 $this->log('修改站点信息成功！');
-                success('修改成功！', - 1);
+                success('修改成功！', $back);
             } else {
-                location(- 1);
+                error('修改失败！', $back);
             }
         }
     }
@@ -85,16 +86,28 @@ class SiteController extends Controller
         if (! $_POST) {
             return;
         }
+        $back = url('/admin/Site/server');
         if (! function_exists('imagick_probe_deep_and_persist')) {
-            error('Imagick 探测功能不可用！', - 1);
+            error('Imagick 探测功能不可用！', $back);
         }
         $result = imagick_probe_deep_and_persist();
         if ($result === null) {
-            error('Imagick 深度探测失败，请确认扩展已加载且数据库可写！', - 1);
+            error('Imagick 深度探测失败，请确认扩展已加载且数据库可写！', $back);
         }
         $runtime = empty($result['runtime_coders']) ? '无' : implode(',', $result['runtime_coders']);
         $this->log('Imagick 深度安全探测完成，runtime 可读 coder：' . $runtime);
-        success('深度探测完成，runtime 可读 coder：' . $runtime, - 1);
+        success('深度探测完成，runtime 可读 coder：' . $runtime, $back);
+    }
+
+    private function writeOk($result, $unchangedOk)
+    {
+        if ($result === true) {
+            return true;
+        }
+        if (is_int($result) || is_float($result) || (is_string($result) && is_numeric($result))) {
+            return $unchangedOk ? ($result >= 0) : ($result > 0);
+        }
+        return false;
     }
 }
 

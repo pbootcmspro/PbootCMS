@@ -177,6 +177,9 @@ return TestAssert::runSuite(function () {
         $r = db_run_probe('sql_error_hard');
         // error() 使用裸 exit()，退出码为 0；非调试默认对外仅通用文案
         TestAssert::true(db_mode_has($r, '数据库执行错误，请稍后重试或联系管理员！'), 'A1 generic error page');
+        TestAssert::true(db_mode_has($r, '数据库：SQLite'), 'A1 HTML shows SQLite type');
+        TestAssert::true(db_mode_has($r, '驱动：sqlite'), 'A1 HTML shows sqlite driver');
+        TestAssert::true(db_mode_has($r, '版本：') && ! db_mode_has($r, '版本：未获取'), 'A1 HTML shows collected version');
         TestAssert::false(db_mode_has($r, 'ay_notable_xyz'), 'A1 must not leak table name');
         TestAssert::false(db_mode_has($r, 'UNEXPECTED_SURVIVE=1'), 'A1 must not silently return');
         TestAssert::false(db_mode_has($r, 'SURVIVED=1'), 'A1 must not print soft survive marker');
@@ -260,6 +263,8 @@ return TestAssert::runSuite(function () {
                 'B1 friendly connect failure page or non-zero exit'
             );
             TestAssert::true(db_mode_has($r, '连接数据库服务器失败'), 'B1 message 连接数据库服务器失败');
+            TestAssert::true(db_mode_has($r, '版本：未获取'), 'B1 connect failure version 未获取');
+            TestAssert::true(db_mode_has($r, '驱动：mysqli'), 'B1 still shows configured driver');
         }
     }
 
@@ -274,6 +279,7 @@ return TestAssert::runSuite(function () {
         } else {
             TestAssert::false(db_mode_has($r, 'UNCAUGHT=PDOException'), 'B2 PDOException caught inside driver');
             TestAssert::true(db_mode_has($r, 'PDO方式连接'), 'B2 hits PDO connect error() branch');
+            TestAssert::true(db_mode_has($r, '版本：未获取'), 'B2 connect failure version 未获取');
         }
     }
 
@@ -531,6 +537,8 @@ return TestAssert::runSuite(function () {
         TestAssert::false(db_mode_has($r5, 'ay_secret_table'), 'G5 AJAX no table leak');
         TestAssert::false(db_mode_has($r5, 'bogusfn'), 'G5 AJAX no detail leak');
         TestAssert::true(db_mode_has($r5, '"code":0') || db_mode_has($r5, '"code": 0'), 'G5 JSON code 0');
+        TestAssert::false(db_mode_has($r5, '数据库：'), 'G5 AJAX has no HTML db env line');
+        TestAssert::false(db_mode_has($r5, '驱动：'), 'G5 AJAX has no HTML driver line');
     }
 
     // G4 三驱动非调试文案字节级一致

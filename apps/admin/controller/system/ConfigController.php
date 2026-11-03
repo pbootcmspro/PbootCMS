@@ -92,6 +92,14 @@ class ConfigController extends Controller
                 unset($_POST['llms_optional_sorts']);
             }
 
+            // AI 配置须在写入循环前完成全部校验，失败时任何 ai_* 均不入库
+            if (post('submit') == 'ai' || $this->hasAiFields()) {
+                $ai_error = $this->checkAiConfigInput();
+                if ($ai_error !== '') {
+                    error($ai_error, url('/admin/Config/index' . get_tab('t11'), false), 5);
+                }
+            }
+
             foreach ($_POST as $key => $value) {
                 if (! preg_match('/^[\w\-]+$/', $key)) {
                     continue;
@@ -234,6 +242,16 @@ class ConfigController extends Controller
         $this->assign('llms_url', htmlspecialchars(get_http_url() . Url::home('llms.txt', false), ENT_QUOTES));
 
         $this->assign('ai_key_openssl_warn', $aiKeyOpensslWarn);
+        $ai_provider_hints = array();
+        foreach (ai_provider_defs() as $ai_key => $ai_def) {
+            $ai_provider_hints[$ai_key] = array(
+                'name' => $ai_def['name'],
+                'base' => $ai_def['base'],
+                'model' => $ai_def['model'],
+                'required' => $ai_def['required']
+            );
+        }
+        $this->assign('ai_provider_json', json_encode($ai_provider_hints, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT));
         $this->assign('is_sqlite', get_db_type() === 'sqlite');
         $this->assign('configs', $configs);
         
@@ -299,6 +317,56 @@ class ConfigController extends Controller
             }
         }
         return $html;
+    }
+
+    private function hasAiFields()
+    {
+        foreach (array_keys($_POST) as $key) {
+            if (strpos((string) $key, 'ai_') === 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // AI 配置保存前校验：格式、必填与沿用旧 Key 的主机端口；不访问上游
+    private function checkAiConfigInput()
+    {
+        $saved_provider = (string) $this->config('ai_provider');
+        $saved_base = (string) $this->config('ai_api_base');
+        $provider = isset($_POST['ai_provider']) ? (string) post('ai_provider') : $saved_provider;
+        $base = isset($_POST['ai_api_base']) ? (string) post('ai_api_base') : $saved_base;
+        $model = isset($_POST['ai_model']) ? (string) post('ai_model') : (string) $this->config('ai_model');
+        if ($provider === '') {
+            $provider = 'deepseek';
+        }
+        if (strlen($base) > 200 || strlen($model) > 200) {
+            return 'AI 配置未保存：API URL 或模型名称过长（入库后超过200字符），请缩短后再提交！';
+        }
+        $eff = ai_effective_config($provider, ai_input_unescape($base), ai_input_unescape($model));
+        if (! $eff['ok']) {
+            return 'AI 配置未保存：' . $eff['error'] . '！';
+        }
+
+        $key = isset($_POST['ai_api_key']) ? (string) post('ai_api_key') : '';
+        if ($key !== '' && ! is_masked_secret($key)) {
+            if (! aes_encrypt('probe')) {
+                return '服务端不支持 AES 加密，请联系主机商开启 openssl 扩展！';
+            }
+            return '';
+        }
+        if ((string) $this->config('ai_api_key') === '') {
+            return '';
+        }
+        $defs = ai_provider_defs();
+        if (! isset($defs[$saved_provider])) {
+            $saved_provider = 'deepseek';
+        }
+        $saved_endpoint = ai_provider_endpoint($saved_provider, ai_input_unescape($saved_base));
+        if (! ai_endpoint_same_host($saved_endpoint, $eff['endpoint'])) {
+            return 'AI 配置未保存：API URL 的主机或端口与已保存配置不同，请重新输入完整 API Key 后再提交！';
+        }
+        return '';
     }
 
     // 修改配置文件

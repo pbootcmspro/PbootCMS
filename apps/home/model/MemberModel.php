@@ -1,9 +1,8 @@
 <?php
 /**
- * @copyright (C)2016-2099 Hnaoyun Inc.
- * @author XingMeng
- * @email hnxsh@foxmail.com
- * @date 2020年06月26日
+ * @copyright (C)2016-2099
+ * @author pbootcms
+ * @email support@pbootcms.com
  *  会员前台模型
  */
 namespace app\home\model;
@@ -13,6 +12,11 @@ use core\basic\Config;
 
 class MemberModel extends Model
 {
+
+    private function isScalarBindValue($value)
+    {
+        return is_string($value) || is_int($value) || is_float($value);
+    }
 
     // 用户名/邮箱/手机 OR 匹配条件（参数绑定）
     private function accountOrCondition($account)
@@ -24,29 +28,54 @@ class MemberModel extends Model
         );
     }
 
+    private function bindWhere(array $where, array $allowed)
+    {
+        if (! $where) {
+            return false;
+        }
+        $bound = array();
+        foreach ($where as $key => $value) {
+            if (! is_string($key) || ! in_array($key, $allowed, true)) {
+                return false;
+            }
+            if (! $this->isScalarBindValue($value)) {
+                return false;
+            }
+            $bound[$key] = $value;
+        }
+        return $bound;
+    }
+
     // 按用户名/邮箱/手机任一匹配查找会员
     public function findByAccount($account)
     {
+        if (! $this->isScalarBindValue($account)) {
+            return null;
+        }
         return parent::table('ay_member')->where($this->accountOrCondition($account), 'OR')->find();
     }
 
     // 检查账号（用户名/邮箱/手机）是否已存在
     public function existsByAccount($account)
     {
+        if (! $this->isScalarBindValue($account)) {
+            return true;
+        }
         return !!$this->findByAccount($account);
     }
 
     // 检查邮箱或用户名是否已存在
     public function existsByEmail($email, $excludeId = null)
     {
+        if (! $this->isScalarBindValue($email)) {
+            return true;
+        }
         $query = parent::table('ay_member')->where(array(
             'useremail' => $email,
             'username' => $email
         ), 'OR');
         if ($excludeId) {
-            $query->where(array(
-                0 => 'id<>' . (int) $excludeId
-            ));
+            $query->whereCompare('id', '<>', (int) $excludeId);
         }
         return !!$query->find();
     }
@@ -54,14 +83,15 @@ class MemberModel extends Model
     // 检查手机或用户名是否已存在
     public function existsByMobile($mobile, $excludeId = null)
     {
+        if (! $this->isScalarBindValue($mobile)) {
+            return true;
+        }
         $query = parent::table('ay_member')->where(array(
             'usermobile' => $mobile,
             'username' => $mobile
         ), 'OR');
         if ($excludeId) {
-            $query->where(array(
-                0 => 'id<>' . (int) $excludeId
-            ));
+            $query->whereCompare('id', '<>', (int) $excludeId);
         }
         return !!$query->find();
     }
@@ -78,6 +108,9 @@ class MemberModel extends Model
     // 会员登录（按账号 + 密码，参数绑定）
     public function loginByAccount($account, $passwordHash)
     {
+        if (! $this->isScalarBindValue($account) || ! $this->isScalarBindValue($passwordHash)) {
+            return null;
+        }
         $field = array(
             'a.id',
             'a.ucode',
@@ -100,34 +133,6 @@ class MemberModel extends Model
             ->where(array(
                 'password' => $passwordHash
             ))
-            ->find()) {
-            $this->updateLoginStats($user->id);
-        }
-        return $user;
-    }
-
-    // 会员登录
-    public function login($where)
-    {
-        $field = array(
-            'a.id',
-            'a.ucode',
-            'a.username',
-            'a.useremail',
-            'a.usermobile',
-            'a.gid',
-            'a.status',
-            'b.gcode',
-            'b.gname'
-        );
-        $join = array(
-            'ay_member_group b',
-            'a.gid=b.id',
-            'LEFT'
-        );
-        if (! ! $user = parent::table('ay_member a')->field($field)
-            ->join($join)
-            ->where($where)
             ->find()) {
             $this->updateLoginStats($user->id);
         }
@@ -160,7 +165,19 @@ class MemberModel extends Model
     // 检查会员名称
     public function checkUsername($where)
     {
-        return parent::table('ay_member')->where($where)->find();
+        if (! is_array($where)) {
+            return null;
+        }
+        $bound = $this->bindWhere($where, array(
+            'username',
+            'useremail',
+            'usermobile',
+            'id'
+        ));
+        if ($bound === false) {
+            return null;
+        }
+        return parent::table('ay_member')->where($bound)->find();
     }
 
     // 读取会员字段
@@ -181,6 +198,10 @@ class MemberModel extends Model
     // 获取当前会员信息
     public function getUser()
     {
+        $uid = session('pboot_uid');
+        if ($uid === '' || $uid === null || $uid === false) {
+            return null;
+        }
         $field = array(
             'a.*',
             'b.gcode',
@@ -193,14 +214,25 @@ class MemberModel extends Model
         );
         return parent::table('ay_member a')->field($field)
             ->join($join)
-            ->where("a.id='" . session('pboot_uid') . "'")
+            ->where(array(
+                'a.id' => $uid
+            ))
             ->find();
     }
 
     // 修改会员资料
     public function modUser($data)
     {
-        return parent::table('ay_member')->where("id='" . session('pboot_uid') . "'")->update($data);
+        $uid = session('pboot_uid');
+        if ($uid === '' || $uid === null || $uid === false) {
+            return false;
+        }
+        if (! is_array($data) || ! $data) {
+            return false;
+        }
+        return parent::table('ay_member')->where(array(
+            'id' => $uid
+        ))->update($data);
     }
 
     // 获取第一个等级
@@ -212,12 +244,33 @@ class MemberModel extends Model
     // 获取等级ID
     public function getGroupID($gcode)
     {
-        return parent::table('ay_member_group')->where("gcode='$gcode'")->value('id');
+        if (! $this->isScalarBindValue($gcode)) {
+            return null;
+        }
+        return parent::table('ay_member_group')->where(array(
+            'gcode' => $gcode
+        ))->value('id');
     }
 
     //未登录状态下找回密码
-    public function updatePassword($where,$data){
-        return parent::table('ay_member')->where($where)->update($data);
+    public function updatePassword($where, $data)
+    {
+        if (! is_array($where) || ! is_array($data)) {
+            return false;
+        }
+        $bound = $this->bindWhere($where, array(
+            'username',
+            'useremail',
+            'usermobile',
+            'id'
+        ));
+        if ($bound === false) {
+            return false;
+        }
+        if (count($data) !== 1 || ! array_key_exists('password', $data) || ! is_string($data['password'])) {
+            return false;
+        }
+        return parent::table('ay_member')->where($bound)->update($data);
     }
 
     public function getImage()

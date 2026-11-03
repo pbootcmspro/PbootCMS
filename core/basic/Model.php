@@ -445,6 +445,41 @@ class Model
     }
 
     /**
+     * 连贯操作：字段比较（参数绑定）
+     *
+     * @param string $field
+     * @param string $operator
+     *            仅支持 =、<>
+     * @param mixed $value
+     *            仅支持 string/int/float
+     * @param string $outConnect
+     * @return \core\basic\Model
+     */
+    final public function whereCompare($field, $operator, $value, $outConnect = 'AND')
+    {
+        if (!in_array($operator, array('=', '<>'), true)) {
+            error('不支持的比较运算符！');
+        }
+        if (!is_string($field) || !preg_match('/^[a-zA-Z_]\w*(\.[a-zA-Z_]\w*)?$/', $field)) {
+            error('比较字段不合法！');
+        }
+        if (!is_string($value) && !is_int($value) && !is_float($value)) {
+            error('比较值类型不合法！');
+        }
+        $outConnect = strtoupper($outConnect);
+        if ($outConnect !== 'AND' && $outConnect !== 'OR') {
+            error('条件连接符不合法！');
+        }
+        $condition = $this->safeField($field) . $operator . $this->addBind($value);
+        if (isset($this->sql['where']) && $this->sql['where']) {
+            $this->sql['where'] .= ' ' . $outConnect . '(' . $condition . ')';
+        } else {
+            $this->sql['where'] = 'WHERE(' . $condition . ')';
+        }
+        return $this;
+    }
+
+    /**
      * 连贯操作：设置EXISTS查询
      *
      * @param string $subsql
