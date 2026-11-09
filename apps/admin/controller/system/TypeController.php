@@ -78,16 +78,13 @@ class TypeController extends Controller
             );
             
             // 执行添加
+            $typeBack = admin_back_target(url('/admin/Type/index'));
             if ($this->model->addType($data)) {
                 $this->log('新增类型' . $tcode . '-' . $item . '成功！');
-                if (! ! $backurl = get('backurl')) {
-                    success('新增成功！', base64_decode($backurl));
-                } else {
-                    success('新增成功！', url('/admin/Type/index'));
-                }
+                success('新增成功！', $typeBack);
             } else {
                 $this->log('新增类型' . $tcode . '-' . $item . '失败！');
-                error('新增失败！', - 1);
+                alert_back('新增失败！');
             }
         }
     }
@@ -95,19 +92,23 @@ class TypeController extends Controller
     // 类型删除
     public function del()
     {
+        $back = admin_stay_target(url('/admin/Type/index'));
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            error('请使用正确方式提交！', url('/admin/Type/index'));
+        }
         if (! $id = get('id', 'int')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', url('/admin/Type/index'));
         }
         if ($id < 7) {
-            alert_back('该类型不允许删除！');
+            error('该类型不允许删除！', url('/admin/Type/index'));
         }
         
         if ($this->model->delType($id)) {
             $this->log('删除类型项' . $id . '成功！');
-            success('删除成功！', - 1);
+            success('删除成功！', url('/admin/Type/index'));
         } else {
             $this->log('删除类型项' . $id . '失败！');
-            error('删除失败！', - 1);
+            error('删除失败！', url('/admin/Type/index'));
         }
     }
 
@@ -115,7 +116,7 @@ class TypeController extends Controller
     public function mod()
     {
         if (! $id = get('id', 'int')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', url('/admin/Type/index'));
         }
         
         // 修改操作
@@ -148,22 +149,23 @@ class TypeController extends Controller
             );
             
             // 执行添加
+            $back = admin_back_target(url('/admin/Type/index'));
             if ($this->model->modType($id, $data)) {
                 $this->log('修改类型项' . $id . '成功！');
-                if (! ! $backurl = get('backurl')) {
-                    success('修改成功！', base64_decode($backurl));
-                } else {
-                    success('修改成功！', url('/admin/Type/index'));
-                }
+                success('修改成功！', $back);
             } else {
-                location(- 1);
+                if ($this->model->getType($id)) {
+                    success('修改成功！', $back);
+                } else {
+                    error('编辑的内容已经不存在！', url('/admin/Type/index'));
+                }
             }
         } else {
             // 调取修改内容
             $this->assign('mod', true);
             
             if (! $result = $this->model->getType($id)) {
-                error('编辑的内容已经不存在！', - 1);
+                error('编辑的内容已经不存在！', url('/admin/Type/index'));
             }
             $this->assign('type', $result);
             $this->display('system/type.html');

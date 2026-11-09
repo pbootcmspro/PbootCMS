@@ -82,6 +82,7 @@ class FormController extends Controller
                     'update_user' => session('username')
                 );
                 
+                $formBack = admin_back_target(url('/admin/Form/index'));
                 if (get_db_type() == 'sqlite') {
                     $result = $this->model->amd("CREATE TABLE `$table_name` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,`create_time` TEXT NOT NULL)");
                 } else {
@@ -90,14 +91,10 @@ class FormController extends Controller
                 
                 if ($this->model->addForm($data)) {
                     $this->log('新增自定义表单成功！');
-                    if (! ! $backurl = get('backurl')) {
-                        success('新增成功！', base64_decode($backurl));
-                    } else {
-                        success('新增成功！', url('/admin/Form/index'));
-                    }
+                    success('新增成功！', $formBack);
                 } else {
                     $this->log('新增自定义表单失败！');
-                    error('新增失败！', - 1);
+                    alert_back('新增失败！');
                 }
             } else {
                 // 获取数据
@@ -139,6 +136,8 @@ class FormController extends Controller
                 $mysql = "varchar($length)";
                 $sqlite = "TEXT($length)";
                 
+                $fieldBack = admin_back_target(url('/admin/Form/index/fcode/' . $fcode . '/action/showfield'));
+                
                 // 字段不存在时创建
                 if (! $this->model->isExistField($table, $name)) {
                     if (get_db_type() == 'sqlite') {
@@ -153,14 +152,10 @@ class FormController extends Controller
                 // 执行自定义表单记录添加
                 if ($this->model->addFormField($data)) {
                     $this->log('新增表单字段成功！');
-                    if (! ! $backurl = get('backurl')) {
-                        success('新增成功！', base64_decode($backurl));
-                    } else {
-                        success('新增成功！', url('/admin/Form/index/fcode/' . $fcode . '/action/showfield'));
-                    }
+                    success('新增成功！', $fieldBack);
                 } else {
                     $this->log('新增表单字段失败！');
-                    error('新增失败！', - 1);
+                    alert_back('新增失败！');
                 }
             }
         }
@@ -169,14 +164,18 @@ class FormController extends Controller
     // 自定义表单删除
     public function del()
     {
+        $formUrl = url('/admin/Form/index');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            error('请使用正确方式提交！', $formUrl);
+        }
         if (! $id = get('id', 'int')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', $formUrl);
         }
         
         // 删除表单
         if (get('action') == 'delform') {
             if ($id == 1) {
-                alert_back('留言表单不允许删除');
+                error('留言表单不允许删除', $formUrl);
             }
             $table = $this->model->getFormTable($id);
             $fcode = $this->model->getFormCode($id);
@@ -184,30 +183,34 @@ class FormController extends Controller
                 $this->model->delFormFieldByCode($fcode); // 删除字段记录
                 $this->model->amd("DROP TABLE IF EXISTS $table"); // 删除表
                 $this->log('删除自定义表单' . $id . '成功！');
-                success('删除成功！', - 1);
+                success('删除成功！', $formUrl);
             } else {
                 $this->log('删除自定义表单' . $id . '失败！');
-                error('删除失败！', - 1);
+                error('删除失败！', $formUrl);
             }
         } elseif (get('action') == 'deldata') {
             // 获取表单
             if (! $fcode = get('fcode', 'var')) {
-                error('传递的参数值fcode错误！', - 1);
+                error('传递的参数值fcode错误！', $formUrl);
             }
+            $dataUrl = url('/admin/Form/index/fcode/' . $fcode . '/action/showdata');
+            $back = admin_stay_target($dataUrl);
             $table = $this->model->getFormTableByCode($fcode);
             if ($this->model->delFormData($table, $id)) {
                 $this->log('删除表单数据' . $id . '成功！');
-                success('删除成功！', - 1);
+                success('删除成功！', $back);
             } else {
                 $this->log('删除表单数据' . $id . '失败！');
-                error('删除失败！', - 1);
+                error('删除失败！', $back);
             }
         } else {
             
             // 获取表单
             if (! $fcode = get('fcode', 'var')) {
-                error('传递的参数值fcode错误！', - 1);
+                error('传递的参数值fcode错误！', $formUrl);
             }
+            $fieldUrl = url('/admin/Form/index/fcode/' . $fcode . '/action/showfield');
+            $back = admin_stay_target($fieldUrl);
             
             // 获取操作表
             $table = $this->model->getFormTableByCode($fcode);
@@ -221,10 +224,10 @@ class FormController extends Controller
                     }
                 }
                 $this->log('删除自定义表单' . $id . '成功！');
-                success('删除成功！', - 1);
+                success('删除成功！', $back);
             } else {
                 $this->log('删除自定义表单' . $id . '失败！');
-                error('删除失败！', - 1);
+                error('删除失败！', $back);
             }
         }
     }
@@ -232,29 +235,36 @@ class FormController extends Controller
     // 自定义表单修改
     public function mod()
     {
+        $formUrl = url('/admin/Form/index');
         if (! $id = get('id', 'int')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', $formUrl);
         }
         
         // 单独修改状态
-        if (($field = get('field', 'var')) && ! is_null($value = get('value', 'var'))) {
-            if ($this->model->modFormField($id, "$field='$value',update_user='" . session('username') . "'")) {
-                location(- 1);
+        $posted = admin_posted_field(array('required'), $formUrl);
+        if ($posted) {
+            $fieldRow = $this->model->getFormField($id);
+            if (! $fieldRow) {
+                error('编辑的内容已经不存在！', $formUrl);
+            }
+            $fieldUrl = url('/admin/Form/index/fcode/' . $fieldRow->fcode . '/action/showfield');
+            if (admin_saved($this->model->modFormField($id, $posted[0] . "='" . $posted[1] . "',update_user='" . session('username') . "'"), true)) {
+                success('修改成功！', $fieldUrl);
             } else {
-                alert_back('修改失败！');
+                error('修改失败！', $fieldUrl);
             }
         }
         
         if (get('action') == 'addmenu') {
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                error('请使用正确方式提交！', $formUrl);
+            }
+            $menuBack = admin_back_target($formUrl);
             if ($this->model->addFormMenu($id)) {
                 $this->log('添加自定义表单' . $id . '到菜单成功！');
-                if (! ! $backurl = get('backurl')) {
-                    success('添加成功！', base64_decode($backurl));
-                } else {
-                    success('添加成功！', url('/admin/Form/index'));
-                }
+                success('添加成功！', $menuBack);
             } else {
-                location(- 1);
+                alert_back('添加失败！');
             }
         }
         
@@ -274,15 +284,16 @@ class FormController extends Controller
                 );
                 
                 // 执行修改
+                $back = admin_back_target($formUrl);
                 if ($this->model->modForm($id, $data)) {
                     $this->log('修改自定义表单' . $id . '成功！');
-                    if (! ! $backurl = get('backurl')) {
-                        success('修改成功！', base64_decode($backurl));
-                    } else {
-                        success('修改成功！', url('/admin/Form/index'));
-                    }
+                    success('修改成功！', $back);
                 } else {
-                    location(- 1);
+                    if ($this->model->getForm($id)) {
+                        success('修改成功！', $back);
+                    } else {
+                        error('编辑的内容已经不存在！', $formUrl);
+                    }
                 }
             } else {
                 
@@ -304,15 +315,16 @@ class FormController extends Controller
                 );
                 
                 // 执行修改
-                if ($this->model->modFormField($id, $data)) {
+                $fieldRow = $this->model->getFormField($id);
+                if (! $fieldRow) {
+                    error('编辑的内容已经不存在！', $formUrl);
+                }
+                $back = admin_back_target(url('/admin/Form/index/fcode/' . $fieldRow->fcode . '/action/showfield'));
+                if (admin_saved($this->model->modFormField($id, $data), true)) {
                     $this->log('修改表单字段' . $id . '成功！');
-                    if (! ! $backurl = get('backurl')) {
-                        success('修改成功！', base64_decode($backurl));
-                    } else {
-                        success('修改成功！', url('/admin/Form/index'));
-                    }
+                    success('修改成功！', $back);
                 } else {
-                    location(- 1);
+                    alert_back('修改失败！');
                 }
             }
         } else {
@@ -322,13 +334,13 @@ class FormController extends Controller
             
             if (get('action') == 'modform') {
                 if (! $result = $this->model->getForm($id)) {
-                    error('编辑的内容已经不存在！', - 1);
+                    error('编辑的内容已经不存在！', $formUrl);
                 }
                 
                 $this->assign('form', $result);
             } else {
                 if (! $result = $this->model->getFormField($id)) {
-                    error('编辑的内容已经不存在！', - 1);
+                    error('编辑的内容已经不存在！', $formUrl);
                 }
                 $this->assign('field', $result);
             }
@@ -339,16 +351,22 @@ class FormController extends Controller
     // 清空
     public function clear()
     {
-        // 获取表单
-        if (! $fcode = get('fcode', 'var')) {
-            error('传递的参数值fcode错误！', - 1);
+        $formUrl = url('/admin/Form/index');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            error('请使用正确方式提交！', $formUrl);
         }
+        if (! $fcode = get('fcode', 'var')) {
+            error('传递的参数值fcode错误！', $formUrl);
+        }
+        $back = admin_stay_target(url('/admin/Form/index/fcode/' . $fcode . '/action/showdata'));
         $table = $this->model->getFormTableByCode($fcode);
-        
-        if ($this->model->clearFormData($table)) {
-            alert_location('清空成功！', - 1);
+        if (! $table) {
+            error('传递的参数值fcode错误！', $formUrl);
+        }
+        if (admin_saved($this->model->clearFormData($table), true)) {
+            alert_location('清空成功！', $back, 1);
         } else {
-            alert_location('清空失败！', - 1);
+            alert_location('清空失败！', $back);
         }
     }
 }

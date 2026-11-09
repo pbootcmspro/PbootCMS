@@ -132,6 +132,7 @@ class AreaController extends Controller
             );
             
             // 执行添加
+            $areaBack = admin_back_target(url('/admin/Area/index'));
             if ($this->model->addArea($data)) {
                 if (session('ucode') == '10001') {
                     $acodes = session('acodes');
@@ -144,14 +145,10 @@ class AreaController extends Controller
                 }
                 $this->log('新增数据区域' . $acode . '成功！');
                 path_delete(RUN_PATH . '/config'); // 清理缓存的配置文件
-                if (! ! $backurl = get('backurl')) {
-                    success('新增成功！', base64_decode($backurl));
-                } else {
-                    success('新增成功！', url('/admin/Area/index'));
-                }
+                success('新增成功！', $areaBack);
             } else {
                 $this->log('新增数据区域' . $acode . '失败！');
-                error('新增失败！', - 1);
+                alert_back('新增失败！');
             }
         }
     }
@@ -184,12 +181,16 @@ class AreaController extends Controller
     // 区域删除
     public function del()
     {
+        $areaUrl = url('/admin/Area/index');
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            error('请使用正确方式提交！', $areaUrl);
+        }
         if (! $acode = get('acode', 'var')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', $areaUrl);
         }
         
         if ($acode == 'cn') {
-            error('系统内置区域不允许删除！', - 1);
+            error('系统内置区域不允许删除！', $areaUrl);
         }
         
         if ($this->model->delArea($acode)) {
@@ -199,15 +200,16 @@ class AreaController extends Controller
             success('删除成功,请重新登录', url('/admin/Index/index'));
         } else {
             $this->log('删除数据区域' . $acode . '失败！');
-            error('删除失败，请核对是否为默认区域！', - 1);
+            error('删除失败，请核对是否为默认区域！', $areaUrl);
         }
     }
 
     // 区域修改
     public function mod()
     {
+        $areaUrl = url('/admin/Area/index');
         if (! $acode = get('acode', 'var')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', $areaUrl);
         }
         
         // 修改操作
@@ -271,20 +273,20 @@ class AreaController extends Controller
                 }
                 $this->log('修改数据区域' . $acode . '成功！');
                 path_delete(RUN_PATH . '/config'); // 清理缓存的配置文件
-                if (! ! $backurl = get('backurl')) {
-                    success('修改成功！', base64_decode($backurl));
-                } else {
-                    success('修改成功！', url('/admin/Area/index'));
-                }
+                success('修改成功！', admin_back_target($areaUrl));
             } else {
-                location(- 1);
+                if ($this->model->getArea($acode)) {
+                    success('修改成功！', admin_back_target($areaUrl));
+                } else {
+                    error('编辑的内容已经不存在！', $areaUrl);
+                }
             }
         } else { // 调取修改内容
             $this->assign('mod', true);
             
             $area = $this->model->getArea($acode);
             if (! $area) {
-                error('编辑的内容已经不存在！', - 1);
+                error('编辑的内容已经不存在！', $areaUrl);
             }
             $this->assign('area', $area);
             

@@ -29,15 +29,15 @@
 	                    	<td>[value->description]</td>
 	                    	<td>
 		                        {if($value->status)}
-		                        <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/status/value/0}"><i class='fa fa-toggle-on' title="点击禁用"></i></a>
+		                        {fun=admin_switch_btn($value->id,'status','0',1,'id','点击禁用')}
 		                        {else}
-		                        <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/status/value/1}"><i class='fa fa-toggle-off' title="点击启用"></i></a>
+		                        {fun=admin_switch_btn($value->id,'status','1',0,'id','点击启用')}
 		                        {/if}
 	                    	</td>
 	                    	<td>[value->lscore]</td>
 	                    	<td>[value->uscore]</td>
 	                        <td>
-	                            {fun=get_btn_del($value->id)}
+	                            {fun=get_btn_del_post($value->id)}
 	                            {fun=get_btn_mod($value->id)}
 	                        </td>
 	                    </tr>

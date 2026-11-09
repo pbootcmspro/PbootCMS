@@ -60,9 +60,9 @@
 	                        <td>[value->date]</td>
 	                        <td>
 	                        {if($value->status)}
-		                        <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/status/value/0}" class="switch"><i class='fa fa-toggle-on' title="点击关闭"></i></a>
+		                        {fun=admin_switch_btn($value->id,'status','0',1,'id','点击关闭')}
 		                        {else}
-		                        <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/status/value/1}" class="switch"><i class='fa fa-toggle-off' title="点击开启"></i></a>
+		                        {fun=admin_switch_btn($value->id,'status','1',0,'id','点击开启')}
 		                    {/if}
 		                    </td>
 		                    <td>[value->visits]</td>
@@ -78,13 +78,13 @@
 	                            {if(check_level('mod'))}
 	                            	<a href="{url./admin/Single/mod/mcode/'.$value->mcode.'/id/'.$value->id.'}{$btnqs}" class="layui-btn layui-btn-xs" >修改</a>
 	                            	{if([$baidu_zz_token] && !$value->outlink)}
-	                            		<a href="{url./admin/'.C.'/mod/baiduzz/'.$value->id.'}" class="layui-btn layui-btn-xs layui-btn-primary" >百度普通推送</a>
+	                            		{fun=admin_post_link(url('/admin/'.C.'/mod/baiduzz/'.$value->id),'百度普通推送')}
 	                            	{/if}
 	                            	{if([$baidu_ks_token] && !$value->outlink)}
-	                            		<a href="{url./admin/'.C.'/mod/baiduks/'.$value->id.'}" class="layui-btn layui-btn-xs layui-btn-primary" >百度快速推送</a>
+	                            		{fun=admin_post_link(url('/admin/'.C.'/mod/baiduks/'.$value->id),'百度快速推送')}
 	                            	{/if}
                                     {if([$indexnow_key] && !$value->outlink)}
-                                        <a href="{url./admin/'.C.'/mod/indexnow/'.$value->id.'}" class="layui-btn layui-btn-xs layui-btn-primary" >IndexNow推送</a>
+                                        {fun=admin_post_link(url('/admin/'.C.'/mod/indexnow/'.$value->id),'IndexNow推送')}
                                     {/if}
 	                            {/if}
 	                        </td>

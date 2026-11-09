@@ -73,35 +73,295 @@ $(document).ready(function (e) {
     }
 
 
-    //无刷新切换状态
-    $('.switch').on("click",".fa-toggle-on",function(){
-        $.get($(this).parent(".switch").attr("href"))
-        $(this).addClass("fa-toggle-off");
-        $(this).removeClass("fa-toggle-on");
-        var status_url = $(this).parent(".switch").attr("href").split('/');
-        var new_status_url='';
-        for (var i=0;i<status_url.length-1;i++)
-        {
-            new_status_url += status_url[i] + '/'
-        }
-        new_status_url += '1';
-        $(this).parent(".switch").attr("href",new_status_url);
-        return false;
-    })
-    $('.switch').on("click",".fa-toggle-off",function(){
-        $.get($(this).parent(".switch").attr("href"))
-        $(this).addClass("fa-toggle-on");
-        $(this).removeClass("fa-toggle-off");
-        var status_url = $(this).parent(".switch").attr("href").split('/');
-        var new_status_url='';
-        for (var i=0;i<status_url.length-1;i++)
-        {
-            new_status_url += status_url[i] + '/'
-        }
-        new_status_url += '0';
-        $(this).parent(".switch").attr("href",new_status_url);
-        return false;
-    })
+	function pbootText(value) {
+		return String(value == null ? '' : value).replace(/[&<>"']/g, function(s) {
+			return {
+				'&': '&amp;',
+				'<': '&lt;',
+				'>': '&gt;',
+				'"': '&quot;',
+				"'": '&#39;'
+			}[s];
+		});
+	}
+
+	function pbootAdminUrl(url) {
+		if (!url || typeof url !== 'string') {
+			return false;
+		}
+		var link = document.createElement('a');
+		link.href = url;
+		if (link.protocol !== 'http:' && link.protocol !== 'https:') {
+			return false;
+		}
+		if (link.host !== window.location.host) {
+			return false;
+		}
+		var path = link.pathname || '';
+		var search = link.search || '';
+		if ((path === '/' || path === '') && !search) {
+			return false;
+		}
+		var curPath = window.location.pathname || '';
+		var curScript = curPath.substring(curPath.lastIndexOf('/') + 1).toLowerCase();
+		var linkScript = path.substring(path.lastIndexOf('/') + 1).toLowerCase();
+		if (/\.php$/i.test(curScript)) {
+			if (linkScript !== curScript) {
+				return false;
+			}
+			if (!/[?&]p=\/[A-Za-z0-9]+/i.test(search)) {
+				return false;
+			}
+			return true;
+		}
+		if (!/\/admin(\/|$)/i.test(curPath) || !/\/admin(\/|$)/i.test(path)) {
+			return false;
+		}
+		return true;
+	}
+
+	function pbootUnlock(form, sourceBtn) {
+		form.removeAttribute('data-pboot-lock');
+		var origin = form.getAttribute('data-pboot-origin-action');
+		if (origin) {
+			form.setAttribute('action', origin);
+			form.action = origin;
+		}
+		var nodes = form.querySelectorAll('[data-pboot-disabled]');
+		var i;
+		for (i = 0; i < nodes.length; i++) {
+			nodes[i].disabled = false;
+			nodes[i].removeAttribute('data-pboot-disabled');
+		}
+		if (sourceBtn) {
+			sourceBtn.removeAttribute('data-pboot-lock');
+			if (sourceBtn.getAttribute('data-pboot-disabled') === '1') {
+				sourceBtn.disabled = false;
+				sourceBtn.removeAttribute('data-pboot-disabled');
+			}
+		}
+	}
+
+	function pbootDisposeForm(form) {
+		if (form && form.getAttribute('data-pboot-ephemeral') === '1' && form.parentNode) {
+			form.parentNode.removeChild(form);
+		}
+	}
+
+	function pbootTip(kind, message, time, done) {
+		var show = function(layer) {
+			if (kind === 'msg') {
+				layer.msg(message, {time: time || 800}, done || function() {});
+			} else {
+				layer.alert(message);
+			}
+		};
+		if (typeof layer !== 'undefined') {
+			show(layer);
+		} else if (typeof layui !== 'undefined') {
+			layui.use('layer', show);
+		} else if (kind === 'msg') {
+			if (done) {
+				done();
+			}
+		} else {
+			window.alert(message);
+		}
+	}
+
+	window.pbootAjaxSubmit = function(form, options) {
+		options = options || {};
+		var sourceBtn = options.sourceBtn || null;
+		if (!form || form.getAttribute('data-pboot-lock') === '1') {
+			return;
+		}
+		if (sourceBtn && sourceBtn.getAttribute('data-pboot-lock') === '1') {
+			return;
+		}
+		var button = sourceBtn || form.__pbootSubmitter;
+		if (!options.confirmed) {
+			var ask = (button && button.getAttribute('data-confirm')) || form.getAttribute('data-confirm');
+			if (ask && !window.confirm(ask)) {
+				return;
+			}
+		}
+		if (!form.getAttribute('data-pboot-origin-action')) {
+			form.setAttribute('data-pboot-origin-action', form.getAttribute('action') || form.action || '');
+		}
+		form.setAttribute('data-pboot-lock', '1');
+		if (sourceBtn) {
+			sourceBtn.setAttribute('data-pboot-lock', '1');
+			if (!sourceBtn.disabled) {
+				sourceBtn.disabled = true;
+				sourceBtn.setAttribute('data-pboot-disabled', '1');
+			}
+		}
+		var token = String(new Date().getTime()) + Math.random();
+		form.setAttribute('data-pboot-token', token);
+		var data = $(form).serializeArray();
+		var i;
+		if (button && button.name && button.className.indexOf('ajax-sorting') === -1) {
+			var exists = false;
+			for (i = 0; i < data.length; i++) {
+				if (data[i].name === button.name) {
+					exists = true;
+				}
+			}
+			if (!exists) {
+				data.push({
+					name: button.name,
+					value: button.value || ''
+				});
+			}
+		}
+		var nodes = form.querySelectorAll('input, select, textarea, button');
+		for (i = 0; i < nodes.length; i++) {
+			if (!nodes[i].disabled) {
+				nodes[i].disabled = true;
+				nodes[i].setAttribute('data-pboot-disabled', '1');
+			}
+		}
+		var after = (button && button.getAttribute('data-after')) || form.getAttribute('data-after') || 'reload';
+		var postUrl = (button && button.getAttribute('data-action')) || form.action;
+		$.ajax({
+			type: 'POST',
+			url: postUrl,
+			data: data,
+			dataType: 'json',
+			timeout: 30000,
+			headers: {
+				'X-Requested-With': 'XMLHttpRequest'
+			},
+			success: function(response) {
+				if (form.getAttribute('data-pboot-token') !== token) {
+					return;
+				}
+				if (!response || typeof response.code === 'undefined') {
+					pbootUnlock(form, sourceBtn);
+					pbootDisposeForm(form);
+					pbootTip('alert', '结果未确认，请核对页面后再操作。');
+					return;
+				}
+				var message = typeof response.data === 'string' ? response.data : '操作完成';
+				if (response.code == 1 && after === 'stay') {
+					pbootTip('msg', pbootText(message), 1600);
+					pbootUnlock(form, sourceBtn);
+					pbootDisposeForm(form);
+					return;
+				}
+				if (response.code == 1) {
+					var tourl = response.tourl || '';
+					var match = form.getAttribute('data-nav-match');
+					var go = false;
+					if (after === 'nav' && pbootAdminUrl(tourl)) {
+						go = true;
+					}
+					if (match && tourl.indexOf(match) !== -1 && pbootAdminUrl(tourl)) {
+						go = true;
+					}
+					pbootTip('msg', pbootText(message), 800, function() {
+						if (form.getAttribute('data-pboot-left') === '1') {
+							return;
+						}
+						form.setAttribute('data-pboot-left', '1');
+						pbootDisposeForm(form);
+						if (go) {
+							window.location.href = tourl;
+						} else {
+							window.location.reload();
+						}
+					});
+					return;
+				}
+				pbootUnlock(form, sourceBtn);
+				pbootDisposeForm(form);
+				pbootTip('alert', pbootText(message || '操作失败'));
+			},
+			error: function() {
+				if (form.getAttribute('data-pboot-token') !== token) {
+					return;
+				}
+				pbootUnlock(form, sourceBtn);
+				pbootDisposeForm(form);
+				pbootTip('alert', '结果未确认，请核对页面后再操作。');
+			}
+		});
+	};
+
+	document.addEventListener('click', function(e) {
+		var el = e.target;
+		while (el && el !== document) {
+			if (el.form && el.tagName && (el.tagName === 'BUTTON' || el.tagName === 'INPUT')) {
+				var submitLike = el.type === 'submit' || el.getAttribute('lay-submit') !== null;
+				if (submitLike && el.className.indexOf('ajax-sorting') === -1 && el.form.className.indexOf('pboot-ajax') !== -1) {
+					el.form.__pbootSubmitter = el;
+				}
+				break;
+			}
+			el = el.parentNode;
+		}
+	}, true);
+
+	$(document).on('click', '.pboot-post', function(e) {
+		e.preventDefault();
+		var btn = this;
+		if (btn.getAttribute('data-pboot-lock') === '1' || btn.disabled) {
+			return false;
+		}
+		var ask = btn.getAttribute('data-confirm');
+		if (ask && !window.confirm(ask)) {
+			return false;
+		}
+		var stale = document.querySelectorAll('form[data-pboot-ephemeral="1"]');
+		var si;
+		for (si = 0; si < stale.length; si++) {
+			if (stale[si].parentNode) {
+				stale[si].parentNode.removeChild(stale[si]);
+			}
+		}
+		var form = document.createElement('form');
+		form.method = 'post';
+		form.action = btn.getAttribute('data-action');
+		form.className = 'pboot-ajax';
+		form.setAttribute('data-pboot-ephemeral', '1');
+		form.setAttribute('data-after', btn.getAttribute('data-after') || 'reload');
+		var fields = {
+			formcheck: btn.getAttribute('data-formcheck') || '',
+			stay: btn.getAttribute('data-stay') || ''
+		};
+		if (btn.getAttribute('data-field')) {
+			fields.field = btn.getAttribute('data-field');
+			fields.value = btn.getAttribute('data-value') || '';
+		}
+		var name;
+		for (name in fields) {
+			if (!fields.hasOwnProperty(name)) {
+				continue;
+			}
+			var input = document.createElement('input');
+			input.type = 'hidden';
+			input.name = name;
+			input.value = fields[name];
+			form.appendChild(input);
+		}
+		document.body.appendChild(form);
+		window.pbootAjaxSubmit(form, {sourceBtn: btn, confirmed: true});
+		return false;
+	});
+
+	$(document).on('submit', 'form.pboot-ajax', function(e) {
+		e.preventDefault();
+		var submitter = null;
+		if (e.originalEvent && e.originalEvent.submitter) {
+			submitter = e.originalEvent.submitter;
+		} else if (this.__pbootSubmitter) {
+			submitter = this.__pbootSubmitter;
+		}
+		window.pbootAjaxSubmit(this, {
+			sourceBtn: submitter
+		});
+		return false;
+	});
 
     $('.ajaxlink').on("click",function(){
         var url=$(this).attr("href");

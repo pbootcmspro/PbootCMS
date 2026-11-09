@@ -117,16 +117,13 @@ class MemberController extends Controller
             );
             
             // 执行添加
+            $memberBack = admin_back_target(url('/admin/Member/index'));
             if ($this->model->addMember($data)) {
                 $this->log('新增会员成功！');
-                if (! ! $backurl = get('backurl')) {
-                    success('新增成功！', base64_decode($backurl));
-                } else {
-                    success('新增成功！', url('/admin/Member/index'));
-                }
+                success('新增成功！', $memberBack);
             } else {
                 $this->log('新增会员失败！');
-                error('新增失败！', - 1);
+                alert_back('新增失败！');
             }
         }
     }
@@ -134,51 +131,55 @@ class MemberController extends Controller
     // 会员删除
     public function del()
     {
+        $memberUrl = url('/admin/Member/index');
+        $back = admin_stay_target($memberUrl);
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            error('请使用正确方式提交！', $memberUrl);
+        }
+        
         // 执行批量删除
-        if ($_POST) {
-            if (! ! $list = post('list')) {
-                if ($this->model->delMemberList($list)) {
-                    $this->log('批量删除会员成功！');
-                    success('删除成功！', - 1);
-                } else {
-                    $this->log('批量删除会员失败！');
-                    error('删除失败！', - 1);
-                }
+        if (! ! $list = post('list')) {
+            if ($this->model->delMemberList($list)) {
+                $this->log('批量删除会员成功！');
+                success('删除成功！', $back);
             } else {
-                alert_back('请选择要删除的会员！');
+                $this->log('批量删除会员失败！');
+                error('删除失败！', $back);
             }
         }
         
         if (! $id = get('id', 'int')) {
-            error('传递的参数值错误！', - 1);
+            error('请选择要删除的会员！', $back);
         }
         
         if ($this->model->delMember($id)) {
             $this->log('删除会员' . $id . '成功！');
-            success('删除成功！', - 1);
+            success('删除成功！', $back);
         } else {
             $this->log('删除会员' . $id . '失败！');
-            error('删除失败！', - 1);
+            error('删除失败！', $back);
         }
     }
 
     // 会员修改
     public function mod()
     {
+        $memberUrl = url('/admin/Member/index');
         if (! ! $submit = post('submit')) {
+            $back = admin_stay_target($memberUrl);
             switch ($submit) {
                 case 'verify1':
                     $list = post('list');
                     if (! $list) {
                         alert_back('请选择要操作的会员！');
                     }
-                    if ($this->model->modMemberList($list, array(
+                    if (admin_saved($this->model->modMemberList($list, array(
                         'status' => 1
-                    ))) {
+                    )), true)) {
                         $this->log('会员批量启用成功！');
-                        success('启用成功！', - 1);
+                        success('启用成功！', $back);
                     } else {
-                        alert_back('启用失败！');
+                        error('启用失败！', $back);
                     }
                     break;
                 case 'verify0':
@@ -186,36 +187,32 @@ class MemberController extends Controller
                     if (! $list) {
                         alert_back('请选择要操作的会员！');
                     }
-                    if ($this->model->modMemberList($list, array(
+                    if (admin_saved($this->model->modMemberList($list, array(
                         'status' => 0
-                    ))) {
+                    )), true)) {
                         $this->log('会员批量禁用成功！');
-                        success('禁用成功！', - 1);
+                        success('禁用成功！', $back);
                     } else {
-                        alert_back('禁用失败！');
+                        error('禁用失败！', $back);
                     }
                     break;
             }
         }
         
-        if (! is_string($_GET['id'] ?? null) || ! ($id = get('id', 'int'))) {
-            error('传递的参数值错误！', - 1);
+        if (! isset($_GET['id']) || ! is_string($_GET['id']) || ! ($id = get('id', 'int'))) {
+            error('传递的参数值错误！', $memberUrl);
         }
         
         // 单独修改状态（仅允许 status=0/1）
-        if (isset($_GET['field']) || array_key_exists('value', $_GET)) {
-            $field = is_string($_GET['field'] ?? null) ? get('field', 'var') : null;
-            if ($field !== 'status') {
-                error('不允许修改该字段！', - 1);
+        $posted = admin_posted_field(array('status'), $memberUrl);
+        if ($posted) {
+            if ($posted[1] !== '0' && $posted[1] !== '1') {
+                error('传递的参数值错误！', $memberUrl);
             }
-            $value = is_string($_GET['value'] ?? null) ? get('value', 'var') : null;
-            if ($value !== '0' && $value !== '1') {
-                error('传递的参数值错误！', - 1);
-            }
-            if ($this->model->modMemberStatus($id, $value)) {
-                location(- 1);
+            if (admin_saved($this->model->modMemberStatus($id, $posted[1]), true)) {
+                success('修改成功！', $memberUrl);
             } else {
-                alert_back('修改失败！');
+                error('修改失败！', $memberUrl);
             }
         }
         
@@ -278,22 +275,23 @@ class MemberController extends Controller
             }
             
             // 执行添加
+            $back = admin_back_target($memberUrl);
             if ($this->model->modMember($id, $data)) {
                 $this->log('修改会员成功！');
-                if (! ! $backurl = get('backurl')) {
-                    success('修改成功！', base64_decode($backurl));
-                } else {
-                    success('修改成功！', url('/admin/Member/index'));
-                }
+                success('修改成功！', $back);
             } else {
-                $this->log('修改会员失败！');
-                error('修改失败！', - 1);
+                if ($this->model->getMember($id)) {
+                    success('修改成功！', $back);
+                } else {
+                    $this->log('修改会员失败！');
+                    error('编辑的内容已经不存在！', $memberUrl);
+                }
             }
         } else {
             // 调取修改内容
             $this->assign('mod', true);
             if (! $result = $this->model->getMember($id)) {
-                error('编辑的内容已经不存在！', - 1);
+                error('编辑的内容已经不存在！', $memberUrl);
             }
             // 会员等级
             $this->assign('groups', model('admin.member.MemberGroup')->getSelect());

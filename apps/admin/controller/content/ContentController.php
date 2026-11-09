@@ -198,6 +198,7 @@ class ContentController extends Controller
             );
 
             // 执行添加
+            $contentBack = admin_back_target(url('/admin/Content/index/mcode/' . get('mcode')));
             if (!!$id = $this->model->addContent($data)) {
                 // 扩展内容添加
                 foreach ($_POST as $key => $value) {
@@ -217,7 +218,7 @@ class ContentController extends Controller
                     if (!$this->model->addContentExt($data2)) {
                         $this->model->delContent($id);
                         $this->log('新增文章失败！');
-                        error('新增失败！', -1);
+                        alert_back('新增失败！');
                     }
                 }
 
@@ -234,14 +235,10 @@ class ContentController extends Controller
                 if ($notice = iframe_whitelist_sync_notice_many($syncHtmls, '新增成功！')) {
                     $msg = $notice;
                 }
-                if (!!$backurl = get('backurl')) {
-                    success($msg, base64_decode($backurl));
-                } else {
-                    success($msg, url('/admin/Content/index/mcode/' . get('mcode')));
-                }
+                success($msg, $contentBack);
             } else {
                 $this->log('新增文章失败！');
-                error('新增失败！', -1);
+                alert_back('新增失败！');
             }
         }
     }
@@ -272,33 +269,32 @@ class ContentController extends Controller
     // 文章删除
     public function del()
     {
-        // 执行批量删除
-        if ($_POST) {
-            if (!!$list = post('list')) {
-                if ($this->model->delContentList($list)) {
-                    $this->model->delContentExtList($list);
-                    $this->log('批量删除文章成功！');
-                    success('批量删除成功！', -1);
-                } else {
-                    $this->log('批量删除文章失败！');
-                    error('批量删除失败！', -1);
-                }
+        $back = admin_stay_target(url('/admin/Content/index'));
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            error('请使用正确方式提交！', $back);
+        }
+        if (!!$list = post('list')) {
+            if ($this->model->delContentList($list)) {
+                $this->model->delContentExtList($list);
+                $this->log('批量删除文章成功！');
+                success('批量删除成功！', $back);
             } else {
-                alert_back('请选择要删除的内容！');
+                $this->log('批量删除文章失败！');
+                error('批量删除失败！', $back);
             }
         }
 
         if (!$id = get('id', 'int')) {
-            error('传递的参数值错误！', -1);
+            error('请选择要删除的内容！', $back);
         }
 
         if ($this->model->delContent($id)) {
             $this->model->delContentExt($id);
             $this->log('删除文章' . $id . '成功！');
-            success('删除成功！', -1);
+            success('删除成功！', $back);
         } else {
             $this->log('删除文章' . $id . '失败！');
-            error('删除失败！', -1);
+            error('删除失败！', $back);
         }
     }
 
@@ -331,11 +327,12 @@ class ContentController extends Controller
                     if (!$scode) {
                         alert_back('请选择目标栏目！');
                     }
+                    $back = admin_stay_target(url('/admin/Content/index'));
                     if ($this->model->copyContent($list, $scode)) {
                         $this->log('复制内容成功！');
-                        success('复制内容成功！', -1);
+                        success('复制内容成功！', $back);
                     } else {
-                        alert_back('复制内容失败！');
+                        error('复制内容失败！', $back);
                     }
                     break;
                 case 'move':
@@ -347,12 +344,12 @@ class ContentController extends Controller
                     if (!$scode) {
                         alert_back('请选择目标栏目！');
                     }
-
+                    $back = admin_stay_target(url('/admin/Content/index'));
                     if ($this->model->modContent($list, "scode='" . $scode . "'")) {
                         $this->log('移动内容成功！');
-                        success('移动内容成功！', -1);
+                        success('移动内容成功！', $back);
                     } else {
-                        alert_back('移动内容失败！');
+                        error('移动内容失败！', $back);
                     }
                     break;
                 case 'baiduzz':
@@ -376,7 +373,7 @@ class ContentController extends Controller
                     if (isset($result->error)) {
                         alert_back('百度普通收录推送发生错误：' . $result->message);
                     } elseif (isset($result->success)) {
-                        alert_back('成功推送' . $result->success . '条，今天剩余可推送' . $result->remain . '条数!');
+                        alert_back('成功推送' . $result->success . '条，今天剩余可推送' . $result->remain . '条数!', 1);
                     } else {
                         alert_back('发生未知错误！');
                     }
@@ -402,7 +399,7 @@ class ContentController extends Controller
                     if (isset($result->error)) {
                         alert_back('百度快速收录推送发生错误：' . $result->message);
                     } elseif (isset($result->success_daily)) {
-                        alert_back('成功推送' . $result->success_daily . '条，今天剩余可推送' . $result->remain_daily . '条数!');
+                        alert_back('成功推送' . $result->success_daily . '条，今天剩余可推送' . $result->remain_daily . '条数!', 1);
                     } else {
                         alert_back('发生未知错误！');
                     }
@@ -447,21 +444,25 @@ class ContentController extends Controller
                     } else {
                         $this->log('IndexNow推送失败：共' . count($post_urls) . '条，' . $msg);
                     }
-                    alert_back($msg);
+                    alert_back($msg, (!$rs['errno'] && ($rs['code'] == 200 || $rs['code'] == 202)) ? 1 : 0);
                     break;
             }
         }
 
         if (!$id = get('id', 'int')) {
-            error('传递的参数值错误！', -1);
+            error('传递的参数值错误！', url('/admin/Content/index'));
         }
 
         // 单独修改状态
-        if (($field = get('field', 'var')) && !is_null($value = get('value', 'var'))) {
-            if ($this->model->modContent($id, "$field='$value',update_user='" . session('username') . "'")) {
-                location(-1);
+        $posted = admin_posted_field(array('status', 'istop', 'isrecommend'), function () use ($id) {
+            return admin_model_list_url($id);
+        });
+        if ($posted) {
+            $listUrl = admin_model_list_url($id);
+            if (admin_saved($this->model->modContent($id, $posted[0] . "='" . $posted[1] . "',update_user='" . session('username') . "'"), true)) {
+                success('修改成功！', $listUrl);
             } else {
-                alert_back('修改失败！');
+                error('修改失败！', $listUrl);
             }
         }
 
@@ -604,19 +605,21 @@ class ContentController extends Controller
                 if ($notice = iframe_whitelist_sync_notice_many($syncHtmls, '修改成功！')) {
                     $msg = $notice;
                 }
-                if (!!$backurl = get('backurl')) {
-                    success($msg, base64_decode($backurl));
-                } else {
-                    success($msg, url('/admin/Content/index/mcode/2'));
-                }
+                $contentBack = admin_back_target(url('/admin/Content/index/mcode/' . get('mcode')));
+                success($msg, $contentBack);
             } else {
-                location(-1);
+                $contentBack = admin_back_target(url('/admin/Content/index/mcode/' . get('mcode')));
+                if ($this->model->getContent($id)) {
+                    success('修改成功！', $contentBack);
+                } else {
+                    error('编辑的内容已经不存在！', $contentBack);
+                }
             }
         } else {
             // 调取修改内容
             $this->assign('mod', true);
             if (!$result = $this->model->getContent($id)) {
-                error('编辑的内容已经不存在！', -1);
+                error('编辑的内容已经不存在！', url('/admin/Content/index'));
             }
             $this->assign('content', $result);
 

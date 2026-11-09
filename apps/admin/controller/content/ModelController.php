@@ -91,16 +91,13 @@ class ModelController extends Controller
             );
             
             // 执行添加
+            $modelBack = admin_back_target(url('/admin/Model/index'));
             if ($this->model->addModel($data)) {
                 $this->log('新增内容模型成功！');
-                if (! ! $backurl = get('backurl')) {
-                    success('新增成功！', base64_decode($backurl));
-                } else {
-                    success('新增成功！', url('/admin/Model/index'));
-                }
+                success('新增成功！', $modelBack);
             } else {
                 $this->log('新增内容模型失败！');
-                error('新增失败！', - 1);
+                alert_back('新增失败！');
             }
         }
     }
@@ -108,16 +105,20 @@ class ModelController extends Controller
     // 内容模型删除
     public function del()
     {
+        $back = admin_stay_target(url('/admin/Model/index'));
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            error('请使用正确方式提交！', $back);
+        }
         if (! $id = get('id', 'int')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', $back);
         }
         
         if ($this->model->delModel($id)) {
             $this->log('删除内容模型' . $id . '成功！');
-            success('删除成功！', - 1);
+            success('删除成功！', $back);
         } else {
             $this->log('删除内容模型' . $id . '失败！');
-            error('删除失败！', - 1);
+            error('删除失败！', $back);
         }
     }
 
@@ -125,15 +126,16 @@ class ModelController extends Controller
     public function mod()
     {
         if (! $id = get('id', 'int')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', url('/admin/Model/index'));
         }
         
         // 单独修改状态
-        if (($field = get('field', 'var')) && ! is_null($value = get('value', 'var'))) {
-            if ($this->model->modModel($id, "$field='$value',update_user='" . session('username') . "'")) {
-                location(- 1);
+        $posted = admin_posted_field(array('status'), url('/admin/Model/index'));
+        if ($posted) {
+            if (admin_saved($this->model->modModel($id, $posted[0] . "='" . $posted[1] . "',update_user='" . session('username') . "'"), true)) {
+                success('修改成功！', url('/admin/Model/index'));
             } else {
-                alert_back('修改失败！');
+                error('修改失败！', url('/admin/Model/index'));
             }
         }
         
@@ -186,19 +188,19 @@ class ModelController extends Controller
             // 执行添加
             if ($this->model->modModel($id, $data)) {
                 $this->log('修改内容模型' . $id . '成功！');
-                if (! ! $backurl = get('backurl')) {
-                    success('修改成功！', base64_decode($backurl));
-                } else {
-                    success('修改成功！', url('/admin/Model/index'));
-                }
+                success('修改成功！', admin_back_target(url('/admin/Model/index')));
             } else {
-                location(- 1);
+                if ($this->model->getModel($id)) {
+                    success('修改成功！', url('/admin/Model/index'));
+                } else {
+                    error('编辑的内容已经不存在！', url('/admin/Model/index'));
+                }
             }
         } else {
             // 调取修改内容
             $this->assign('mod', true);
             if (! $result = $this->model->getModel($id)) {
-                error('编辑的内容已经不存在！', - 1);
+                error('编辑的内容已经不存在！', url('/admin/Model/index'));
             }
             $this->assign('model', $result);
             $this->display('content/model.html');

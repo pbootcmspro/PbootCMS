@@ -30,8 +30,9 @@
 	               
                 </form>
                 
-	  	   		<form action="{url./admin/Content/mod}" method="post" id="contentForm" name="contentForm" class="layui-form" onkeydown="if(event.keyCode==13) return false;">
+	  	   		<form action="{url./admin/Content/mod}" method="post" id="contentForm" name="contentForm" class="layui-form pboot-ajax" data-after="reload" onkeydown="if(event.keyCode==13) return false;">
 		            <input type="hidden" name="formcheck" value="{$formcheck}" > 
+		            {fun=admin_stay_input()}
 		            <table class="layui-table">
 		            	<thead>
 		                    <tr>
@@ -76,23 +77,23 @@
 		                        <td class="table-input"><input type="text" lay-ignore class="layui-input" name="sorting[]" value="[value->sorting]"></td>
 		                        <td>
 		                        {if($value->status)}
-			                        <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/status/value/0}" class="switch"><i class='fa fa-toggle-on' title="点击关闭"></i></a>
+			                        {fun=admin_switch_btn($value->id,'status','0',1,'id','点击关闭')}
 			                        {else}
-			                        <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/status/value/1}" class="switch"><i class='fa fa-toggle-off' title="点击开启"></i></a>
+			                        {fun=admin_switch_btn($value->id,'status','1',0,'id','点击开启')}
 			                    {/if}
 			                    </td>
 			                    <td>
 		                        {if($value->istop)}
-			                        <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/istop/value/0}" class="switch"><i class='fa fa-toggle-on' title="点击关闭"></i></a>
+			                        {fun=admin_switch_btn($value->id,'istop','0',1,'id','点击关闭')}
 			                        {else}
-			                        <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/istop/value/1}" class="switch"><i class='fa fa-toggle-off' title="点击开启"></i></a>
+			                        {fun=admin_switch_btn($value->id,'istop','1',0,'id','点击开启')}
 			                    {/if}
 			                    </td>
 			                    <td>
 		                        {if($value->isrecommend)}
-			                        <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/isrecommend/value/0}" class="switch"><i class='fa fa-toggle-on' title="点击关闭"></i></a>
+			                        {fun=admin_switch_btn($value->id,'isrecommend','0',1,'id','点击关闭')}
 			                        {else}
-			                        <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/isrecommend/value/1}" class="switch"><i class='fa fa-toggle-off' title="点击开启"></i></a>
+			                        {fun=admin_switch_btn($value->id,'isrecommend','1',0,'id','点击开启')}
 			                    {/if}
 			                    </td>
 			                    <td>[value->visits]</td>
@@ -106,7 +107,7 @@
 			                        	<input type="hidden" name="urls[[value->id]]" value="{php}echo $link{/php}">
 			                        	<a href="{php}echo $link{/php}" class="layui-btn layui-btn-xs layui-btn-primary"  target="_blank">查看</a>
 		                        	{/if}
-		                            {fun=get_btn_del($value->id)}
+		                            {fun=get_btn_del_post($value->id)}
 		                            {if(check_level('mod'))}
 		                            	<a href="{url./admin/Content/mod/mcode/'.get('mcode').'/id/'.$value->id.'}{$btnqs}" class="layui-btn layui-btn-xs" >修改</a>
 		                            {/if}
@@ -144,29 +145,22 @@
 	                    {/if}
 	                    
 	                    {if(check_level('del'))}
-				     		<button type="submit" name="submit" onclick="return setDelAction();" class="layui-btn layui-btn-sm">批量删除</button>
+				     		<button type="submit" name="submit" data-action="{url./admin/Content/del}" data-confirm="您确定要删除选中的内容么？" class="layui-btn layui-btn-sm">批量删除</button>
 				     	{/if}
 				     	
 				     	{if(check_level('mod'))}
                             <button type="button" class="ajax-sorting layui-btn layui-btn-sm">保存排序</button>
 					     	{if([$baidu_zz_token])}
-					     		<button type="submit" name="submit" value="baiduzz" class="layui-btn layui-btn-sm">百度普通推送</button>
+					     		<button type="submit" name="submit" value="baiduzz" data-after="stay" class="layui-btn layui-btn-sm">百度普通推送</button>
 					     	{/if}
 					     	{if([$baidu_ks_token])}
-					     		<button type="submit" name="submit" value="baiduks" class="layui-btn layui-btn-sm">百度快速推送</button>
+					     		<button type="submit" name="submit" value="baiduks" data-after="stay" class="layui-btn layui-btn-sm">百度快速推送</button>
 					     	{/if}
                         {if([$indexnow_key])}
-                            <button type="submit" name="submit" value="indexnow" class="layui-btn layui-btn-sm">IndexNow推送</button>
+                            <button type="submit" name="submit" value="indexnow" data-after="stay" class="layui-btn layui-btn-sm">IndexNow推送</button>
                         {/if}
 				     	 {/if}
 			     	 </div>
-			     	<script>
-			     		function setDelAction(){
-                            if (!confirm("您确定要删除选中的内容么？")) return false;
-                            document.contentForm.action = "{url./admin/Content/del}";
-                            return true;
-			     		}
-			     	</script>
 			     	
 			     	<div class="page">
 			     		{$pagebar}

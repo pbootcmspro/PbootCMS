@@ -38,7 +38,13 @@ defined('RELEASE_TIME') || define('RELEASE_TIME', '0');
 require CORE_PATH . '/function/handle.php';
 require CORE_PATH . '/basic/Config.php';
 require CORE_PATH . '/basic/Response.php';
+eval('namespace core\\basic; class Url { public static function get($path, $suffix = null) { $path = trim((string) $path, "/"); if (strpos($path, "admin/") === 0) { $path = substr($path, 6); } return "/admin.php?p=/" . $path; } }');
+
 require CORE_PATH . '/function/helper.php';
+defined('M') || define('M', 'admin');
+defined('C') || define('C', 'User');
+defined('URL') || define('URL', '/admin.php?p=/User/index');
+require APP_PATH . '/common/function.php';
 require CORE_PATH . '/basic/Controller.php';
 require APP_PATH . '/admin/controller/system/UserController.php';
 
@@ -77,6 +83,8 @@ function user_csrf_probe_make_controller()
 }
 
 $_GET['ucode'] = '10002';
+
+$_SERVER['REQUEST_METHOD'] = substr($mode, -5) === '_post' ? 'POST' : 'GET';
 
 switch ($mode) {
     case 'del_get':

@@ -51,10 +51,14 @@ return TestAssert::runSuite(function () {
     TestAssert::false(strpos($bad['stdout'], 'STATUS_CALLED:') !== false, 'invalid value no status call');
     TestAssert::true(strpos($bad['stdout'], '传递的参数值错误') !== false, 'invalid value message');
 
+    $get = admin_member_quick_mod_run_probe('get_status');
+    TestAssert::false(strpos($get['stdout'], 'STATUS_CALLED:') !== false, 'get status no model call');
+    TestAssert::true(strpos($get['stdout'], '请使用正确方式提交') !== false, 'get status rejected');
+
     foreach (array(
         'id_array' => '传递的参数值错误',
         'field_array' => '不允许修改该字段',
-        'value_array' => '传递的参数值错误',
+        'value_array' => '不允许修改该字段',
         'value_array_without_field' => '不允许修改该字段'
     ) as $mode => $message) {
         $r = admin_member_quick_mod_run_probe($mode);

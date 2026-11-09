@@ -14,7 +14,11 @@ declare(strict_types=1);
  */
 
 ini_set('display_errors', '0');
-error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
+$errorLevel = E_ALL & ~E_DEPRECATED;
+if (defined('E_STRICT')) {
+    $errorLevel = $errorLevel & ~ constant('E_STRICT');
+}
+error_reporting($errorLevel);
 
 $mode = isset($argv[1]) ? (string) $argv[1] : '';
 if ($mode === '') {
@@ -33,16 +37,25 @@ defined('SITE_DIR') || define('SITE_DIR', '');
 defined('CORE_DIR') || define('CORE_DIR', '/core');
 defined('APP_VERSION') || define('APP_VERSION', 'test');
 defined('RELEASE_TIME') || define('RELEASE_TIME', '0');
+defined('M') || define('M', 'admin');
+defined('C') || define('C', 'User');
+defined('URL') || define('URL', '/admin.php?p=/User/index');
 
 require CORE_PATH . '/function/handle.php';
 require CORE_PATH . '/basic/Config.php';
 require CORE_PATH . '/basic/Response.php';
+
+eval('namespace core\\basic; class Url { public static function get($path, $suffix = null) { $path = trim((string) $path, "/"); if (strpos($path, "admin/") === 0) { $path = substr($path, 6); } return "/admin.php?p=/" . $path; } }');
+
 require CORE_PATH . '/function/helper.php';
 require CORE_PATH . '/basic/Controller.php';
+require APP_PATH . '/common/function.php';
 require APP_PATH . '/admin/controller/system/UserController.php';
 
-// AJAX 强制走 JSON 输出，避免依赖 error.html/success.html 模板
 $_SERVER['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest';
+$_SERVER['HTTP_HOST'] = 'dev.pbootcms.lan';
+$_SERVER['REQUEST_SCHEME'] = 'http';
+$_SERVER['SERVER_PORT'] = '80';
 
 class UserModProbeModelDouble
 {
@@ -65,22 +78,30 @@ function user_mod_probe_make_controller()
     return $controller;
 }
 
-$_GET['ucode'] = '10002';
+function user_mod_probe_post($field, $value)
+{
+    $_SERVER['REQUEST_METHOD'] = 'POST';
+    $_GET = array('ucode' => '10002');
+    $_POST = array(
+        'formcheck' => 'probe',
+        'field' => $field,
+        'value' => $value
+    );
+}
 
 switch ($mode) {
     case 'field_password':
-        $_POST['field'] = 'password';
-        $_POST['value'] = md5(md5('attacker-password'));
+        user_mod_probe_post('password', md5(md5('attacker-password')));
         user_mod_probe_make_controller()->mod();
         break;
     case 'field_status':
-        $_POST['field'] = 'status';
-        $_POST['value'] = '1';
+        user_mod_probe_post('status', '1');
         user_mod_probe_make_controller()->mod();
         break;
     case 'field_status_get':
-        $_GET['field'] = 'status';
-        $_GET['value'] = '1';
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_GET = array('ucode' => '10002', 'field' => 'status', 'value' => '1');
+        $_POST = array();
         user_mod_probe_make_controller()->mod();
         break;
     default:

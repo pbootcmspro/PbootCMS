@@ -29,8 +29,9 @@
                 </div>
             </form>
             
-            <form action="{url./admin/Member/mod}" method="post" id="contentForm" name="contentForm" class="layui-form" onkeydown="if(event.keyCode==13) return false;">
+            <form action="{url./admin/Member/mod}" method="post" id="contentForm" name="contentForm" class="layui-form pboot-ajax" data-after="reload" onkeydown="if(event.keyCode==13) return false;">
 		    	<input type="hidden" name="formcheck" value="{$formcheck}" > 
+		    	{fun=admin_stay_input()}
 		  		<table class="layui-table">
 		  			<thead>
 	                    <tr>
@@ -58,9 +59,9 @@
 	                        <td>[value->nickname]</td>
 	                        <td>
 	                       		{if($value->status)}
-		                        <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/status/value/0}"><i class='fa fa-toggle-on' title="点击禁用"></i></a>
+		                        {fun=admin_switch_btn($value->id,'status','0',1,'id','点击禁用')}
 		                        {else}
-		                        <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/status/value/1}"><i class='fa fa-toggle-off' title="点击启用"></i></a>
+		                        {fun=admin_switch_btn($value->id,'status','1',0,'id','点击启用')}
 		                        {/if}
 	                        </td>
 	                        <td>[value->gname]</td>
@@ -69,7 +70,7 @@
 	                        <td>[value->last_login_time]</td>
 	                        <td>
 	                       		{fun=get_btn_more($value->id)}
-	                            {fun=get_btn_del($value->id)}
+	                            {fun=get_btn_del_post($value->id)}
 	                            {fun=get_btn_mod($value->id)}
 	                        </td>
 	                    </tr>
@@ -81,7 +82,7 @@
 		  		<div class="layui-btn-group">
                    
                     {if(check_level('del'))}
-			     		<button type="submit" name="submit" onclick="return setDelAction();" class="layui-btn layui-btn-sm">删除</button>
+			     		<button type="submit" name="submit" data-action="{url./admin/Member/del}" data-confirm="您确定要删除选中的会员么？" class="layui-btn layui-btn-sm">删除</button>
 			     	{/if}
 			     	
 			     	{if(check_level('mod'))}
@@ -89,12 +90,6 @@
 			     		<button type="submit" name="submit" value="verify0" class="layui-btn layui-btn-sm">禁用</button>
 			     	 {/if}
 		     	 </div>
-		     	<script>
-		     		function setDelAction(){
-		     			document.contentForm.action = "{url./admin/Member/del}"; 
-		     			return confirm("您确定要删除选中的会员么？");
-		     		}
-		     	</script>
 		     	{/if}
 		  	</form> 
 	  		<div class="page">{$pagebar}</div>

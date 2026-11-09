@@ -100,16 +100,13 @@ class UserController extends Controller
             );
             
             // 执行添加
+            $userBack = admin_back_target(url('/admin/User/index'));
             if ($this->model->addUser($data, $roles)) {
                 $this->log('新增用户' . $ucode . '成功！');
-                if (! ! $backurl = get('backurl')) {
-                    success('新增成功！', base64_decode($backurl));
-                } else {
-                    success('新增成功！', url('/admin/User/index'));
-                }
+                success('新增成功！', $userBack);
             } else {
                 $this->log('新增用户' . $ucode . '失败！');
-                error('新增失败', - 1);
+                alert_back('新增失败！');
             }
         }
     }
@@ -117,25 +114,26 @@ class UserController extends Controller
     // 用户删除
     public function del()
     {
+        $back = admin_stay_target(url('/admin/User/index'));
         // 禁止裸 GET，须 POST（由 AdminController 校验 formcheck）
-        if (! $_POST) {
-            error('请使用正确方式提交！', - 1);
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            error('请使用正确方式提交！', $back);
         }
         
         if (! $ucode = get('ucode', 'var')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', $back);
         }
         
         if ($ucode == '10001') {
-            error('内置管理员不允许删除！', - 1);
+            error('内置管理员不允许删除！', $back);
         }
         
         if ($this->model->delUser($ucode)) {
             $this->log('删除用户' . $ucode . '成功！');
-            success('删除成功！', - 1);
+            success('删除成功！', $back);
         } else {
             $this->log('删除用户' . $ucode . '失败！');
-            error('删除失败', - 1);
+            error('删除失败！', $back);
         }
     }
 
@@ -143,30 +141,20 @@ class UserController extends Controller
     public function mod()
     {
         if (! $ucode = get('ucode', 'var')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', url('/admin/User/index'));
         }
         
         if ($ucode == '10001') {
-            error('内置管理员不允许此操作！', - 1);
+            error('内置管理员不允许此操作！', url('/admin/User/index'));
         }
         
         // 单独修改状态（仅允许 status；禁止裸 GET，须 POST + formcheck）
-        if ((isset($_GET['field']) || isset($_POST['field'])) && (array_key_exists('value', $_GET) || array_key_exists('value', $_POST))) {
-            if (! $_POST) {
-                error('请使用正确方式提交！', - 1);
-            }
-            $field = post('field', 'var');
-            $value = post('value', 'var');
-            if (! $field || is_null($value)) {
-                error('传递的参数值错误！', - 1);
-            }
-            if ($field !== 'status') {
-                error('不允许修改该字段！', - 1);
-            }
-            if ($this->model->modUser($ucode, "$field='$value',update_user='" . session('username') . "'")) {
-                location(- 1);
+        $posted = admin_posted_field(array('status'), url('/admin/User/index'));
+        if ($posted) {
+            if (admin_saved($this->model->modUser($ucode, $posted[0] . "='" . $posted[1] . "',update_user='" . session('username') . "'"), true)) {
+                success('修改成功！', url('/admin/User/index'));
             } else {
-                alert_back('修改失败！');
+                error('修改失败！', url('/admin/User/index'));
             }
         }
         
@@ -215,22 +203,23 @@ class UserController extends Controller
             }
             
             // 执行添加
+            $back = admin_back_target(url('/admin/User/index'));
             if ($this->model->modUser($ucode, $data, $roles)) {
                 $this->log('修改用户' . $ucode . '成功！');
-                if (! ! $backurl = get('backurl')) {
-                    success('修改成功！', base64_decode($backurl));
-                } else {
-                    success('修改成功！', url('/admin/User/index'));
-                }
+                success('修改成功！', $back);
             } else {
-                location(- 1);
+                if ($this->model->getUser($ucode)) {
+                    success('修改成功！', $back);
+                } else {
+                    error('编辑的内容已经不存在！', url('/admin/User/index'));
+                }
             }
         } else { // 调取修改内容
             $this->assign('mod', true);
             
             $result = $this->model->getUser($ucode);
             if (! $result) {
-                error('编辑的内容已经不存在！', - 1);
+                error('编辑的内容已经不存在！', url('/admin/User/index'));
             }
             $this->assign('user', $result);
             

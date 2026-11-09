@@ -79,16 +79,13 @@ class RoleController extends Controller
             );
             
             // 执行添加
+            $roleBack = admin_back_target(url('/admin/Role/index'));
             if ($this->model->addRole($data, $acodes, $levels)) {
                 $this->log('修改角色' . $rcode . '成功！');
-                if (! ! $backurl = get('backurl')) {
-                    success('新增成功！', base64_decode($backurl));
-                } else {
-                    success('新增成功！', url('admin/Role/index'));
-                }
+                success('新增成功！', $roleBack);
             } else {
                 $this->log('修改角色' . $rcode . '失败！');
-                error('新增失败！', - 1);
+                alert_back('新增失败！');
             }
         }
     }
@@ -171,15 +168,19 @@ class RoleController extends Controller
     // 角色删除
     public function del()
     {
+        $back = admin_stay_target(url('/admin/Role/index'));
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            error('请使用正确方式提交！', url('/admin/Role/index'));
+        }
         if (! $rcode = get('rcode', 'var')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', url('/admin/Role/index'));
         }
         if ($this->model->delRole($rcode)) {
             $this->log('删除角色' . $rcode . '成功！');
-            success('删除成功！', - 1);
+            success('删除成功！', url('/admin/Role/index'));
         } else {
             $this->log('删除角色' . $rcode . '失败！');
-            error('删除失败！', - 1);
+            error('删除失败！', url('/admin/Role/index'));
         }
     }
 
@@ -187,7 +188,7 @@ class RoleController extends Controller
     public function mod()
     {
         if (! $rcode = get('rcode', 'var')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', url('/admin/Role/index'));
         }
         
         // 修改操作
@@ -210,15 +211,16 @@ class RoleController extends Controller
             );
             
             // 执行修改
+            $back = admin_back_target(url('/admin/Role/index'));
             if ($this->model->modRole($rcode, $data, $acodes, $levels)) {
                 $this->log('修改角色' . $rcode . '成功！');
-                if (! ! $backurl = get('backurl')) {
-                    success('修改成功！', base64_decode($backurl));
-                } else {
-                    success('修改成功！', url('admin/Role/index'));
-                }
+                success('修改成功！', $back);
             } else {
-                location(- 1);
+                if ($this->model->getRole($rcode)) {
+                    success('修改成功！', $back);
+                } else {
+                    error('编辑的内容已经不存在！', url('/admin/Role/index'));
+                }
             }
         } else {
             $this->assign('mod', true);
@@ -226,7 +228,7 @@ class RoleController extends Controller
             // 调取修改内容
             $result = $this->model->getRole($rcode);
             if (! $result) {
-                error('编辑的内容已经不存在！', - 1);
+                error('编辑的内容已经不存在！', url('/admin/Role/index'));
             }
             $this->assign('role', $result);
             

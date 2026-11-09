@@ -9,8 +9,9 @@
 	  </ul>
 	  <div class="layui-tab-content">
 	  	<div class="layui-tab-item layui-show">
-	  		<form action="{url./admin/Link/mod}" method="post" class="layui-form" onkeydown="if(event.keyCode==13) return false;">
+	  		<form action="{url./admin/Link/mod}" method="post" class="layui-form pboot-ajax" data-after="reload" onkeydown="if(event.keyCode==13) return false;">
 		   	 <input type="hidden" name="formcheck" value="{$formcheck}" > 
+		   	 {fun=admin_stay_input()}
 	  		<table class="layui-table">
 	  			<thead>
                     <tr>
@@ -34,7 +35,7 @@
                         	<input type="text" lay-ignore class="layui-input" name="sorting[]" value="[value->sorting]">
                         </td>
                         <td>
-                            {fun=get_btn_del($value->id)}
+                            {fun=get_btn_del_post($value->id)}
                             {fun=get_btn_mod($value->id)}
                         </td>
                     </tr>

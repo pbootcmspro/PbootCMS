@@ -42,16 +42,20 @@ class MessageController extends Controller
     // 删除
     public function del()
     {
+        $back = admin_stay_target(url('/admin/Message/index'));
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            error('请使用正确方式提交！', $back);
+        }
         if (! $id = get('id', 'int')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', $back);
         }
         
         if ($this->model->delMessage($id)) {
             $this->log('删除留言' . $id . '成功！');
-            success('删除成功！', - 1);
+            success('删除成功！', $back);
         } else {
             $this->log('删除留言' . $id . '失败！');
-            error('删除失败！', - 1);
+            error('删除失败！', $back);
         }
     }
 
@@ -59,15 +63,16 @@ class MessageController extends Controller
     public function mod()
     {
         if (! $id = get('id', 'int')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', url('/admin/Message/index'));
         }
         
         // 单独修改状态
-        if (($field = get('field', 'var')) && ! is_null($value = get('value', 'var'))) {
-            if ($this->model->modMessage($id, "$field='$value',update_user='" . session('username') . "'")) {
-                location(- 1);
+        $posted = admin_posted_field(array('status'), url('/admin/Message/index'));
+        if ($posted) {
+            if (admin_saved($this->model->modMessage($id, $posted[0] . "='" . $posted[1] . "',update_user='" . session('username') . "'"), true)) {
+                success('修改成功！', url('/admin/Message/index'));
             } else {
-                alert_back('修改失败！');
+                error('修改失败！', url('/admin/Message/index'));
             }
         }
         
@@ -87,19 +92,19 @@ class MessageController extends Controller
             // 执行修改
             if ($this->model->modMessage($id, $data)) {
                 $this->log('修改留言' . $id . '成功！');
-                if (! ! $backurl = get('backurl')) {
-                    success('修改成功！', base64_decode($backurl));
-                } else {
-                    success('修改成功！', url('/admin/Message/index'));
-                }
+                success('修改成功！', admin_back_target(url('/admin/Message/index')));
             } else {
-                location(- 1);
+                if ($this->model->getMessage($id)) {
+                    success('修改成功！', url('/admin/Message/index'));
+                } else {
+                    error('编辑的内容已经不存在！', url('/admin/Message/index'));
+                }
             }
         } else {
             // 调取修改内容
             $this->assign('mod', true);
             if (! $result = $this->model->getMessage($id)) {
-                error('编辑的内容已经不存在！', - 1);
+                error('编辑的内容已经不存在！', url('/admin/Message/index'));
             }
             $this->assign('message', $result);
             
@@ -112,17 +117,17 @@ class MessageController extends Controller
     {
         // 非POST请求直接拒绝，避免通过GET链接触发批量删除
         if (! $_POST) {
-            error('非法请求！', - 1);
+            error('非法请求！', url('/admin/Message/index'));
         }
         
         $ids = post('ids');
         if (($idList = parse_strict_id_list($ids)) === false) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', url('/admin/Message/index'));
         }
         
-        if ($this->model->delMessageByIds($idList)) {
+        if (admin_saved($this->model->delMessageByIds($idList), true)) {
             $this->log('删除留言' . implode(',', $idList) . '成功！');
-            alert_location('删除成功！', url('/admin/Message/index'));
+            alert_location('删除成功！', url('/admin/Message/index'), 1);
         } else {
             $this->log('删除留言' . implode(',', $idList) . '失败！');
             alert_location('删除失败！', url('/admin/Message/index'));
@@ -134,12 +139,12 @@ class MessageController extends Controller
     {
         // 非POST请求直接拒绝，避免通过GET链接触发全表清空
         if (! $_POST) {
-            error('非法请求！', - 1);
+            error('非法请求！', url('/admin/Message/index'));
         }
         
-        if ($this->model->clearMessage()) {
+        if (admin_saved($this->model->clearMessage(), true)) {
             $this->log('清空全部留言成功！');
-            alert_location('清空成功！', url('/admin/Message/index'));
+            alert_location('清空成功！', url('/admin/Message/index'), 1);
         } else {
             $this->log('清空全部留言失败！');
             alert_location('清空失败！', url('/admin/Message/index'));

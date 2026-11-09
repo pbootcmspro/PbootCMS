@@ -98,16 +98,13 @@ class LabelController extends Controller
             );
             
             // 执行添加
+            $labelBack = admin_back_target(url('admin/Label/index' . get_tab('t2'), false));
             if ($this->model->addLabel($data)) {
                 $this->log('修改自定义标签' . $name . '成功！');
-                if (! ! $backurl = get('backurl')) {
-                    success('新增成功！', base64_decode($backurl));
-                } else {
-                    success('新增成功！', url('admin/Label/index' . get_tab('t2'), false));
-                }
+                success('新增成功！', $labelBack);
             } else {
                 $this->log('新增自定义标签' . $name . '失败！');
-                error('新增失败！', url('admin/Label/index' . get_tab('t2'), false));
+                alert_back('新增失败！');
             }
         }
     }
@@ -115,23 +112,28 @@ class LabelController extends Controller
     // 自定义标签字段删除
     public function del()
     {
+        $labelUrl = url('admin/Label/index' . get_tab('t2'), false);
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            error('请使用正确方式提交！', $labelUrl);
+        }
         if (! $id = get('id', 'int')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', $labelUrl);
         }
         if ($this->model->delLabel($id)) {
             $this->log('删除自定义标签' . $id . '成功！');
-            success('删除成功！', url('admin/Label/index' . get_tab('t2'), false));
+            success('删除成功！', $labelUrl);
         } else {
             $this->log('删除自定义标签' . $id . '失败！');
-            error('删除失败！', - 1);
+            error('删除失败！', $labelUrl);
         }
     }
 
     // 自定义标签字段修改
     public function mod()
     {
+        $labelUrl = url('admin/Label/index' . get_tab('t2'), false);
         if (! $id = get('id', 'int')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', $labelUrl);
         }
         
         // 修改操作
@@ -170,11 +172,16 @@ class LabelController extends Controller
             );
             
             // 执行添加
+            $back = admin_back_target($labelUrl);
             if ($this->model->modLabel($id, $data)) {
                 $this->log('修改自定义标签字段' . $id . '成功！');
-                success('修改成功！', url('admin/Label/index' . get_tab('t2'), false));
+                success('修改成功！', $back);
             } else {
-                location(- 1);
+                if ($this->model->getLabel($id)) {
+                    success('修改成功！', $back);
+                } else {
+                    error('编辑的内容已经不存在！', $labelUrl);
+                }
             }
         } else {
             $this->assign('mod', true);
@@ -182,7 +189,7 @@ class LabelController extends Controller
             // 调取修改内容
             $result = $this->model->getLabel($id);
             if (! $result) {
-                error('编辑的内容已经不存在！', - 1);
+                error('编辑的内容已经不存在！', $labelUrl);
             }
             $this->assign('label', $result);
             

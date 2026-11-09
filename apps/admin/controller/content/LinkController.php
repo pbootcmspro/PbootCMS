@@ -85,16 +85,13 @@ class LinkController extends Controller
             );
             
             // 执行添加
+            $linkBack = admin_back_target(url('/admin/Link/index'));
             if ($this->model->addLink($data)) {
                 $this->log('新增友情链接成功！');
-                if (! ! $backurl = get('backurl')) {
-                    success('新增成功！', base64_decode($backurl));
-                } else {
-                    success('新增成功！', url('/admin/Link/index'));
-                }
+                success('新增成功！', $linkBack);
             } else {
                 $this->log('新增友情链接失败！');
-                error('新增失败！', - 1);
+                alert_back('新增失败！');
             }
         }
     }
@@ -102,16 +99,20 @@ class LinkController extends Controller
     // 友情链接删除
     public function del()
     {
+        $back = admin_stay_target(url('/admin/Link/index'));
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            error('请使用正确方式提交！', url('/admin/Link/index'));
+        }
         if (! $id = get('id', 'int')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', url('/admin/Link/index'));
         }
         
         if ($this->model->delLink($id)) {
             $this->log('删除友情链接' . $id . '成功！');
-            success('删除成功！', - 1);
+            success('删除成功！', url('/admin/Link/index'));
         } else {
             $this->log('删除友情链接' . $id . '失败！');
-            error('删除失败！', - 1);
+            error('删除失败！', url('/admin/Link/index'));
         }
     }
 
@@ -139,15 +140,16 @@ class LinkController extends Controller
         }
         
         if (! $id = get('id', 'int')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', url('/admin/Link/index'));
         }
         
         // 单独修改状态
-        if (($field = get('field', 'var')) && ! is_null($value = get('value', 'var'))) {
-            if ($this->model->modLink($id, "$field='$value',update_user='" . session('username') . "'")) {
-                location(- 1);
+        $posted = admin_posted_field(array('status'), url('/admin/Link/index'));
+        if ($posted) {
+            if (admin_saved($this->model->modLink($id, $posted[0] . "='" . $posted[1] . "',update_user='" . session('username') . "'"), true)) {
+                success('修改成功！', url('/admin/Link/index'));
             } else {
-                alert_back('修改失败！');
+                error('修改失败！', url('/admin/Link/index'));
             }
         }
         
@@ -191,19 +193,19 @@ class LinkController extends Controller
             // 执行添加
             if ($this->model->modLink($id, $data)) {
                 $this->log('修改友情链接' . $id . '成功！');
-                if (! ! $backurl = get('backurl')) {
-                    success('修改成功！', base64_decode($backurl));
-                } else {
-                    success('修改成功！', url('/admin/Link/index'));
-                }
+                success('修改成功！', admin_back_target(url('/admin/Link/index')));
             } else {
-                location(- 1);
+                if ($this->model->getLink($id)) {
+                    success('修改成功！', url('/admin/Link/index'));
+                } else {
+                    error('编辑的内容已经不存在！', url('/admin/Link/index'));
+                }
             }
         } else {
             // 调取修改内容
             $this->assign('mod', true);
             if (! $result = $this->model->getLink($id)) {
-                error('编辑的内容已经不存在！', - 1);
+                error('编辑的内容已经不存在！', url('/admin/Link/index'));
             }
             $this->assign('gids', $this->model->getGid());
             $this->assign('link', $result);

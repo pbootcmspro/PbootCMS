@@ -37,7 +37,7 @@
 	                </tbody>
 	            </table>
 	            {if(session('ucode')==10001 && [$syslogs])}
-	            	<a href="{url./admin/Syslog/clear}" class="layui-btn layui-btn-sm"  onclick='return confirm("您确定要清空么？")'>清空日志</a>
+	            	{fun=admin_post_link(url('/admin/Syslog/clear'),'清空日志','reload','layui-btn layui-btn-sm','您确定要清空么？')}
 	            {/if}
 	            <div class="page">{$pagebar}</div>
 	            {/if}

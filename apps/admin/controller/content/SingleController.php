@@ -59,16 +59,20 @@ class SingleController extends Controller
     // 单页内容删除
     public function del()
     {
+        $back = admin_stay_target(url('/admin/Single/index'));
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            error('请使用正确方式提交！', $back);
+        }
         if (! $id = get('id', 'int')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', $back);
         }
 
         if ($this->model->delSingle($id)) {
             $this->log('删除单页内容' . $id . '成功！');
-            success('删除成功！', - 1);
+            success('删除成功！', $back);
         } else {
             $this->log('删除单页内容' . $id . '失败！');
-            error('删除失败！', - 1);
+            error('删除失败！', $back);
         }
     }
 
@@ -77,6 +81,9 @@ class SingleController extends Controller
     {
         // 前端地址连接符判断
         if (get('baiduzz') || get('baiduks') || get('indexnow')) {
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                error('请使用正确方式提交！', url('/admin/Single/index'));
+            }
             $url_break_char = $this->config('url_break_char') ?: '_';
             $url_rule_sort_suffix = $this->config('url_rule_sort_suffix') ? true : false;
         }
@@ -105,7 +112,8 @@ class SingleController extends Controller
                 alert_back('推送发生错误：' . $result->message);
             } elseif (isset($result->success)) {
                 $this->log('百度普通收录推送成功：' . $urls[0]);
-                alert_back('成功推送' . $result->success . '条，今天剩余可推送' . $result->remain . '条数!');
+                $okMsg = '成功推送' . $result->success . '条，今天剩余可推送' . $result->remain . '条数!';
+                alert_back($okMsg, 1);
             } else {
                 alert_back('发生未知错误！');
             }
@@ -135,7 +143,8 @@ class SingleController extends Controller
                 alert_back('推送发生错误：' . $result->message);
             } elseif (isset($result->success_daily)) {
                 $this->log('百度快速收录推送成功：' . $urls[0]);
-                alert_back('成功推送' . $result->success_daily . '条，今天剩余可推送' . $result->remain_daily . '条数!');
+                $okMsg = '成功推送' . $result->success_daily . '条，今天剩余可推送' . $result->remain_daily . '条数!';
+                alert_back($okMsg, 1);
             } else {
                 alert_back('发生未知错误！');
             }
@@ -176,24 +185,29 @@ class SingleController extends Controller
             $rs = post_indexnow($key, $key_location, $urls, $expected_host);
             $msg = get_indexnow_msg($rs, count($urls));
             $this->log('IndexNow推送：' . $urls[0]);
-            if (! $rs['errno'] && ($rs['code'] == 200 || $rs['code'] == 202)) {
+            $pushOk = (! $rs['errno'] && ($rs['code'] == 200 || $rs['code'] == 202));
+            if ($pushOk) {
                 $this->log('IndexNow推送成功：' . $msg);
             } else {
                 $this->log('IndexNow推送失败：' . $msg);
             }
-            alert_back($msg);
+            alert_back($msg, $pushOk ? 1 : 0);
         }
 
         if (! $id = get('id', 'int')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', url('/admin/Single/index'));
         }
         
         // 单独修改状态
-        if (($field = get('field', 'var')) && ! is_null($value = get('value', 'var'))) {
-            if ($this->model->modSingle($id, "$field='$value',update_user='" . session('username') . "'")) {
-                location(- 1);
+        $posted = admin_posted_field(array('status'), function () use ($id) {
+            return admin_model_list_url($id, true);
+        });
+        if ($posted) {
+            $listUrl = admin_model_list_url($id, true);
+            if (admin_saved($this->model->modSingle($id, $posted[0] . "='" . $posted[1] . "',update_user='" . session('username') . "'"), true)) {
+                success('修改成功！', $listUrl);
             } else {
-                alert_back('修改失败！');
+                error('修改失败！', $listUrl);
             }
         }
         
@@ -299,19 +313,21 @@ class SingleController extends Controller
                 if ($notice = iframe_whitelist_sync_notice_many($syncHtmls, '修改成功！')) {
                     $msg = $notice;
                 }
-                if (! ! $backurl = get('backurl')) {
-                    success($msg, base64_decode($backurl));
-                } else {
-                    success($msg, url('/admin/Single/index/mcode/1'));
-                }
+                $singleBack = admin_back_target(admin_model_list_url($id, true));
+                success($msg, $singleBack);
             } else {
-                location(- 1);
+                $singleBack = admin_back_target(admin_model_list_url($id, true));
+                if ($this->model->getSingle($id)) {
+                    success('修改成功！', $singleBack);
+                } else {
+                    error('编辑的内容已经不存在！', $singleBack);
+                }
             }
         } else {
             // 调取修改内容
             $this->assign('mod', true);
             if (! $result = $this->model->getSingle($id)) {
-                error('编辑的内容已经不存在！', - 1);
+                error('编辑的内容已经不存在！', url('/admin/Single/index'));
             }
             $this->assign('content', $result);
             

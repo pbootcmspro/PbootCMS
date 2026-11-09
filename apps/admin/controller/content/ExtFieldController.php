@@ -110,6 +110,8 @@ class ExtFieldController extends Controller
                     $sqlite = 'TEXT(200)';
             }
             
+            $extBack = admin_back_target(url('/admin/ExtField/index'));
+            
             // 字段不存在时创建
             if (! $this->model->isExistField($name)) {
                 if (get_db_type() == 'sqlite') {
@@ -124,14 +126,10 @@ class ExtFieldController extends Controller
             // 执行扩展字段记录添加
             if ($this->model->addExtField($data)) {
                 $this->log('新增扩展字段成功！');
-                if (! ! $backurl = get('backurl')) {
-                    success('新增成功！', base64_decode($backurl));
-                } else {
-                    success('新增成功！', url('/admin/ExtField/index'));
-                }
+                success('新增成功！', $extBack);
             } else {
                 $this->log('新增扩展字段失败！');
-                error('新增失败！', - 1);
+                alert_back('新增失败！');
             }
         }
     }
@@ -139,8 +137,12 @@ class ExtFieldController extends Controller
     // 扩展字段删除
     public function del()
     {
+        $back = admin_stay_target(url('/admin/ExtField/index'));
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            error('请使用正确方式提交！', url('/admin/ExtField/index'));
+        }
         if (! $id = get('id', 'int')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', url('/admin/ExtField/index'));
         }
         
         $name = $this->model->getExtFieldName($id);
@@ -159,10 +161,10 @@ class ExtFieldController extends Controller
                 }
             }
             $this->log('删除扩展字段' . $id . '成功！');
-            success('删除成功！', - 1);
+            success('删除成功！', url('/admin/ExtField/index'));
         } else {
             $this->log('删除扩展字段' . $id . '失败！');
-            error('删除失败！', - 1);
+            error('删除失败！', url('/admin/ExtField/index'));
         }
     }
 
@@ -170,15 +172,16 @@ class ExtFieldController extends Controller
     public function mod()
     {
         if (! $id = get('id', 'int')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', url('/admin/ExtField/index'));
         }
         
         // 单独修改状态
-        if (($field = get('field', 'var')) && ! is_null($value = get('value', 'var'))) {
-            if ($this->model->modExtField($id, "$field='$value',update_user='" . session('username') . "'")) {
-                location(- 1);
+        $posted = admin_posted_field(array('status'), url('/admin/ExtField/index'));
+        if ($posted) {
+            if (admin_saved($this->model->modExtField($id, $posted[0] . "='" . $posted[1] . "',update_user='" . session('username') . "'"), true)) {
+                success('修改成功！', url('/admin/ExtField/index'));
             } else {
-                alert_back('修改失败！');
+                error('修改失败！', url('/admin/ExtField/index'));
             }
         }
         
@@ -213,22 +216,23 @@ class ExtFieldController extends Controller
             );
             
             // 执行修改
+            $back = admin_back_target(url('/admin/ExtField/index'));
             if ($this->model->modExtField($id, $data)) {
                 $this->log('修改扩展字段' . $id . '成功！');
-                if (! ! $backurl = get('backurl')) {
-                    success('修改成功！', base64_decode($backurl));
-                } else {
-                    success('修改成功！', url('/admin/ExtField/index'));
-                }
+                success('修改成功！', $back);
             } else {
-                location(- 1);
+                if ($this->model->getExtField($id)) {
+                    success('修改成功！', $back);
+                } else {
+                    error('编辑的内容已经不存在！', url('/admin/ExtField/index'));
+                }
             }
         } else {
             
             // 调取修改内容
             $this->assign('mod', true);
             if (! $result = $this->model->getExtField($id)) {
-                error('编辑的内容已经不存在！', - 1);
+                error('编辑的内容已经不存在！', url('/admin/ExtField/index'));
             }
             
             // 内容模型

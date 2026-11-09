@@ -27,19 +27,21 @@ return TestAssert::runSuite(function () {
     $companyMod = admin_redirect_method_body($company, 'function mod(');
 
     TestAssert::contains($siteMod, "url('/admin/Site/index')", 'site mod target is site index');
-    TestAssert::contains($siteMod, 'writeOk($this->model->modSite($data), true)', 'site update treats unchanged as saved');
-    TestAssert::contains($siteMod, 'writeOk($this->model->addSite($data), false)', 'site insert does not treat 0 as saved');
+    TestAssert::contains($siteMod, 'admin_saved($this->model->modSite($data), true)', 'site update treats unchanged as saved');
+    TestAssert::contains($siteMod, 'admin_saved($this->model->addSite($data), false)', 'site insert does not treat 0 as saved');
     TestAssert::notContains($siteMod, '-1', 'site mod does not use referer sentinel');
     TestAssert::notContains($siteMod, 'location(', 'site mod does not send a bare location');
+    TestAssert::notContains($siteMod, 'function writeOk(', 'site mod does not keep private writeOk');
 
     TestAssert::contains($siteProbe, "url('/admin/Site/server')", 'imagick probe returns to server page');
     TestAssert::notContains($siteProbe, '-1', 'imagick probe does not use referer sentinel');
 
     TestAssert::contains($companyMod, "url('/admin/Company/index')", 'company mod target is company index');
-    TestAssert::contains($companyMod, 'writeOk($this->model->modCompany($data), true)', 'company update treats unchanged as saved');
-    TestAssert::contains($companyMod, 'writeOk($this->model->addCompany($data), false)', 'company insert does not treat 0 as saved');
+    TestAssert::contains($companyMod, 'admin_saved($this->model->modCompany($data), true)', 'company update treats unchanged as saved');
+    TestAssert::contains($companyMod, 'admin_saved($this->model->addCompany($data), false)', 'company insert does not treat 0 as saved');
     TestAssert::notContains($companyMod, '-1', 'company mod does not use referer sentinel');
     TestAssert::notContains($companyMod, 'location(', 'company mod does not send a bare location');
+    TestAssert::notContains($company, 'function writeOk(', 'company does not keep private writeOk');
 });
 
 function admin_redirect_method_body($source, $signature)
@@ -54,7 +56,11 @@ function admin_redirect_method_body($source, $signature)
             $candidates[] = $pos;
         }
     }
-    TestAssert::false(count($candidates) === 0, $signature . ' has a following method');
+    if (count($candidates) === 0) {
+        $end = strrpos($source, '}');
+        TestAssert::false($end === false, $signature . ' closes before file end');
+        return substr($source, $start, $end - $start);
+    }
     $next = min($candidates);
     return substr($source, $start, $next - $start);
 }

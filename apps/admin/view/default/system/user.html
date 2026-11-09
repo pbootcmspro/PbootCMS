@@ -53,19 +53,9 @@
 	                    		<i class='fa fa-toggle-on' title="超级管理员不可操作"></i>
 	                    	{else}
 		                        {if($value->status)}
-		                        <form action="{url./admin/'.C.'/mod/ucode/'.$value->ucode.'}" method="post" style="display:inline">
-		                        	<input type="hidden" name="formcheck" value="{$formcheck}">
-		                        	<input type="hidden" name="field" value="status">
-		                        	<input type="hidden" name="value" value="0">
-		                        	<button type="submit" title="点击关闭" style="border:none;background:none;padding:0;cursor:pointer;color:inherit;"><i class='fa fa-toggle-on'></i></button>
-		                        </form>
+		                        {fun=admin_switch_btn($value->ucode,'status','0',1,'ucode','点击关闭')}
 		                        {else}
-		                        <form action="{url./admin/'.C.'/mod/ucode/'.$value->ucode.'}" method="post" style="display:inline">
-		                        	<input type="hidden" name="formcheck" value="{$formcheck}">
-		                        	<input type="hidden" name="field" value="status">
-		                        	<input type="hidden" name="value" value="1">
-		                        	<button type="submit" title="点击开启" style="border:none;background:none;padding:0;cursor:pointer;color:inherit;"><i class='fa fa-toggle-off'></i></button>
-		                        </form>
+		                        {fun=admin_switch_btn($value->ucode,'status','1',0,'ucode','点击开启')}
 		                        {/if}
 	                        {/if}
 	                    </td>

@@ -36,8 +36,8 @@
 	                        <td>
 								
 	                        	{if($value->id!=1)}
-									<a href="{url./admin/Form/mod/id/'.$value->id.'/action/addmenu}{$btnqs}" class="layui-btn layui-btn-xs layui-btn-primary">添加到菜单</a>
-	                        		<a href="{url./admin/Form/del/id/'.$value->id.'/action/delform}" onclick="return confirm('您确定要删除么？')" class="layui-btn layui-btn-xs layui-btn-danger" title="删除">删除</a>
+									{fun=admin_post_link(url('/admin/Form/mod/id/'.$value->id.'/action/addmenu'),'添加到菜单','reload','layui-btn layui-btn-xs layui-btn-primary')}
+	                        		{fun=admin_post_link(url('/admin/Form/del/id/'.$value->id.'/action/delform'),'删除','reload','layui-btn layui-btn-xs layui-btn-danger','您确定要删除么？')}
 	                            {/if}
 	                            <a href="{url./admin/Form/mod/id/'.$value->id.'/action/modform}{$btnqs}" class="layui-btn layui-btn-xs">修改</a>
 								
@@ -91,7 +91,7 @@
 				  		<tr>
 					  		<th colspan="2">
 					  			{$form->form_name}-[num] 
-					  			<span style="float:right"><a href="{url./admin/Form/del/id/'.$value->id.'/fcode/'.[$form->fcode].'/action/deldata}" onclick="return confirm('您确定要删除么？')" class="layui-btn layui-btn-xs layui-btn-danger" style="margin-bottom:0px" title="删除">删除</a></span>
+					  			<span style="float:right">{fun=admin_post_link(url('/admin/Form/del/id/'.$value->id.'/fcode/'.[$form->fcode].'/action/deldata'),'删除','reload','layui-btn layui-btn-xs layui-btn-danger','您确定要删除么？')}</span>
 					  		</th>
 					  	</tr>
 				    </thead>
@@ -112,7 +112,7 @@
 	            {/foreach}
 	            
 	            {if(session('ucode')==10001 && [$formdata])}
-			     	<a href="{url./admin/Form/clear/fcode/'.[$form->fcode].'}"  onclick='return confirm("您确定要清空么？")' class="layui-btn layui-btn-sm">清空记录</a>
+			     	{fun=admin_post_link(url('/admin/Form/clear/fcode/'.[$form->fcode]),'清空记录','reload','layui-btn layui-btn-sm','您确定要清空么？')}
 			    {/if}
 			    
 			    {if([$formdata])}
@@ -154,14 +154,14 @@
 	                    	<td>[value->length]</td>
 	                    	<td>
 		                        {if($value->required)}
-		                        <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/required/value/0}"><i class='fa fa-toggle-on' title="点击关闭必填"></i></a>
+		                        {fun=admin_switch_btn($value->id,'required','0',1,'id','点击关闭必填')}
 		                        {else}
-		                        <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/required/value/1}"><i class='fa fa-toggle-off' title="点击开启必填"></i></a>
+		                        {fun=admin_switch_btn($value->id,'required','1',0,'id','点击开启必填')}
 		                        {/if}
 	                    	</td>
 	                    	<td>[value->sorting]</td>
 	                        <td>
-	                       		<a href="{url./admin/Form/del/id/'.$value->id.'/fcode/'.[$get.fcode].'}" onclick="return confirm('您确定要删除么？')" class="layui-btn layui-btn-xs layui-btn-danger" title="删除">删除</a>
+	                       		{fun=admin_post_link(url('/admin/Form/del/id/'.$value->id.'/fcode/'.[$get.fcode]),'删除','reload','layui-btn layui-btn-xs layui-btn-danger','您确定要删除么？')}
 	                            {fun=get_btn_mod($value->id)}
 	                        </td>
 	                    </tr>

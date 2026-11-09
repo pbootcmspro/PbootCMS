@@ -8,7 +8,7 @@
 	  </ul>
 	  <div class="layui-tab-content">
 	  	<div class="layui-tab-item layui-show">
-	  		<form action="{url./admin/Company/mod}" method="post">
+	  		<form action="{url./admin/Company/mod}" method="post" class="pboot-ajax" data-after="reload">
 	  			<input type="hidden" name="formcheck" value="{$formcheck}" > 
 	  			<div class="layui-form-item">
                      <label class="layui-form-label">公司名称</label>

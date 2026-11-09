@@ -131,7 +131,7 @@ function get_btn_del($idValue, $id = 'id', $btnName = '删除')
 }
 
 // 获取 POST + formcheck 删除按钮（用于已改为仅接受 POST 的删除端点）
-function get_btn_del_post($idValue, $id = 'id', $btnName = '删除')
+function get_btn_del_post($idValue, $id = 'id', $btnName = '删除', $after = 'reload')
 {
     $user_level = session('levels');
     if (! in_array('/' . M . '/' . C . '/del', $user_level) && session('id') != 1)
@@ -139,11 +139,170 @@ function get_btn_del_post($idValue, $id = 'id', $btnName = '删除')
     $action = htmlspecialchars(url('/' . M . '/' . C . "/del/$id/$idValue"), ENT_QUOTES, 'UTF-8');
     $token = htmlspecialchars((string) session('formcheck'), ENT_QUOTES, 'UTF-8');
     $btnName = htmlspecialchars($btnName, ENT_QUOTES, 'UTF-8');
-    $btn_html = "<form action='" . $action . "' method='post' style='display:inline' onsubmit='return confirm(\"您确定要删除么？\")'>"
-        . "<input type='hidden' name='formcheck' value='" . $token . "'>"
-        . "<button type='submit' class='layui-btn layui-btn-xs layui-btn-danger' title='" . $btnName . "'>" . $btnName . "</button>"
-        . "</form>";
+    $stay = htmlspecialchars(base64_encode(defined('URL') ? URL : ''), ENT_QUOTES, 'UTF-8');
+    $after = htmlspecialchars((string) $after, ENT_QUOTES, 'UTF-8');
+    $btn_html = "<button type='button' class='layui-btn layui-btn-xs layui-btn-danger pboot-post' data-action='" . $action . "' data-after='" . $after . "' data-confirm='您确定要删除么？' data-formcheck='" . $token . "' data-stay='" . $stay . "' title='" . $btnName . "'>" . $btnName . "</button>";
     return $btn_html;
+}
+
+function admin_stay_input()
+{
+    $current = defined('URL') ? URL : '';
+    $token = htmlspecialchars(base64_encode($current), ENT_QUOTES, 'UTF-8');
+    return "<input type='hidden' name='stay' value='" . $token . "'>";
+}
+
+function admin_switch_btn($idValue, $field, $value, $on, $id = 'id', $title = '')
+{
+    $action = htmlspecialchars(url('/' . M . '/' . C . '/mod/' . $id . '/' . $idValue), ENT_QUOTES, 'UTF-8');
+    $token = htmlspecialchars((string) session('formcheck'), ENT_QUOTES, 'UTF-8');
+    $field = htmlspecialchars($field, ENT_QUOTES, 'UTF-8');
+    $value = htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+    $title = htmlspecialchars($title, ENT_QUOTES, 'UTF-8');
+    $stay = htmlspecialchars(base64_encode(defined('URL') ? URL : ''), ENT_QUOTES, 'UTF-8');
+    $icon = $on ? 'fa-toggle-on' : 'fa-toggle-off';
+    return "<button type='button' class='pboot-post' data-action='" . $action . "' data-after='reload' data-formcheck='" . $token . "' data-stay='" . $stay . "' data-field='" . $field . "' data-value='" . $value . "' title='" . $title . "' style='background:none;border:0;padding:0;cursor:pointer;color:inherit'><i class='fa " . $icon . "'></i></button>";
+}
+
+function admin_post_link($action, $label, $after = 'stay', $class = 'layui-btn layui-btn-xs layui-btn-primary', $confirm = '')
+{
+    $action = htmlspecialchars($action, ENT_QUOTES, 'UTF-8');
+    $token = htmlspecialchars((string) session('formcheck'), ENT_QUOTES, 'UTF-8');
+    $label = htmlspecialchars($label, ENT_QUOTES, 'UTF-8');
+    if ($after !== 'reload' && $after !== 'nav' && $after !== 'stay') {
+        $after = 'stay';
+    }
+    $class = htmlspecialchars($class, ENT_QUOTES, 'UTF-8');
+    $stay = htmlspecialchars(base64_encode(defined('URL') ? URL : ''), ENT_QUOTES, 'UTF-8');
+    $confirm = $confirm === '' ? '' : " data-confirm='" . htmlspecialchars($confirm, ENT_QUOTES, 'UTF-8') . "'";
+    return "<button type='button' class='" . $class . " pboot-post' data-action='" . $action . "' data-after='" . $after . "'" . $confirm . " data-formcheck='" . $token . "' data-stay='" . $stay . "'>" . $label . "</button>";
+}
+
+function admin_b64_url($value)
+{
+    $value = trim(str_replace(' ', '+', (string) $value));
+    if ($value === '' || strlen($value) > 4000 || ! preg_match('#^[A-Za-z0-9+/=]+$#', $value)) {
+        return '';
+    }
+    $decoded = base64_decode($value, true);
+    if ($decoded === false || $decoded === '') {
+        return '';
+    }
+    if (preg_match('/[\x00-\x1F\x7F]/', $decoded)) {
+        return '';
+    }
+    return $decoded;
+}
+
+function admin_module_url($url, $controller)
+{
+    if (! is_string($url) || $url === '' || $url === '/') {
+        return false;
+    }
+    if (preg_match('~^https?://[^/?#]+/?$~i', $url)) {
+        return false;
+    }
+    $parts = parse_url($url);
+    if ($parts === false) {
+        return false;
+    }
+    $path = isset($parts['path']) ? $parts['path'] : '';
+    $query = isset($parts['query']) ? $parts['query'] : '';
+    $name = preg_quote($controller, '#');
+    $script = isset($_SERVER['SCRIPT_NAME']) ? basename($_SERVER['SCRIPT_NAME']) : 'admin.php';
+    $script = preg_quote($script, '#');
+    $pathBase = basename($path);
+    if ($pathBase !== '' && preg_match('#^' . $script . '$#i', $pathBase)) {
+        if (preg_match('#(?:^|&)p=/' . $name . '(?:/|&|$)#i', $query)) {
+            return true;
+        }
+        return false;
+    }
+    if (preg_match('#/(?:admin)/' . $name . '(?:/|$)#i', $path)) {
+        return true;
+    }
+    return false;
+}
+
+function admin_checked_url($url, $fallback)
+{
+    $safe = sanitize_redirect_url($url, '');
+    if ($safe === '' || $safe === '/' || $safe === null || ! admin_module_url($safe, C)) {
+        return $fallback;
+    }
+    return $safe;
+}
+
+function admin_stay_target($fallback)
+{
+    $raw = isset($_POST['stay']) ? admin_b64_url($_POST['stay']) : '';
+    return admin_checked_url($raw, $fallback);
+}
+
+function admin_back_target($fallback)
+{
+    $raw = '';
+    if (isset($_GET['backurl'])) {
+        $raw = admin_b64_url($_GET['backurl']);
+    }
+    return admin_checked_url($raw, $fallback);
+}
+
+function admin_saved($result, $unchangedOk)
+{
+    if ($result === true) {
+        return true;
+    }
+    if (is_int($result) || is_float($result) || (is_string($result) && is_numeric($result))) {
+        return $unchangedOk ? ((float) $result >= 0) : ((float) $result > 0);
+    }
+    return false;
+}
+
+function admin_resolve_fallback($fallback)
+{
+    if (is_callable($fallback)) {
+        return call_user_func($fallback);
+    }
+    return $fallback;
+}
+
+function admin_posted_field($allowed, $fallback)
+{
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        if (isset($_GET['field']) || isset($_GET['value'])) {
+            error('请使用正确方式提交！', admin_resolve_fallback($fallback));
+        }
+        return null;
+    }
+    if (! isset($_POST['field']) && ! array_key_exists('value', $_POST)) {
+        return null;
+    }
+    if ((isset($_POST['field']) && ! is_string($_POST['field'])) || (array_key_exists('value', $_POST) && ! is_string($_POST['value']))) {
+        error('不允许修改该字段！', admin_resolve_fallback($fallback));
+    }
+    $field = post('field', 'var');
+    $value = array_key_exists('value', $_POST) ? post('value', 'var') : null;
+    if (! $field || is_null($value) || ! in_array($field, $allowed, true)) {
+        error('不允许修改该字段！', admin_resolve_fallback($fallback));
+    }
+    if (! preg_match('/^[A-Za-z0-9_]+$/', (string) $field) || ! preg_match('/^[A-Za-z0-9_]+$/', (string) $value)) {
+        error('不允许修改该字段！', admin_resolve_fallback($fallback));
+    }
+    return array($field, $value);
+}
+
+function admin_model_list_url($id, $single = false)
+{
+    $row = $single ? model('admin.content.Single')->getSingle($id) : model('admin.content.Content')->getContent($id);
+    if ($row && $row->scode) {
+        $sort = model('admin.content.ContentSort')->getSort($row->scode);
+        if ($sort && isset($sort->mcode) && preg_match('/^[A-Za-z0-9]+$/', (string) $sort->mcode)) {
+            $path = $single ? '/admin/Single/index/mcode/' : '/admin/Content/index/mcode/';
+            return url($path . $sort->mcode);
+        }
+    }
+    return url('/admin/Index/home');
 }
 
 // 获取修改按钮

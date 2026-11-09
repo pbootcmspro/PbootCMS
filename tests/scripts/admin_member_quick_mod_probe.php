@@ -6,14 +6,14 @@ declare(strict_types=1);
  * MemberController::mod() 快捷改值字段白名单独立进程探测
  *
  * 用法: php tests/scripts/admin_member_quick_mod_probe.php <mode>
- *
- * mode:
- *   field_password / field_gid / field_score / value_invalid / status_0 / status_1
- *   id_array / field_array / value_array / value_array_without_field
  */
 
 ini_set('display_errors', '0');
-error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
+$errorLevel = E_ALL & ~E_DEPRECATED;
+if (defined('E_STRICT')) {
+    $errorLevel = $errorLevel & ~ constant('E_STRICT');
+}
+error_reporting($errorLevel);
 
 $mode = isset($argv[1]) ? (string) $argv[1] : '';
 if ($mode === '') {
@@ -32,15 +32,25 @@ defined('SITE_DIR') || define('SITE_DIR', '');
 defined('CORE_DIR') || define('CORE_DIR', '/core');
 defined('APP_VERSION') || define('APP_VERSION', 'test');
 defined('RELEASE_TIME') || define('RELEASE_TIME', '0');
+defined('M') || define('M', 'admin');
+defined('C') || define('C', 'Member');
+defined('URL') || define('URL', '/admin.php?p=/Member/index');
 
 require CORE_PATH . '/function/handle.php';
 require CORE_PATH . '/basic/Config.php';
 require CORE_PATH . '/basic/Response.php';
+
+eval('namespace core\\basic; class Url { public static function get($path, $suffix = null) { $path = trim((string) $path, "/"); if (strpos($path, "admin/") === 0) { $path = substr($path, 6); } return "/admin.php?p=/" . $path; } }');
+
 require CORE_PATH . '/function/helper.php';
 require CORE_PATH . '/basic/Controller.php';
+require APP_PATH . '/common/function.php';
 require APP_PATH . '/admin/controller/member/MemberController.php';
 
 $_SERVER['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest';
+$_SERVER['HTTP_HOST'] = 'dev.pbootcms.lan';
+$_SERVER['REQUEST_SCHEME'] = 'http';
+$_SERVER['SERVER_PORT'] = '80';
 
 class AdminMemberQuickModProbeModelDouble
 {
@@ -69,53 +79,70 @@ function admin_member_quick_mod_make_controller()
     return $controller;
 }
 
-$_GET['id'] = '12';
+function admin_member_quick_mod_post($field, $value)
+{
+    $_SERVER['REQUEST_METHOD'] = 'POST';
+    $_GET = array('id' => '12');
+    $_POST = array(
+        'formcheck' => 'probe',
+        'field' => $field,
+        'value' => $value
+    );
+}
 
 switch ($mode) {
     case 'field_password':
-        $_GET['field'] = 'password';
-        $_GET['value'] = '1';
+        admin_member_quick_mod_post('password', '1');
         admin_member_quick_mod_make_controller()->mod();
         break;
     case 'field_gid':
-        $_GET['field'] = 'gid';
-        $_GET['value'] = '1';
+        admin_member_quick_mod_post('gid', '1');
         admin_member_quick_mod_make_controller()->mod();
         break;
     case 'field_score':
-        $_GET['field'] = 'score';
-        $_GET['value'] = '1';
+        admin_member_quick_mod_post('score', '1');
         admin_member_quick_mod_make_controller()->mod();
         break;
     case 'value_invalid':
-        $_GET['field'] = 'status';
-        $_GET['value'] = '2';
+        admin_member_quick_mod_post('status', '2');
         admin_member_quick_mod_make_controller()->mod();
         break;
     case 'id_array':
-        parse_str('id[]=12&field=status&value=1', $_GET);
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        parse_str('id[]=12', $_GET);
+        $_POST = array('formcheck' => 'probe', 'field' => 'status', 'value' => '1');
         admin_member_quick_mod_make_controller()->mod();
         break;
     case 'field_array':
-        parse_str('id=12&field[]=status&value=1', $_GET);
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_GET = array('id' => '12');
+        parse_str('formcheck=probe&field[]=status&value=1', $_POST);
         admin_member_quick_mod_make_controller()->mod();
         break;
     case 'value_array':
-        parse_str('id=12&field=status&value[]=1', $_GET);
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_GET = array('id' => '12');
+        parse_str('formcheck=probe&field=status&value[]=1', $_POST);
         admin_member_quick_mod_make_controller()->mod();
         break;
     case 'value_array_without_field':
-        parse_str('id=12&value[]=1', $_GET);
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_GET = array('id' => '12');
+        parse_str('formcheck=probe&value[]=1', $_POST);
+        admin_member_quick_mod_make_controller()->mod();
+        break;
+    case 'get_status':
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_GET = array('id' => '12', 'field' => 'status', 'value' => '0');
+        $_POST = array();
         admin_member_quick_mod_make_controller()->mod();
         break;
     case 'status_0':
-        $_GET['field'] = 'status';
-        $_GET['value'] = '0';
+        admin_member_quick_mod_post('status', '0');
         admin_member_quick_mod_make_controller()->mod();
         break;
     case 'status_1':
-        $_GET['field'] = 'status';
-        $_GET['value'] = '1';
+        admin_member_quick_mod_post('status', '1');
         admin_member_quick_mod_make_controller()->mod();
         break;
     default:

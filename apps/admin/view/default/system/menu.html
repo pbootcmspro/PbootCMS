@@ -37,14 +37,14 @@
 
 	                        <td>
 	                            {if($value->status)}
-	                            <a href="{url./admin/'.C.'/mod/mcode/'.$value->mcode.'/field/status/value/0}"><i class='fa fa-toggle-on' title="点击关闭显示"></i></a>
+	                            {fun=admin_switch_btn($value->mcode,'status','0',1,'mcode','点击关闭显示')}
 	                            {else}
-	                            <a href="{url./admin/'.C.'/mod/mcode/'.$value->mcode.'/field/status/value/1}"><i class='fa fa-toggle-off' title="点击开启显示"></i></a>
+	                            {fun=admin_switch_btn($value->mcode,'status','1',0,'mcode','点击开启显示')}
 	                            {/if}
 	                        </td>
 	                        
 	                        <td>
-	                            {fun=get_btn_del($value->mcode,'mcode')}
+	                            {fun=get_btn_del_post($value->mcode,'mcode')}
 	                            {fun=get_btn_mod($value->mcode,'mcode')}
 	                        </td>
 	                    </tr>

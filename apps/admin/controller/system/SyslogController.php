@@ -37,10 +37,14 @@ class SyslogController extends Controller
 
     public function clear()
     {
+        $back = admin_stay_target(url('/admin/Syslog/index'));
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            error('请使用正确方式提交！', url('/admin/Syslog/index'));
+        }
         if ($this->model->clearLog()) {
-            alert_location('清空成功！', url('/admin/Syslog/index'));
+            alert_location('清空成功！', $back, 1);
         } else {
-            alert_location('清空失败！', url('/admin/Syslog/index'));
+            alert_location('清空失败！', $back);
         }
     }
 

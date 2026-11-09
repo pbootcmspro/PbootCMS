@@ -56,19 +56,19 @@ class SiteController extends Controller
         path_delete(RUN_PATH . '/config'); // 清理缓存的配置文件
         $back = url('/admin/Site/index');
         if ($this->model->checkSite()) {
-            if ($this->writeOk($this->model->modSite($data), true)) {
+            if (admin_saved($this->model->modSite($data), true)) {
                 $this->log('修改站点信息成功！');
                 success('修改成功！', $back);
             } else {
-                error('修改失败！', $back);
+                alert_back('修改失败！');
             }
         } else {
             $data['acode'] = session('acode');
-            if ($this->writeOk($this->model->addSite($data), false)) {
+            if (admin_saved($this->model->addSite($data), false)) {
                 $this->log('修改站点信息成功！');
                 success('修改成功！', $back);
             } else {
-                error('修改失败！', $back);
+                alert_back('修改失败！');
             }
         }
     }
@@ -97,17 +97,6 @@ class SiteController extends Controller
         $runtime = empty($result['runtime_coders']) ? '无' : implode(',', $result['runtime_coders']);
         $this->log('Imagick 深度安全探测完成，runtime 可读 coder：' . $runtime);
         success('深度探测完成，runtime 可读 coder：' . $runtime, $back);
-    }
-
-    private function writeOk($result, $unchangedOk)
-    {
-        if ($result === true) {
-            return true;
-        }
-        if (is_int($result) || is_float($result) || (is_string($result) && is_numeric($result))) {
-            return $unchangedOk ? ($result >= 0) : ($result > 0);
-        }
-        return false;
     }
 }
 

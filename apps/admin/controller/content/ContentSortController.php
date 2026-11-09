@@ -259,7 +259,7 @@ class ContentSortController extends Controller
                 success('新增成功！', url('/admin/ContentSort/index'));
             } else {
                 $this->log('新增数据内容栏目' . $scode . '失败！');
-                error('新增失败！', - 1);
+                alert_back('新增失败！');
             }
         }
     }
@@ -292,30 +292,29 @@ class ContentSortController extends Controller
     // 内容栏目删除
     public function del()
     {
-        // 执行批量删除
-        if ($_POST) {
-            if (! ! $list = post('list')) {
-                if ($this->model->delSortList($list)) {
-                    $this->log('批量删除栏目成功！');
-                    success('批量删除成功！', - 1);
-                } else {
-                    $this->log('批量删除栏目失败！');
-                    error('批量删除失败！', - 1);
-                }
+        $back = admin_stay_target(url('/admin/ContentSort/index'));
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            error('请使用正确方式提交！', $back);
+        }
+        if (! ! $list = post('list')) {
+            if ($this->model->delSortList($list)) {
+                $this->log('批量删除栏目成功！');
+                success('批量删除成功！', $back);
             } else {
-                alert_back('请选择要删除的栏目！');
+                $this->log('批量删除栏目失败！');
+                error('批量删除失败！', $back);
             }
         }
         
         if (! $scode = get('scode', 'var')) {
-            error('传递的参数值错误！', - 1);
+            error('请选择要删除的栏目！', $back);
         }
         if ($this->model->delSort($scode)) {
             $this->log('删除数据内容栏目' . $scode . '成功！');
-            success('删除成功！', - 1);
+            success('删除成功！', $back);
         } else {
             $this->log('删除数据内容栏目' . $scode . '失败！');
-            error('删除失败！', - 1);
+            error('删除失败！', $back);
         }
     }
 
@@ -343,17 +342,18 @@ class ContentSortController extends Controller
         }
         
         if (! $scode = get('scode', 'var')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', url('/admin/ContentSort/index'));
         }
         
         // 单独修改状态
-        if (($field = get('field', 'var')) && ! is_null($value = get('value', 'var'))) {
-            if ($this->model->modSort($scode, "$field='$value',update_user='" . session('username') . "'")) {
-                $this->log('修改数据内容栏目' . $scode . '状态' . $value . '成功！');
-                location(- 1);
+        $posted = admin_posted_field(array('status'), url('/admin/ContentSort/index'));
+        if ($posted) {
+            if (admin_saved($this->model->modSort($scode, $posted[0] . "='" . $posted[1] . "',update_user='" . session('username') . "'"), true)) {
+                $this->log('修改数据内容栏目' . $scode . '状态' . $posted[1] . '成功！');
+                success('修改成功！', url('/admin/ContentSort/index'));
             } else {
-                $this->log('修改数据内容栏目' . $scode . '状态' . $value . '失败！');
-                alert_back('修改失败！');
+                $this->log('修改数据内容栏目' . $scode . '状态' . $posted[1] . '失败！');
+                error('修改失败！', url('/admin/ContentSort/index'));
             }
         }
         
@@ -458,14 +458,18 @@ class ContentSortController extends Controller
                 $this->log('修改数据内容栏目' . $scode . '成功！');
                 success('修改成功！', url('/admin/ContentSort/index'));
             } else {
-                location(- 1);
+                if ($this->model->getSort($scode)) {
+                    success('修改成功！', url('/admin/ContentSort/index'));
+                } else {
+                    error('编辑的内容已经不存在！', url('/admin/ContentSort/index'));
+                }
             }
         } else { // 调取修改内容
             $this->assign('mod', true);
             
             $sort = $this->model->getSort($scode);
             if (! $sort) {
-                error('编辑的内容已经不存在！', - 1);
+                error('编辑的内容已经不存在！', url('/admin/ContentSort/index'));
             }
             $this->assign('sort', $sort);
             

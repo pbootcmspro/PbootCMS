@@ -232,18 +232,18 @@ class IndexController extends Controller
                 if ($init && post('db_type') == 'mysql') {
                     $this->switchMysql($data);
                 }
-                if ($this->model->modUserInfo($data)) {
+                if (admin_saved($this->model->modUserInfo($data), true)) {
                     if (isset($data['password'])) {
                         session('pwsecurity', $data['password'] != '14e1b600b1fd579f47433b88e8d85291');
                     }
                     session('username', post('username'));
                     session('realname', post('realname'));
                     $this->log('用户资料成功！');
-                    success('用户资料修改成功！', -1);
+                    success('用户资料修改成功！', url('/admin/Index/ucenter'));
                 }
             } else {
                 $this->log('用户资料修改时当前密码错误！');
-                alert_location('当前密码错误！', -1);
+                alert_location('当前密码错误！', url('/admin/Index/ucenter'));
             }
         }
         $this->assign('init', $init);

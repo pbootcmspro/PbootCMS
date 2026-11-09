@@ -46,10 +46,12 @@ class DatabaseController extends Controller
     // 数据库修改
     public function mod()
     {
+        $dbUrl = url('/admin/Database/index');
         if (! $_POST) {
-            alert_back('非法访问！', - 1);
+            error('请使用正确方式提交！', $dbUrl);
         }
         
+        $back = admin_stay_target($dbUrl);
         $submit = post('submit', 'letter', true);
         
         switch ($submit) {
@@ -59,10 +61,10 @@ class DatabaseController extends Controller
                     alert_back('请选择数据表！');
                 if ($this->model->optimize(implode(',', $tables))) {
                     // $this->log('优化数据库表成功！');
-                    success('优化成功！', - 1);
+                    success('优化成功！', $back);
                 } else {
                     // $this->log('优化数据库表失败！');
-                    error('优化失败！', - 1);
+                    error('优化失败！', $back);
                 }
                 break;
             case 'xf':
@@ -71,10 +73,10 @@ class DatabaseController extends Controller
                     alert_back('请选择数据表！');
                 if ($this->model->repair(implode(',', $tables))) {
                     // $this->log('修复数据库表成功！');
-                    success('修复成功！', - 1);
+                    success('修复成功！', $back);
                 } else {
                     // $this->log('修复数据库表失败！');
-                    error('修复失败！', - 1);
+                    error('修复失败！', $back);
                 }
                 break;
             case 'bf':
@@ -83,28 +85,28 @@ class DatabaseController extends Controller
                     alert_back('请选择数据表！');
                 if ($this->backupTable($tables)) {
                     $this->log('备份数据库表成功！');
-                    success('备份表成功！', - 1);
+                    success('备份表成功！', $back);
                 } else {
                     $this->log('备份数据库表失败！');
-                    error('备份失败！', - 1);
+                    error('备份失败！', $back);
                 }
                 break;
             case 'bfdb':
                 if ($this->backupDB()) {
                     $this->log('备份数据库成功！');
-                    success('备份数据库成功！', - 1);
+                    success('备份数据库成功！', $back);
                 } else {
                     $this->log('备份数据库失败！');
-                    error('备份失败！', - 1);
+                    error('备份失败！', $back);
                 }
                 break;
             case 'bfsqlite':
                 if ($this->backupSqliteDB()) {
                     $this->log('备份数据库成功！');
-                    success('备份数据库成功！', - 1);
+                    success('备份数据库成功！', $back);
                 } else {
                     $this->log('备份数据库失败！');
-                    error('备份失败！', - 1);
+                    error('备份失败！', $back);
                 }
                 break;
         }

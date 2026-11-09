@@ -80,6 +80,8 @@ class MemberFieldController extends Controller
             $mysql = "varchar($length)";
             $sqlite = "TEXT($length)";
             
+            $fieldBack = admin_back_target(url('/admin/MemberField/index'));
+            
             // 字段不存在时创建
             if (! $this->model->isExistField($name)) {
                 if (get_db_type() == 'sqlite') {
@@ -94,14 +96,10 @@ class MemberFieldController extends Controller
             // 执行会员字段添加
             if ($this->model->addField($data)) {
                 $this->log('新增会员字段成功！');
-                if (! ! $backurl = get('backurl')) {
-                    success('新增成功！', base64_decode($backurl));
-                } else {
-                    success('新增成功！', url('/admin/MemberField/index'));
-                }
+                success('新增成功！', $fieldBack);
             } else {
                 $this->log('新增会员字段失败！');
-                error('新增失败！', - 1);
+                alert_back('新增失败！');
             }
         }
     }
@@ -109,8 +107,12 @@ class MemberFieldController extends Controller
     // 会员字段删除
     public function del()
     {
+        $back = admin_stay_target(url('/admin/MemberField/index'));
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            error('请使用正确方式提交！', url('/admin/MemberField/index'));
+        }
         if (! $id = get('id', 'int')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', url('/admin/MemberField/index'));
         }
         
         $name = $this->model->getFieldName($id);
@@ -122,10 +124,10 @@ class MemberFieldController extends Controller
                 }
             }
             $this->log('删除会员字段' . $id . '成功！');
-            success('删除成功！', - 1);
+            success('删除成功！', url('/admin/MemberField/index'));
         } else {
             $this->log('删除会员字段' . $id . '失败！');
-            error('删除失败！', - 1);
+            error('删除失败！', url('/admin/MemberField/index'));
         }
     }
 
@@ -133,15 +135,16 @@ class MemberFieldController extends Controller
     public function mod()
     {
         if (! $id = get('id', 'int')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', url('/admin/MemberField/index'));
         }
         
         // 单独修改状态
-        if (($field = get('field', 'var')) && ! is_null($value = get('value', 'var'))) {
-            if ($this->model->modField($id, "$field='$value',update_user='" . session('username') . "'")) {
-                location(- 1);
+        $posted = admin_posted_field(array('status', 'required'), url('/admin/MemberField/index'));
+        if ($posted) {
+            if (admin_saved($this->model->modField($id, $posted[0] . "='" . $posted[1] . "',update_user='" . session('username') . "'"), true)) {
+                success('修改成功！', url('/admin/MemberField/index'));
             } else {
-                alert_back('修改失败！');
+                error('修改失败！', url('/admin/MemberField/index'));
             }
         }
         
@@ -168,22 +171,23 @@ class MemberFieldController extends Controller
             );
             
             // 执行会员字段修改
+            $back = admin_back_target(url('/admin/MemberField/index'));
             if ($this->model->modField($id, $data)) {
                 $this->log('修改会员字段成功！');
-                if (! ! $backurl = get('backurl')) {
-                    success('修改成功！', base64_decode($backurl));
-                } else {
-                    success('修改成功！', url('/admin/MemberField/index'));
-                }
+                success('修改成功！', $back);
             } else {
-                $this->log('修改会员字段失败！');
-                error('修改失败！', - 1);
+                if ($this->model->getField($id)) {
+                    success('修改成功！', $back);
+                } else {
+                    $this->log('修改会员字段失败！');
+                    error('编辑的内容已经不存在！', url('/admin/MemberField/index'));
+                }
             }
         } else {
             // 调取修改内容
             $this->assign('mod', true);
             if (! $result = $this->model->getField($id)) {
-                error('编辑的内容已经不存在！', - 1);
+                error('编辑的内容已经不存在！', url('/admin/MemberField/index'));
             }
             
             $this->assign('field', $result);

@@ -105,7 +105,7 @@
 						     <th>Imagick 深度检测</th>
 						     <td>
 						          {$server->imagick_deep_probe}
-						          <form action="{url./admin/Site/imagickProbe}" method="post" style="display:inline;margin-left:8px;">
+						          <form action="{url./admin/Site/imagickProbe}" method="post" class="pboot-ajax" data-after="reload" style="display:inline;margin-left:8px;">
 						               <input type="hidden" name="formcheck" value="{$formcheck}">
 						               <button type="submit" class="layui-btn layui-btn-xs layui-btn-normal">重新检测</button>
 						          </form>

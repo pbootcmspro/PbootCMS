@@ -10,8 +10,9 @@
 	  </ul>
 	  <div class="layui-tab-content">
 	  	   <div class="layui-tab-item layui-show">
-                 <form action="{url./admin/ContentSort/mod}" method="post" id="sortForm" name="sortForm" onkeydown="if(event.keyCode==13) return false;">
+                 <form action="{url./admin/ContentSort/mod}" method="post" id="sortForm" name="sortForm" class="pboot-ajax" data-after="reload" onkeydown="if(event.keyCode==13) return false;">
 	  	   		 <input type="hidden" name="formcheck" value="{$formcheck}" > 
+	  	   		 {fun=admin_stay_input()}
 	  	   		 <table class="layui-table" id="sortTable">
 	  	   		 	  <thead>
 		                    <tr>
@@ -68,9 +69,9 @@
 		                        <td class="table-input"><input type="text" name="sorting[]" value="[value->sorting]" class="layui-input"></td>
 		                       	<td>
 		                            {if($value->status)}
-		                            <a href="{url./admin/'.C.'/mod/scode/'.$value->scode.'/field/status/value/0}" class="switch"><i class='fa fa-toggle-on' title="点击禁用"></i></a>
+		                            {fun=admin_switch_btn($value->scode,'status','0',1,'scode','点击禁用')}
 		                            {else}
-		                            <a href="{url./admin/'.C.'/mod/scode/'.$value->scode.'/field/status/value/1}" class="switch"><i class='fa fa-toggle-off' title="点击启用"></i></a>
+		                            {fun=admin_switch_btn($value->scode,'status','1',0,'scode','点击启用')}
 		                            {/if}
 		                        </td>
 		                        <td>
@@ -82,7 +83,7 @@
 			                        	<a href="{php}echo $link{/php}" class="layui-btn layui-btn-xs layui-btn-primary"  target="_blank">查看</a>
 		                        	{/if}
 		                
-		                            {fun=get_btn_del($value->scode,'scode')}
+		                            {fun=get_btn_del_post($value->scode,'scode')}
 		                            {fun=get_btn_mod($value->scode,'scode')}
 		                        </td>
 		                    </tr>
@@ -90,14 +91,7 @@
 		                </tbody>
 	  	   		 </table>
                  <button type="button" class="ajax-sorting layui-btn">保存排序</button>
-	  	   		 <button type="submit" name="submit" onclick="return setDelAction();" class="layui-btn">批量删除</button>
-	  	   		 <script>
-		     		function setDelAction(){
-                        if (!confirm("您确定要删除选中的栏目么？")) return false;
-                        document.sortForm.action = "{url./admin/ContentSort/del}";
-                        return true;
-		     		}
-		     	</script>
+	  	   		 <button type="submit" name="submit" data-action="{url./admin/ContentSort/del}" data-confirm="您确定要删除选中的栏目么？" class="layui-btn">批量删除</button>
 	  	   		</form>
 	  	    </div>
 	  	    

@@ -131,16 +131,13 @@ class MenuController extends Controller
             );
             
             // 执行添加
+            $menuBack = admin_back_target(url('admin/Menu/index'));
             if ($this->model->addMenu($data, $actions)) {
                 $this->log('新增菜单' . $mcode . '成功！');
-                if (! ! $backurl = get('backurl')) {
-                    success('新增成功！', base64_decode($backurl));
-                } else {
-                    success('新增成功！', url('admin/Menu/index'));
-                }
+                success('新增成功！', $menuBack);
             } else {
                 $this->log('新增菜单' . $mcode . '失败！');
-                error('新增失败！', - 1);
+                alert_back('新增失败！');
             }
         }
     }
@@ -175,15 +172,19 @@ class MenuController extends Controller
     // 菜单删除
     public function del()
     {
+        $back = admin_stay_target(url('admin/Menu/index'));
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            error('请使用正确方式提交！', $back);
+        }
         if (! $mcode = get('mcode', 'var')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', $back);
         }
         if ($this->model->delMenu($mcode)) {
             $this->log('删除菜单' . $mcode . '成功！');
-            success('删除成功！', - 1);
+            success('删除成功！', $back);
         } else {
             $this->log('删除菜单' . $mcode . '失败！');
-            error('删除失败！', - 1);
+            error('删除失败！', $back);
         }
     }
 
@@ -191,17 +192,18 @@ class MenuController extends Controller
     public function mod()
     {
         if (! $mcode = get('mcode', 'var')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', url('admin/Menu/index'));
         }
         
         // 单独修改状态
-        if (($field = get('field', 'var')) && ! is_null($value = get('value', 'var'))) {
-            if ($this->model->modMenu($mcode, "$field='$value',update_user='" . session('username') . "'")) {
-                $this->log('修改菜单' . $mcode . '状态' . $value . '成功！');
-                location(- 1);
+        $posted = admin_posted_field(array('status'), url('admin/Menu/index'));
+        if ($posted) {
+            if (admin_saved($this->model->modMenu($mcode, $posted[0] . "='" . $posted[1] . "',update_user='" . session('username') . "'"), true)) {
+                $this->log('修改菜单' . $mcode . '状态' . $posted[1] . '成功！');
+                success('修改成功！', url('admin/Menu/index'));
             } else {
-                $this->log('修改菜单' . $mcode . '状态' . $value . '失败！');
-                alert_back('修改失败！');
+                $this->log('修改菜单' . $mcode . '状态' . $posted[1] . '失败！');
+                error('修改失败！', url('admin/Menu/index'));
             }
         }
         
@@ -243,13 +245,13 @@ class MenuController extends Controller
             // 执行修改
             if ($this->model->modMenu($mcode, $data, $actions)) {
                 $this->log('修改菜单' . $mcode . '成功！');
-                if (! ! $backurl = get('backurl')) {
-                    success('修改成功！', base64_decode($backurl));
-                } else {
-                    success('修改成功！', url('admin/Menu/index'));
-                }
+                success('修改成功！', admin_back_target(url('admin/Menu/index')));
             } else {
-                location(- 1);
+                if ($this->model->getMenu($mcode)) {
+                    success('修改成功！', url('admin/Menu/index'));
+                } else {
+                    error('编辑的内容已经不存在！', url('admin/Menu/index'));
+                }
             }
         } else { // 调取修改内容
             
@@ -257,7 +259,7 @@ class MenuController extends Controller
             
             $result = $this->model->getMenu($mcode);
             if (! $result) {
-                error('编辑的内容已经不存在！', - 1);
+                error('编辑的内容已经不存在！', url('admin/Menu/index'));
             }
             $this->assign('menu', $result); // 菜单信息
                                             

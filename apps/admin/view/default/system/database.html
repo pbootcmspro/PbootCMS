@@ -7,7 +7,7 @@
 		  </ul>
 		  <div class="layui-tab-content">
 		  	   <div class="layui-tab-item layui-show">
-		  	   		<form action="{url./admin/Database/mod}" method="post">
+		  	   		<form action="{url./admin/Database/mod}" method="post" class="pboot-ajax" data-after="reload">
 		  	   			<input type="hidden" name="formcheck" value="{$formcheck}" > 
 		  	   		{if([$db]=='mysql')}
 				  	   	<table class="layui-table">

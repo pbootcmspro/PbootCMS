@@ -77,16 +77,13 @@ class MemberGroupController extends Controller
             );
             
             // 执行会员等级添加
+            $groupBack = admin_back_target(url('/admin/MemberGroup/index'));
             if ($this->model->addGroup($data)) {
                 $this->log('新增会员等级成功！');
-                if (! ! $backurl = get('backurl')) {
-                    success('新增成功！', base64_decode($backurl));
-                } else {
-                    success('新增成功！', url('/admin/MemberGroup/index'));
-                }
+                success('新增成功！', $groupBack);
             } else {
                 $this->log('新增会员等级失败！');
-                error('新增失败！', - 1);
+                alert_back('新增失败！');
             }
         }
     }
@@ -94,20 +91,24 @@ class MemberGroupController extends Controller
     // 会员等级删除
     public function del()
     {
+        $back = admin_stay_target(url('/admin/MemberGroup/index'));
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            error('请使用正确方式提交！', url('/admin/MemberGroup/index'));
+        }
         if (! $id = get('id', 'int')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', url('/admin/MemberGroup/index'));
         }
         
         if ($this->model->findGroupUser($id)) {
-            error('会员等级下存在用户，无法直接删除！', - 1);
+            error('会员等级下存在用户，无法直接删除！', url('/admin/MemberGroup/index'));
         }
         
         if ($this->model->delGroup($id)) {
             $this->log('删除会员等级' . $id . '成功！');
-            success('删除成功！', - 1);
+            success('删除成功！', url('/admin/MemberGroup/index'));
         } else {
             $this->log('删除会员等级' . $id . '失败！');
-            error('删除失败！', - 1);
+            error('删除失败！', url('/admin/MemberGroup/index'));
         }
     }
 
@@ -115,15 +116,16 @@ class MemberGroupController extends Controller
     public function mod()
     {
         if (! $id = get('id', 'int')) {
-            error('传递的参数值错误！', - 1);
+            error('传递的参数值错误！', url('/admin/MemberGroup/index'));
         }
         
         // 单独修改状态
-        if (($field = get('field', 'var')) && ! is_null($value = get('value', 'var'))) {
-            if ($this->model->modGroup($id, "$field='$value',update_user='" . session('username') . "'")) {
-                location(- 1);
+        $posted = admin_posted_field(array('status'), url('/admin/MemberGroup/index'));
+        if ($posted) {
+            if (admin_saved($this->model->modGroup($id, $posted[0] . "='" . $posted[1] . "',update_user='" . session('username') . "'"), true)) {
+                success('修改成功！', url('/admin/MemberGroup/index'));
             } else {
-                alert_back('修改失败！');
+                error('修改失败！', url('/admin/MemberGroup/index'));
             }
         }
         
@@ -164,20 +166,19 @@ class MemberGroupController extends Controller
             // 执行会员等级修改
             if ($this->model->modGroup($id, $data)) {
                 $this->log('修改会员等级成功！');
-                if (! ! $backurl = get('backurl')) {
-                    success('修改成功！', base64_decode($backurl));
-                } else {
-                    success('修改成功！', url('/admin/MemberGroup/index'));
-                }
+                success('修改成功！', admin_back_target(url('/admin/MemberGroup/index')));
             } else {
-                $this->log('修改会员等级失败！');
-                error('修改失败！', - 1);
+                if ($this->model->getGroup($id)) {
+                    success('修改成功！', url('/admin/MemberGroup/index'));
+                } else {
+                    error('编辑的内容已经不存在！', url('/admin/MemberGroup/index'));
+                }
             }
         } else {
             // 调取修改内容
             $this->assign('mod', true);
             if (! $result = $this->model->getGroup($id)) {
-                error('编辑的内容已经不存在！', - 1);
+                error('编辑的内容已经不存在！', url('/admin/MemberGroup/index'));
             }
             
             $this->assign('group', $result);

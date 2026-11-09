@@ -52,31 +52,20 @@ class CompanyController extends Controller
         
         $back = url('/admin/Company/index');
         if ($this->model->checkCompany()) {
-            if ($this->writeOk($this->model->modCompany($data), true)) {
+            if (admin_saved($this->model->modCompany($data), true)) {
                 $this->log('修改公司信息成功！');
                 success('修改成功！', $back);
             } else {
-                error('修改失败！', $back);
+                alert_back('修改失败！');
             }
         } else {
             $data['acode'] = session('acode');
-            if ($this->writeOk($this->model->addCompany($data), false)) {
+            if (admin_saved($this->model->addCompany($data), false)) {
                 $this->log('修改公司信息成功！');
                 success('修改成功！', $back);
             } else {
-                error('修改失败！', $back);
+                alert_back('修改失败！');
             }
         }
-    }
-
-    private function writeOk($result, $unchangedOk)
-    {
-        if ($result === true) {
-            return true;
-        }
-        if (is_int($result) || is_float($result) || (is_string($result) && is_numeric($result))) {
-            return $unchangedOk ? ($result >= 0) : ($result > 0);
-        }
-        return false;
     }
 }

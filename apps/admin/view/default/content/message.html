@@ -19,12 +19,12 @@
 								在线留言-[num]
 					  			<span style="float:right">
 						  			{if($value->status)}
-		                            <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/status/value/0}"><i class='fa fa-toggle-on' title="点击前端隐藏" style="vertical-align:middle"></i></a>
+		                            {fun=admin_switch_btn($value->id,'status','0',1,'id','点击前端隐藏')}
 		                            {else}
-		                            <a href="{url./admin/'.C.'/mod/id/'.$value->id.'/field/status/value/1}"><i class='fa fa-toggle-off' title="点击前端显示" style="vertical-align:middle"></i></a>
+		                            {fun=admin_switch_btn($value->id,'status','1',0,'id','点击前端显示')}
 		                            {/if}
 						  			{fun=get_btn_mod($value->id,'id','回复')}
-						  			{fun=get_btn_del($value->id)}
+						  			{fun=get_btn_del_post($value->id)}
 					  			</span>
 					  		</th>
 					  	</tr>
@@ -142,8 +142,15 @@
 			input.name = "formcheck";
 			input.value = "{$formcheck}";
 			form.appendChild(input);
+			form.className = "pboot-ajax";
+			form.setAttribute("data-pboot-ephemeral", "1");
+			form.setAttribute("data-after", "reload");
 			document.body.appendChild(form);
-			form.submit();
+			if (window.pbootAjaxSubmit) {
+				window.pbootAjaxSubmit(form);
+			} else {
+				form.submit();
+			}
 		}
 	}
 
@@ -171,8 +178,15 @@
 				input.value = fields[name];
 				form.appendChild(input);
 			}
+			form.className = "pboot-ajax";
+			form.setAttribute("data-pboot-ephemeral", "1");
+			form.setAttribute("data-after", "reload");
 			document.body.appendChild(form);
-			form.submit();
+			if (window.pbootAjaxSubmit) {
+				window.pbootAjaxSubmit(form);
+			} else {
+				form.submit();
+			}
 		}
 	}
 </script>
