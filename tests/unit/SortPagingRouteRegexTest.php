@@ -89,9 +89,13 @@ return TestAssert::runSuite(function () {
     list($dashPattern) = sort_paging_extract_patterns($src, '-');
     TestAssert::same(array('c/Pet_collar', '2'), sort_paging_route($dashPattern, 'c/Pet_collar-2', array('c/Pet_collar')), 'dash break: c/Pet_collar-2');
 
-    echo "=== admin filename conflict suffix uses dash ===\n";
+    echo "=== admin filename conflict does not append any suffix ===\n";
+    // URL 名称重复改为直接报错，不再静默追加随机后缀：
+    // 下划线后缀会被分页正则当作 about_2（about 栏目第 2 页），横线后缀也会让
+    // 实际 URL 与管理员填写的不一致，两者都不再产生
     $admin = file_get_contents(APP_PATH . '/admin/controller/content/ContentSortController.php');
     TestAssert::false($admin === false, 'ContentSortController readable');
     TestAssert::notContains($admin, "'_' . mt_rand(", 'no underscore conflict suffix');
-    TestAssert::same(2, substr_count($admin, "\$filename . '-' . mt_rand(1, 20)"), 'add and mod both use dash suffix');
+    TestAssert::notContains($admin, "'-' . mt_rand(", 'no dash conflict suffix');
+    TestAssert::same(0, substr_count($admin, 'mt_rand'), 'no random filename suffix at all');
 });
