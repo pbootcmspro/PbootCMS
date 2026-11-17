@@ -28,4 +28,12 @@ return TestAssert::runSuite(function () {
     TestAssert::false(admin_saved(false, true), 'false is not saved');
     TestAssert::false(admin_saved(null, true), 'null is not saved');
     TestAssert::false(admin_saved(new stdClass(), true), 'object result is not saved');
+
+    echo "=== missing-record controllers must not rely on admin_saved alone ===\n";
+    $content = file_get_contents(APP_PATH . '/admin/controller/content/ContentController.php');
+    $status = strpos($content, '单独修改状态');
+    $form = strpos($content, '修改操作', $status);
+    $block = substr($content, $status, $form - $status);
+    TestAssert::contains($block, 'getContent($id)', 'content status checks getContent before admin_saved');
+    TestAssert::contains($block, "error('编辑的内容已经不存在！'", 'content status missing uses already-gone message');
 });

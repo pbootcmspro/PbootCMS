@@ -69,6 +69,9 @@ class MessageController extends Controller
         // 单独修改状态
         $posted = admin_posted_field(array('status'), url('/admin/Message/index'));
         if ($posted) {
+            if (! $this->model->getMessage($id)) {
+                error('编辑的内容已经不存在！', url('/admin/Message/index'));
+            }
             if (admin_saved($this->model->modMessage($id, $posted[0] . "='" . $posted[1] . "',update_user='" . session('username') . "'"), true)) {
                 success('修改成功！', url('/admin/Message/index'));
             } else {
@@ -90,15 +93,14 @@ class MessageController extends Controller
             );
             
             // 执行修改
+            if (! $this->model->getMessage($id)) {
+                error('编辑的内容已经不存在！', url('/admin/Message/index'));
+            }
             if ($this->model->modMessage($id, $data)) {
                 $this->log('修改留言' . $id . '成功！');
                 success('修改成功！', admin_back_target(url('/admin/Message/index')));
             } else {
-                if ($this->model->getMessage($id)) {
-                    success('修改成功！', url('/admin/Message/index'));
-                } else {
-                    error('编辑的内容已经不存在！', url('/admin/Message/index'));
-                }
+                success('修改成功！', url('/admin/Message/index'));
             }
         } else {
             // 调取修改内容

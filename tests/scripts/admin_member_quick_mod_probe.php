@@ -54,6 +54,13 @@ $_SERVER['SERVER_PORT'] = '80';
 
 class AdminMemberQuickModProbeModelDouble
 {
+    public function getMember($id)
+    {
+        $row = new stdClass();
+        $row->id = $id;
+        return $row;
+    }
+
     public function modMemberStatus($id, $status)
     {
         echo 'STATUS_CALLED:' . $id . ':' . $status . "\n";
@@ -129,6 +136,15 @@ switch ($mode) {
         $_SERVER['REQUEST_METHOD'] = 'POST';
         $_GET = array('id' => '12');
         parse_str('formcheck=probe&value[]=1', $_POST);
+        admin_member_quick_mod_make_controller()->mod();
+        break;
+    case 'value_string_without_field':
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_GET = array('id' => '12');
+        $_POST = array(
+            'formcheck' => 'probe',
+            'value' => '基础版,专业版'
+        );
         admin_member_quick_mod_make_controller()->mod();
         break;
     case 'get_status':

@@ -212,15 +212,14 @@ class RoleController extends Controller
             
             // 执行修改
             $back = admin_back_target(url('/admin/Role/index'));
+            if (! $this->model->getRole($rcode)) {
+                error('编辑的内容已经不存在！', url('/admin/Role/index'));
+            }
             if ($this->model->modRole($rcode, $data, $acodes, $levels)) {
                 $this->log('修改角色' . $rcode . '成功！');
                 success('修改成功！', $back);
             } else {
-                if ($this->model->getRole($rcode)) {
-                    success('修改成功！', $back);
-                } else {
-                    error('编辑的内容已经不存在！', url('/admin/Role/index'));
-                }
+                success('修改成功！', $back);
             }
         } else {
             $this->assign('mod', true);

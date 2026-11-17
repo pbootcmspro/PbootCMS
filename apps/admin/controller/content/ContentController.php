@@ -455,10 +455,13 @@ class ContentController extends Controller
 
         // 单独修改状态
         $posted = admin_posted_field(array('status', 'istop', 'isrecommend'), function () use ($id) {
-            return admin_model_list_url($id);
+            return admin_stay_target(admin_model_list_fallback($id));
         });
         if ($posted) {
-            $listUrl = admin_model_list_url($id);
+            $listUrl = admin_stay_target(admin_model_list_fallback($id));
+            if (! $this->model->getContent($id)) {
+                error('编辑的内容已经不存在！', $listUrl);
+            }
             if (admin_saved($this->model->modContent($id, $posted[0] . "='" . $posted[1] . "',update_user='" . session('username') . "'"), true)) {
                 success('修改成功！', $listUrl);
             } else {
@@ -571,6 +574,10 @@ class ContentController extends Controller
             );
 
             // 执行添加
+            $contentBack = admin_back_target(admin_model_list_fallback($id));
+            if (! $this->model->getContent($id)) {
+                error('编辑的内容已经不存在！', $contentBack);
+            }
             if ($this->model->modContent($id, $data)) {
                 // 扩展内容修改
                 foreach ($_POST as $key => $value) {
@@ -605,21 +612,15 @@ class ContentController extends Controller
                 if ($notice = iframe_whitelist_sync_notice_many($syncHtmls, '修改成功！')) {
                     $msg = $notice;
                 }
-                $contentBack = admin_back_target(url('/admin/Content/index/mcode/' . get('mcode')));
                 success($msg, $contentBack);
             } else {
-                $contentBack = admin_back_target(url('/admin/Content/index/mcode/' . get('mcode')));
-                if ($this->model->getContent($id)) {
-                    success('修改成功！', $contentBack);
-                } else {
-                    error('编辑的内容已经不存在！', $contentBack);
-                }
+                success('修改成功！', $contentBack);
             }
         } else {
             // 调取修改内容
             $this->assign('mod', true);
             if (!$result = $this->model->getContent($id)) {
-                error('编辑的内容已经不存在！', url('/admin/Content/index'));
+                error('编辑的内容已经不存在！', admin_back_target(admin_model_list_fallback($id)));
             }
             $this->assign('content', $result);
 

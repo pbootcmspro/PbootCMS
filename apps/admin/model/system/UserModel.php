@@ -116,16 +116,21 @@ class UserModel extends Model
     // 修改用户资料
     public function modUser($ucode, $data, array $roles = null)
     {
+        if (! $this->getUser($ucode)) {
+            return 0;
+        }
         $result = parent::table('ay_user')->where("ucode='$ucode'")->update($data);
         if (is_array($roles)) {
-            $result = $this->delUserRole($ucode);
+            $this->delUserRole($ucode);
             if ($roles) {
                 if (array_key_exists('ucode', $data)) {
                     $ucode = $data['ucode'];
                 }
-                if ($ucode != '10001')
-                    $result = $this->addUserRole($ucode, $roles);
+                if ($ucode != '10001') {
+                    $this->addUserRole($ucode, $roles);
+                }
             }
+            return true;
         }
         return $result;
     }

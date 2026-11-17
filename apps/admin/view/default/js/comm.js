@@ -152,6 +152,8 @@ $(document).ready(function (e) {
 		var show = function(layer) {
 			if (kind === 'msg') {
 				layer.msg(message, {time: time || 800}, done || function() {});
+			} else if (done) {
+				layer.alert(message, done);
 			} else {
 				layer.alert(message);
 			}
@@ -166,6 +168,9 @@ $(document).ready(function (e) {
 			}
 		} else {
 			window.alert(message);
+			if (done) {
+				done();
+			}
 		}
 	}
 
@@ -187,6 +192,11 @@ $(document).ready(function (e) {
 		}
 		if (!form.getAttribute('data-pboot-origin-action')) {
 			form.setAttribute('data-pboot-origin-action', form.getAttribute('action') || form.action || '');
+		}
+		if (typeof normalizeAllEditorsBeforeSubmit === 'function') {
+			try {
+				normalizeAllEditorsBeforeSubmit();
+			} catch (ignore) {}
 		}
 		form.setAttribute('data-pboot-lock', '1');
 		if (sourceBtn) {
@@ -266,7 +276,22 @@ $(document).ready(function (e) {
 						form.setAttribute('data-pboot-left', '1');
 						pbootDisposeForm(form);
 						if (go) {
-							window.location.href = tourl;
+							var dest = document.createElement('a');
+							dest.href = tourl;
+							if (dest.pathname === window.location.pathname && dest.search === window.location.search) {
+								var nextHash = dest.hash || '';
+								var nextUrl = dest.pathname + dest.search + nextHash;
+								if ((window.location.hash || '') !== nextHash) {
+									if (window.history && window.history.replaceState) {
+										window.history.replaceState(null, '', nextUrl);
+									} else {
+										window.location.hash = nextHash ? nextHash.replace(/^#/, '') : '';
+									}
+								}
+								window.location.reload();
+							} else {
+								window.location.href = tourl;
+							}
 						} else {
 							window.location.reload();
 						}
@@ -275,7 +300,15 @@ $(document).ready(function (e) {
 				}
 				pbootUnlock(form, sourceBtn);
 				pbootDisposeForm(form);
-				pbootTip('alert', pbootText(message || '操作失败'));
+				var failUrl = response.tourl || '';
+				var failGo = after === 'nav' && pbootAdminUrl(failUrl);
+				if (failGo) {
+					pbootTip('alert', pbootText(message || '操作失败'), 0, function() {
+						window.location.href = failUrl;
+					});
+				} else {
+					pbootTip('alert', pbootText(message || '操作失败'));
+				}
 			},
 			error: function() {
 				if (form.getAttribute('data-pboot-token') !== token) {

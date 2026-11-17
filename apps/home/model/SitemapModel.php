@@ -1,9 +1,9 @@
 <?php
 /**
- * @copyright (C)2016-2099 Hnaoyun Inc.
- * @author XingMeng
- * @email hnxsh@foxmail.com
- * @date 2018年2月14日
+ * @copyright (C)2016-2099
+ * @author pbootcms
+ * @email support@pbootcms.com
+ * @date 2026年11月14日
  *  Sitemap模型
  */
 namespace app\home\model;
@@ -77,6 +77,69 @@ class SitemapModel extends Model
             ->where($where)
             ->join($join)
             ->select();
+    }
+
+    public function countOutputContent($now)
+    {
+        return $this->outputContentQuery($now)->count();
+    }
+
+    public function getContentPage($now, $offset, $limit)
+    {
+        $offset = (int) $offset;
+        $limit = (int) $limit;
+        if ($offset < 0 || $limit < 1) {
+            return array();
+        }
+        $result = $this->outputContentQuery($now)
+            ->order('a.id ASC')
+            ->limit($offset . ',' . $limit)
+            ->select();
+        if (! $result) {
+            return array();
+        }
+        return $result;
+    }
+
+    private function outputContentQuery($now)
+    {
+        if (! is_string($now) || ! preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $now)) {
+            $now = date('Y-m-d H:i:s');
+        }
+        $fields = array(
+            'a.id',
+            'a.filename',
+            'a.outlink',
+            'a.date',
+            'c.type',
+            'c.urlname',
+            'b.scode',
+            'b.filename as sortfilename'
+        );
+        $join = array(
+            array(
+                'ay_content_sort b',
+                'a.scode=b.scode',
+                'LEFT'
+            ),
+            array(
+                'ay_model c',
+                'b.mcode=c.mcode',
+                'LEFT'
+            )
+        );
+        $where = array(
+            'a.status' => 1,
+            'b.status' => 1,
+            'b.acode' => get_lg(),
+            'c.type' => 2
+        );
+        return parent::table('ay_content a')->field($fields)
+            ->where($where)
+            ->where("a.outlink=''")
+            ->where("b.outlink=''")
+            ->where("a.date<'" . $now . "'")
+            ->join($join);
     }
 
     // llms.txt栏目列表，较sitemap额外取栏目描述用于生成链接说明

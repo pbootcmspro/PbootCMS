@@ -47,4 +47,9 @@ return TestAssert::runSuite(function () {
     $common = file_get_contents(APP_PATH . '/common/function.php');
     TestAssert::contains($common, 'sanitize_redirect_url($url, url(', 'get_btn_back sanitizes href');
     TestAssert::contains($common, 'htmlspecialchars($url, ENT_QUOTES', 'get_btn_back escapes href');
+
+    echo "=== admin backurl query values are rawurlencoded ===\n";
+
+    TestAssert::contains($common, 'rawurlencode(base64_encode(URL))', 'get_btn_qs encodes base64 backurl');
+    TestAssert::contains($common, 'rawurlencode($backurl)', 'get_backurl re-encodes backurl');
 });

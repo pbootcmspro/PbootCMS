@@ -136,16 +136,15 @@ class TagsController extends Controller
             );
             
             // 执行添加
+            if (! $this->model->getTags($id)) {
+                error('编辑的内容已经不存在！', url('/admin/Tags/index'));
+            }
             if ($this->model->modTags($id, $data)) {
                 $this->log('修改文章内链' . $id . '成功！');
                 success('修改成功！', admin_back_target(url('/admin/Tags/index')));
             } else {
-                if ($this->model->getTags($id)) {
-                    $this->log('修改文章内链' . $id . '成功！');
-                    success('修改成功！', url('/admin/Tags/index'));
-                } else {
-                    error('编辑的内容已经不存在！', url('/admin/Tags/index'));
-                }
+                $this->log('修改文章内链' . $id . '成功！');
+                success('修改成功！', url('/admin/Tags/index'));
             }
         } else {
             // 调取修改内容

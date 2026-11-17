@@ -75,14 +75,47 @@ function exitSourceModeWithNormalize(editor) {
 	editor.execCommand('source');
 }
 
+function collectPbootEditors() {
+	var list = [];
+	var seen = {};
+	var push = function (ed) {
+		if (!ed || seen[ed.key]) {
+			return;
+		}
+		seen[ed.key] = true;
+		list.push(ed);
+	};
+	var i;
+	var editors = (typeof UE !== 'undefined' && UE.__pbootEditors) ? UE.__pbootEditors : [];
+	for (i = 0; i < editors.length; i++) {
+		push(editors[i]);
+	}
+	if (typeof UE !== 'undefined' && UE.instants) {
+		for (var key in UE.instants) {
+			if (Object.prototype.hasOwnProperty.call(UE.instants, key)) {
+				push(UE.instants[key]);
+			}
+		}
+	}
+	return list;
+}
+
 function normalizeAllEditorsBeforeSubmit() {
 	if (typeof UE === 'undefined') return;
-	var editors = UE.__pbootEditors || [];
+	var editors = collectPbootEditors();
 	for (var i = 0; i < editors.length; i++) {
 		var ed = editors[i];
-		if (ed && typeof ed.queryCommandState === 'function') {
-			exitSourceModeWithNormalize(ed);
+		if (!ed) {
+			continue;
 		}
+		try {
+			if (typeof ed.queryCommandState === 'function') {
+				exitSourceModeWithNormalize(ed);
+			}
+			if (ed.iframe && typeof ed.sync === 'function') {
+				ed.sync();
+			}
+		} catch (ignore) {}
 	}
 }
 

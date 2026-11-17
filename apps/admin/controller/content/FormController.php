@@ -285,15 +285,14 @@ class FormController extends Controller
                 
                 // 执行修改
                 $back = admin_back_target($formUrl);
+                if (! $this->model->getForm($id)) {
+                    error('编辑的内容已经不存在！', $formUrl);
+                }
                 if ($this->model->modForm($id, $data)) {
                     $this->log('修改自定义表单' . $id . '成功！');
                     success('修改成功！', $back);
                 } else {
-                    if ($this->model->getForm($id)) {
-                        success('修改成功！', $back);
-                    } else {
-                        error('编辑的内容已经不存在！', $formUrl);
-                    }
+                    success('修改成功！', $back);
                 }
             } else {
                 

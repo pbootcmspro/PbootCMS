@@ -198,6 +198,9 @@ class MenuController extends Controller
         // 单独修改状态
         $posted = admin_posted_field(array('status'), url('admin/Menu/index'));
         if ($posted) {
+            if (! $this->model->getMenu($mcode)) {
+                error('编辑的内容已经不存在！', url('admin/Menu/index'));
+            }
             if (admin_saved($this->model->modMenu($mcode, $posted[0] . "='" . $posted[1] . "',update_user='" . session('username') . "'"), true)) {
                 $this->log('修改菜单' . $mcode . '状态' . $posted[1] . '成功！');
                 success('修改成功！', url('admin/Menu/index'));
@@ -243,15 +246,14 @@ class MenuController extends Controller
             );
             
             // 执行修改
+            if (! $this->model->getMenu($mcode)) {
+                error('编辑的内容已经不存在！', url('admin/Menu/index'));
+            }
             if ($this->model->modMenu($mcode, $data, $actions)) {
                 $this->log('修改菜单' . $mcode . '成功！');
                 success('修改成功！', admin_back_target(url('admin/Menu/index')));
             } else {
-                if ($this->model->getMenu($mcode)) {
-                    success('修改成功！', url('admin/Menu/index'));
-                } else {
-                    error('编辑的内容已经不存在！', url('admin/Menu/index'));
-                }
+                success('修改成功！', url('admin/Menu/index'));
             }
         } else { // 调取修改内容
             

@@ -191,15 +191,14 @@ class LinkController extends Controller
             );
             
             // 执行添加
+            if (! $this->model->getLink($id)) {
+                error('编辑的内容已经不存在！', url('/admin/Link/index'));
+            }
             if ($this->model->modLink($id, $data)) {
                 $this->log('修改友情链接' . $id . '成功！');
                 success('修改成功！', admin_back_target(url('/admin/Link/index')));
             } else {
-                if ($this->model->getLink($id)) {
-                    success('修改成功！', url('/admin/Link/index'));
-                } else {
-                    error('编辑的内容已经不存在！', url('/admin/Link/index'));
-                }
+                success('修改成功！', url('/admin/Link/index'));
             }
         } else {
             // 调取修改内容

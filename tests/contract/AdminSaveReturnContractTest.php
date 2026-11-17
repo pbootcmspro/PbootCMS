@@ -17,9 +17,9 @@ return TestAssert::runSuite(function () {
     echo "=== reproduced admin saves return to their own pages ===\n";
 
     $cases = array(
-        array('apps/admin/controller/content/ContentController.php', 'function mod(', '单独修改状态', '修改操作', 'admin_model_list_url($id)', '文章状态'),
+        array('apps/admin/controller/content/ContentController.php', 'function mod(', '单独修改状态', '修改操作', 'admin_stay_target(admin_model_list_fallback($id))', '文章状态'),
         array('apps/admin/controller/content/ContentSortController.php', 'function mod(', '单独修改状态', '修改操作', "url('/admin/ContentSort/index')", '栏目状态'),
-        array('apps/admin/controller/content/SingleController.php', 'function mod(', '单独修改状态', '修改操作', 'admin_model_list_url($id, true)', '单页状态'),
+        array('apps/admin/controller/content/SingleController.php', 'function mod(', '单独修改状态', '修改操作', 'admin_stay_target(admin_model_list_fallback($id, true))', '单页状态'),
         array('apps/admin/controller/content/ModelController.php', 'function mod(', '单独修改状态', '修改操作', "url('/admin/Model/index')", '模型状态'),
         array('apps/admin/controller/content/MessageController.php', 'function mod(', '单独修改状态', '修改操作', "url('/admin/Message/index')", '留言状态'),
         array('apps/admin/controller/member/MemberCommentController.php', 'function mod(', '单独修改状态', '}', "url('/admin/MemberComment/index')", '评论状态'),
@@ -73,10 +73,14 @@ return TestAssert::runSuite(function () {
     TestAssert::contains($listUrl, "return url('/admin/Index/home');", 'missing model returns to the admin home');
     TestAssert::notContains(file_get_contents(CORE_PATH . '/function/helper.php'), 'function admin_model_list_url(', 'list url left the core helper');
     TestAssert::contains($commonFn, 'function admin_resolve_fallback(', 'posted field can delay fallback');
+    $listFallback = save_return_method_body($commonFn, 'function admin_model_list_fallback(');
+    TestAssert::contains($listFallback, "get('mcode', 'var')", 'list fallback prefers request mcode');
+    TestAssert::contains($listFallback, 'admin_model_list_url($id, $single)', 'list fallback keeps row-based url');
 
     $contentMod = save_return_method_body(file_get_contents(APP_PATH . '/admin/controller/content/ContentController.php'), 'function mod(');
     $contentStatus = save_return_between($contentMod, '单独修改状态', '修改操作');
     TestAssert::contains($contentStatus, 'function () use ($id)', 'content status fallback is lazy');
+    TestAssert::contains($contentStatus, 'admin_stay_target(admin_model_list_fallback($id))', 'content status uses stay then mcode fallback');
     TestAssert::notContains($contentStatus, 'admin_posted_field(array(\'status\', \'istop\', \'isrecommend\'), admin_model_list_url($id))', 'content status does not eager-evaluate list url');
 
     $deletes = array(
@@ -120,8 +124,13 @@ return TestAssert::runSuite(function () {
     $contentFormFail = save_return_between($contentMod, '修改操作', '调取修改内容');
     TestAssert::contains($contentFormFail, "error('编辑的内容已经不存在！'", 'missing content jumps to list instead of history back');
     TestAssert::notContains($contentFormFail, "alert_back('修改失败！')", 'missing content does not alert_back as generic save failure');
+    TestAssert::true(strpos($contentFormFail, 'getContent($id)') !== false && strpos($contentFormFail, 'getContent($id)') < strpos($contentFormFail, 'modContent($id, $data)'), 'content full save checks existence before write');
     $contentStatusFail = save_return_between($contentMod, '单独修改状态', '修改操作');
+    TestAssert::contains($contentStatusFail, "error('编辑的内容已经不存在！'", 'missing content status jumps with already-gone message');
     TestAssert::contains($contentStatusFail, "error('修改失败！'", 'content status failure still returns via error()');
+    TestAssert::true(strpos($contentStatusFail, 'getContent($id)') !== false && strpos($contentStatusFail, 'getContent($id)') < strpos($contentStatusFail, 'modContent($id,'), 'content status checks existence before write');
+    TestAssert::contains($contentMod, 'admin_back_target(admin_model_list_fallback($id))', 'missing content edit page keeps model list via fallback');
+    TestAssert::notContains($contentMod, "error('编辑的内容已经不存在！', url('/admin/Content/index'))", 'missing content edit page does not drop mcode');
 
     $form = file_get_contents(APP_PATH . '/admin/controller/content/FormController.php');
     $formClear = save_return_method_body($form, 'function clear(');
@@ -135,12 +144,43 @@ return TestAssert::runSuite(function () {
 
     $tags = file_get_contents(APP_PATH . '/admin/controller/content/TagsController.php');
     $tagsMod = save_return_method_body($tags, 'function mod(');
-    $unchanged = save_return_between($tagsMod, 'modTags($id, $data)', '调取修改内容');
+    $unchanged = save_return_between($tagsMod, '修改操作', '调取修改内容');
     TestAssert::notContains($unchanged, 'location(', 'unchanged tag save does not follow referer');
     TestAssert::contains($unchanged, 'getTags($id)', 'unchanged tag save checks the record');
+    TestAssert::true(strpos($unchanged, 'getTags($id)') !== false && strpos($unchanged, 'getTags($id)') < strpos($unchanged, 'modTags($id, $data)'), 'tag full save checks existence before write');
     TestAssert::contains($unchanged, "success('修改成功！', url('/admin/Tags/index'))", 'unchanged tag save returns to the tag list');
     TestAssert::contains($unchanged, "error('编辑的内容已经不存在！', url('/admin/Tags/index'))", 'missing tag jumps to the tag list');
     TestAssert::notContains($unchanged, "alert_back('编辑的内容已经不存在！')", 'missing tag does not history-back to a stale edit page');
+
+    $existChecks = array(
+        array('admin/controller/content/SingleController.php', 'getSingle($id)', 'modSingle($id', '单页'),
+        array('admin/controller/content/ContentSortController.php', 'getSort($scode)', 'modSort($scode', '栏目'),
+        array('admin/controller/content/ModelController.php', 'getModel($id)', 'modModel($id', '模型'),
+        array('admin/controller/content/MessageController.php', 'getMessage($id)', 'modMessage($id', '留言'),
+        array('admin/controller/member/MemberController.php', 'getMember($id)', 'modMemberStatus($id', '会员状态'),
+        array('admin/controller/member/MemberGroupController.php', 'getGroup($id)', 'modGroup($id', '会员等级'),
+        array('admin/controller/member/MemberFieldController.php', 'getField($id)', 'modField($id', '会员字段'),
+        array('admin/controller/system/UserController.php', 'getUser($ucode)', 'modUser($ucode', '用户'),
+        array('admin/controller/system/MenuController.php', 'getMenu($mcode)', 'modMenu($mcode', '菜单'),
+        array('admin/controller/content/LinkController.php', 'getLink($id)', 'modLink($id, $data)', '友情链接'),
+        array('admin/controller/content/SlideController.php', 'getSlide($id)', 'modSlide($id, $data)', '幻灯片'),
+        array('admin/controller/content/LabelController.php', 'getLabel($id)', 'modLabel($id, $data)', '标签定义'),
+        array('admin/controller/system/TypeController.php', 'getType($id)', 'modType($id, $data)', '类型'),
+        array('admin/controller/system/RoleController.php', 'getRole($rcode)', 'modRole($rcode', '角色'),
+    );
+    foreach ($existChecks as $case) {
+        $src = file_get_contents(APP_PATH . '/' . $case[0]);
+        $mod = save_return_method_body($src, 'function mod(');
+        $getPos = strpos($mod, $case[1]);
+        $writePos = strpos($mod, $case[2]);
+        TestAssert::true($getPos !== false && $writePos !== false && $getPos < $writePos, $case[3] . ' checks existence before write');
+        TestAssert::contains($mod, "error('编辑的内容已经不存在！'", $case[3] . ' missing record uses already-gone message');
+    }
+
+    $userModel = file_get_contents(APP_PATH . '/admin/model/system/UserModel.php');
+    $modUser = save_return_method_body($userModel, 'function modUser(');
+    TestAssert::contains($modUser, 'getUser($ucode)', 'modUser refuses missing user before role write');
+    TestAssert::true(strpos($modUser, 'getUser($ucode)') < strpos($modUser, 'addUserRole'), 'modUser existence check precedes addUserRole');
 
     $index = file_get_contents(APP_PATH . '/admin/controller/IndexController.php');
     $ucenter = save_return_method_body($index, 'function ucenter(');
@@ -148,14 +188,35 @@ return TestAssert::runSuite(function () {
     TestAssert::contains($ucenter, "alert_location('当前密码错误！', url('/admin/Index/ucenter'))", 'wrong password returns to ucenter');
     TestAssert::notContains($ucenter, '-1', 'ucenter does not use the referer sentinel');
 
-    $version = file_get_contents(APP_PATH . '/common/version.php');
-    TestAssert::contains($version, "'3.2.32'", 'app version is 3.2.32');
     $foot = file_get_contents(APP_PATH . '/admin/view/default/common/foot.html');
-    TestAssert::contains($foot, 'comm.js?v=v3.2.33', 'comm.js cache bust is v3.2.33');
+    TestAssert::contains($foot, 'comm.js?v=v3.2.34"', 'comm.js cache bust is v3.2.34');
 
     $commJs = file_get_contents(APP_PATH . '/admin/view/default/js/comm.js');
     TestAssert::contains($commJs, "data-pboot-ephemeral", 'pboot-post marks ephemeral forms');
     TestAssert::contains($commJs, 'function pbootDisposeForm(form)', 'ephemeral forms are disposed after submit');
+    TestAssert::contains($commJs, 'normalizeAllEditorsBeforeSubmit', 'ajax submit syncs UEditor before serialize');
+    $ajaxSubmitPos = strpos($commJs, 'window.pbootAjaxSubmit = function');
+    TestAssert::false($ajaxSubmitPos === false, 'pbootAjaxSubmit is defined');
+    $ajaxEnd = strpos($commJs, '$.ajax(', $ajaxSubmitPos);
+    if ($ajaxEnd === false) {
+        $ajaxEnd = strlen($commJs);
+    }
+    $ajaxSubmitChunk = substr($commJs, $ajaxSubmitPos, $ajaxEnd - $ajaxSubmitPos);
+    $normPos = strpos($ajaxSubmitChunk, 'normalizeAllEditorsBeforeSubmit()');
+    $lockPos = strpos($ajaxSubmitChunk, "data-pboot-lock', '1'");
+    TestAssert::false($normPos === false, 'pbootAjaxSubmit calls editor normalize');
+    TestAssert::false($lockPos === false, 'pbootAjaxSubmit still locks the form');
+    TestAssert::true($normPos < $lockPos, 'editor normalize runs before ajax lock');
+    TestAssert::contains($commJs, "after === 'nav' && pbootAdminUrl(failUrl)", 'nav ajax failure follows returned admin url');
+    TestAssert::contains($commJs, 'dest.pathname === window.location.pathname && dest.search === window.location.search', 'nav ajax success reloads when only hash would change');
+    TestAssert::contains($commJs, 'window.history.replaceState', 'nav ajax success syncs hash before same-page reload');
+    TestAssert::contains($commJs, "var nextHash = dest.hash || ''", 'nav ajax success uses tourl hash (empty clears add tab)');
+
+    $ueditorTpl = file_get_contents(APP_PATH . '/admin/view/default/common/ueditor.html');
+    TestAssert::contains($ueditorTpl, 'function normalizeAllEditorsBeforeSubmit()', 'ueditor exposes normalize before submit');
+    TestAssert::contains($ueditorTpl, 'ed.iframe', 'skip sync until editor iframe is ready');
+    TestAssert::contains($ueditorTpl, 'ed.sync()', 'ueditor syncs editors into form fields');
+    TestAssert::contains($ueditorTpl, 'catch (ignore)', 'editor sync errors do not abort submit');
 
     $siteTpl = file_get_contents(APP_PATH . '/admin/view/default/content/site.html');
     TestAssert::contains($siteTpl, 'pboot-ajax', 'site form uses ajax submit');
@@ -165,15 +226,35 @@ return TestAssert::runSuite(function () {
     TestAssert::notContains($contentTpl, 'class="switch"', 'content status no longer uses legacy switch links');
     TestAssert::contains($contentTpl, 'admin_switch_btn($value->id,\'status\',\'0\'', 'content status uses post switch');
     TestAssert::contains($contentTpl, 'admin_switch_btn($value->id,\'status\',\'1\'', 'content status enable uses post switch');
+    TestAssert::true(preg_match('/<form[^>]*Content\/add[^>]*pboot-ajax[^>]*data-after="nav"/', $contentTpl) === 1, 'content add form uses ajax nav');
+    TestAssert::true(preg_match('/<form[^>]*Content\/mod[^>]*pboot-ajax[^>]*data-after="nav"/', $contentTpl) === 1, 'content mod form uses ajax nav');
+    TestAssert::contains($contentTpl, "Content/mod/mcode/'.get('mcode').'/id/", 'content mod action keeps mcode');
+
+    $singleTpl = file_get_contents(APP_PATH . '/admin/view/default/content/single.html');
+    TestAssert::true(preg_match('/<form[^>]*Single\/mod[^>]*pboot-ajax[^>]*data-after="nav"/', $singleTpl) === 1, 'single mod form uses ajax nav');
+
+    $labelTpl = file_get_contents(APP_PATH . '/admin/view/default/content/label.html');
+    TestAssert::false(preg_match('/<form[^>]*Label\/add[^>]*pboot-ajax/', $labelTpl) === 1, 'label add form is not ajax');
+    TestAssert::false(preg_match('/<form[^>]*Label\/mod[^>]*pboot-ajax/', $labelTpl) === 1, 'label mod form is not ajax');
+    TestAssert::contains($labelTpl, 'data-after="reload"', 'label value form stays ajax reload');
 
     $groupTpl = file_get_contents(APP_PATH . '/admin/view/default/member/group.html');
     TestAssert::notContains($groupTpl, 'class="switch"', 'member group status no longer uses legacy switch links');
     TestAssert::contains($groupTpl, 'admin_switch_btn($value->id,\'status\',\'0\'', 'member group disable uses post switch');
     TestAssert::contains($groupTpl, 'admin_switch_btn($value->id,\'status\',\'1\'', 'member group enable uses post switch');
 
+    $ajaxNavAllow = array(
+        'content.html' => true,
+        'single.html' => true,
+    );
     foreach (glob(APP_PATH . '/admin/view/default/*/*.html') as $tpl) {
-        TestAssert::notContains(file_get_contents($tpl), 'data-after="nav" data-', basename($tpl) . ' add/edit forms use plain submit');
-        TestAssert::false(preg_match('/<form[^>]*pboot-ajax[^>]*data-after="nav"/', file_get_contents($tpl)) === 1, basename($tpl) . ' add/edit forms are not ajax');
+        $base = basename($tpl);
+        $html = file_get_contents($tpl);
+        TestAssert::notContains($html, 'data-after="nav" data-', $base . ' does not use legacy nav data attrs');
+        if (isset($ajaxNavAllow[$base])) {
+            continue;
+        }
+        TestAssert::false(preg_match('/<form[^>]*pboot-ajax[^>]*data-after="nav"/', $html) === 1, $base . ' add/edit forms are not ajax nav');
     }
 });
 

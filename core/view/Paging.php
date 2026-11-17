@@ -37,6 +37,8 @@ class Paging
     // 分页实例
     private static $paging;
 
+    private static $pageAssigned = false;
+
     private function __construct()
     {
         // 禁用类new实例化
@@ -82,14 +84,23 @@ class Paging
         $this->page = $this->page();
         
         // 定义相关常量，用于方便模板引擎解析序号等计算和调用
-        if (! defined('PAGE')) {
-            define('ROWTOTAL', $this->rowTotal);
-            define('PAGECOUNT', $this->pageCount);
-            define('PAGE', $this->page);
-            define('PAGESIZE', $this->pageSize);
+        if (! self::$pageAssigned) {
+            if (! defined('ROWTOTAL')) {
+                define('ROWTOTAL', $this->rowTotal);
+            }
+            if (! defined('PAGECOUNT')) {
+                define('PAGECOUNT', $this->pageCount);
+            }
+            if (! defined('PAGE')) {
+                define('PAGE', $this->page);
+            }
+            if (! defined('PAGESIZE')) {
+                define('PAGESIZE', $this->pageSize);
+            }
             
             // 注入分页模板变量
             $this->assign($morePageStr);
+            self::$pageAssigned = true;
         }
         
         // 返回限制语句

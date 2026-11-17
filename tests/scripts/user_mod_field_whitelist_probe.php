@@ -59,6 +59,13 @@ $_SERVER['SERVER_PORT'] = '80';
 
 class UserModProbeModelDouble
 {
+    public function getUser($ucode)
+    {
+        $row = new stdClass();
+        $row->ucode = $ucode;
+        return $row;
+    }
+
     public function modUser($ucode, $data)
     {
         echo 'MOD_CALLED:' . $ucode . ':' . $data . "\n";

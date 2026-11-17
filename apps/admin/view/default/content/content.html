@@ -170,7 +170,7 @@
 	  	   </div>
 	  	   
 	  	   <div class="layui-tab-item">
-	  	  		<form action="{url./admin/Content/add/mcode/'.get('mcode').'}" method="post" class="layui-form" lay-filter="content" id="edit">
+	  	  		<form action="{url./admin/Content/add/mcode/'.get('mcode').'}" method="post" class="layui-form pboot-ajax" data-after="nav" lay-filter="content" id="edit">
 		  	     	<input type="hidden" name="formcheck" value="{$formcheck}" > 
 		  	     	<div class="layui-tab">
 					  <ul class="layui-tab-title">
@@ -523,7 +523,7 @@
 	  </ul>
 	  <div class="layui-tab-content">
 	  	<div class="layui-tab-item layui-show">
-	  		<form action="{url./admin/Content/mod/id/'.[$get.id].'}{$backurl}" method="post" class="layui-form" id="edit">
+	  		<form action="{url./admin/Content/mod/mcode/'.get('mcode').'/id/'.[$get.id].'}{$backurl}" method="post" class="layui-form pboot-ajax" data-after="nav" id="edit">
 	  			<input type="hidden" name="formcheck" value="{$formcheck}" > 
 	  			<div class="layui-tab">
 					  <ul class="layui-tab-title">

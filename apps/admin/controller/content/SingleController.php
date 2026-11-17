@@ -200,10 +200,13 @@ class SingleController extends Controller
         
         // 单独修改状态
         $posted = admin_posted_field(array('status'), function () use ($id) {
-            return admin_model_list_url($id, true);
+            return admin_stay_target(admin_model_list_fallback($id, true));
         });
         if ($posted) {
-            $listUrl = admin_model_list_url($id, true);
+            $listUrl = admin_stay_target(admin_model_list_fallback($id, true));
+            if (! $this->model->getSingle($id)) {
+                error('编辑的内容已经不存在！', $listUrl);
+            }
             if (admin_saved($this->model->modSingle($id, $posted[0] . "='" . $posted[1] . "',update_user='" . session('username') . "'"), true)) {
                 success('修改成功！', $listUrl);
             } else {
@@ -278,6 +281,10 @@ class SingleController extends Controller
             );
             
             // 执行添加
+            $singleBack = admin_back_target(admin_model_list_fallback($id, true));
+            if (! $this->model->getSingle($id)) {
+                error('编辑的内容已经不存在！', $singleBack);
+            }
             if ($this->model->modSingle($id, $data)) {
                 
                 // 扩展内容修改
@@ -313,21 +320,15 @@ class SingleController extends Controller
                 if ($notice = iframe_whitelist_sync_notice_many($syncHtmls, '修改成功！')) {
                     $msg = $notice;
                 }
-                $singleBack = admin_back_target(admin_model_list_url($id, true));
                 success($msg, $singleBack);
             } else {
-                $singleBack = admin_back_target(admin_model_list_url($id, true));
-                if ($this->model->getSingle($id)) {
-                    success('修改成功！', $singleBack);
-                } else {
-                    error('编辑的内容已经不存在！', $singleBack);
-                }
+                success('修改成功！', $singleBack);
             }
         } else {
             // 调取修改内容
             $this->assign('mod', true);
             if (! $result = $this->model->getSingle($id)) {
-                error('编辑的内容已经不存在！', url('/admin/Single/index'));
+                error('编辑的内容已经不存在！', admin_back_target(admin_model_list_fallback($id, true)));
             }
             $this->assign('content', $result);
             

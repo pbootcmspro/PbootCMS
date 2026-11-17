@@ -66,7 +66,9 @@ class UserCsrfProbeModelDouble
 
     public function getUser($ucode)
     {
-        return null;
+        $row = new stdClass();
+        $row->ucode = $ucode;
+        return $row;
     }
 }
 

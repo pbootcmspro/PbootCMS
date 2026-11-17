@@ -151,6 +151,9 @@ class UserController extends Controller
         // 单独修改状态（仅允许 status；禁止裸 GET，须 POST + formcheck）
         $posted = admin_posted_field(array('status'), url('/admin/User/index'));
         if ($posted) {
+            if (! $this->model->getUser($ucode)) {
+                error('编辑的内容已经不存在！', url('/admin/User/index'));
+            }
             if (admin_saved($this->model->modUser($ucode, $posted[0] . "='" . $posted[1] . "',update_user='" . session('username') . "'"), true)) {
                 success('修改成功！', url('/admin/User/index'));
             } else {
@@ -204,15 +207,14 @@ class UserController extends Controller
             
             // 执行添加
             $back = admin_back_target(url('/admin/User/index'));
+            if (! $this->model->getUser($ucode)) {
+                error('编辑的内容已经不存在！', url('/admin/User/index'));
+            }
             if ($this->model->modUser($ucode, $data, $roles)) {
                 $this->log('修改用户' . $ucode . '成功！');
                 success('修改成功！', $back);
             } else {
-                if ($this->model->getUser($ucode)) {
-                    success('修改成功！', $back);
-                } else {
-                    error('编辑的内容已经不存在！', url('/admin/User/index'));
-                }
+                success('修改成功！', $back);
             }
         } else { // 调取修改内容
             $this->assign('mod', true);

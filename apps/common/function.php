@@ -275,10 +275,13 @@ function admin_posted_field($allowed, $fallback)
         }
         return null;
     }
-    if (! isset($_POST['field']) && ! array_key_exists('value', $_POST)) {
+    if (array_key_exists('value', $_POST) && ! is_string($_POST['value'])) {
+        error('不允许修改该字段！', admin_resolve_fallback($fallback));
+    }
+    if (! isset($_POST['field'])) {
         return null;
     }
-    if ((isset($_POST['field']) && ! is_string($_POST['field'])) || (array_key_exists('value', $_POST) && ! is_string($_POST['value']))) {
+    if (! is_string($_POST['field'])) {
         error('不允许修改该字段！', admin_resolve_fallback($fallback));
     }
     $field = post('field', 'var');
@@ -305,6 +308,16 @@ function admin_model_list_url($id, $single = false)
     return url('/admin/Index/home');
 }
 
+function admin_model_list_fallback($id, $single = false)
+{
+    $mcode = get('mcode', 'var');
+    if ($mcode && preg_match('/^[A-Za-z0-9]+$/', (string) $mcode)) {
+        $path = $single ? '/admin/Single/index/mcode/' : '/admin/Content/index/mcode/';
+        return url($path . $mcode);
+    }
+    return admin_model_list_url($id, $single);
+}
+
 // 获取修改按钮
 function get_btn_mod($idValue, $id = 'id', $btnName = '修改')
 {
@@ -329,9 +342,9 @@ function get_btn($btnName, $theme, $btnAction, $idValue, $id = 'id')
 function get_btn_qs()
 {
     if (isset($_SERVER["QUERY_STRING"]) && ! ! $qs = $_SERVER["QUERY_STRING"]) {
-        return "&backurl=" . base64_encode(URL);
+        return "&backurl=" . rawurlencode(base64_encode(URL));
     } else {
-        return "?backurl=" . base64_encode(URL);
+        return "?backurl=" . rawurlencode(base64_encode(URL));
     }
 }
 
@@ -340,9 +353,9 @@ function get_backurl()
 {
     if (! ! $backurl = get('backurl')) {
         if (isset($_SERVER["QUERY_STRING"]) && ! ! get('p')) {
-            return "&backurl=" . $backurl;
+            return "&backurl=" . rawurlencode($backurl);
         } else {
-            return "?backurl=" . $backurl;
+            return "?backurl=" . rawurlencode($backurl);
         }
     } else {
         return;

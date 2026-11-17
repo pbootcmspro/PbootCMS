@@ -209,6 +209,9 @@ class MemberController extends Controller
             if ($posted[1] !== '0' && $posted[1] !== '1') {
                 error('传递的参数值错误！', $memberUrl);
             }
+            if (! $this->model->getMember($id)) {
+                error('编辑的内容已经不存在！', $memberUrl);
+            }
             if (admin_saved($this->model->modMemberStatus($id, $posted[1]), true)) {
                 success('修改成功！', $memberUrl);
             } else {
@@ -276,16 +279,14 @@ class MemberController extends Controller
             
             // 执行添加
             $back = admin_back_target($memberUrl);
+            if (! $this->model->getMember($id)) {
+                error('编辑的内容已经不存在！', $memberUrl);
+            }
             if ($this->model->modMember($id, $data)) {
                 $this->log('修改会员成功！');
                 success('修改成功！', $back);
             } else {
-                if ($this->model->getMember($id)) {
-                    success('修改成功！', $back);
-                } else {
-                    $this->log('修改会员失败！');
-                    error('编辑的内容已经不存在！', $memberUrl);
-                }
+                success('修改成功！', $back);
             }
         } else {
             // 调取修改内容

@@ -173,15 +173,14 @@ class LabelController extends Controller
             
             // 执行添加
             $back = admin_back_target($labelUrl);
+            if (! $this->model->getLabel($id)) {
+                error('编辑的内容已经不存在！', $labelUrl);
+            }
             if ($this->model->modLabel($id, $data)) {
                 $this->log('修改自定义标签字段' . $id . '成功！');
                 success('修改成功！', $back);
             } else {
-                if ($this->model->getLabel($id)) {
-                    success('修改成功！', $back);
-                } else {
-                    error('编辑的内容已经不存在！', $labelUrl);
-                }
+                success('修改成功！', $back);
             }
         } else {
             $this->assign('mod', true);

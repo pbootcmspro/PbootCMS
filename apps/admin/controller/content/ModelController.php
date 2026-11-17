@@ -132,6 +132,9 @@ class ModelController extends Controller
         // 单独修改状态
         $posted = admin_posted_field(array('status'), url('/admin/Model/index'));
         if ($posted) {
+            if (! $this->model->getModel($id)) {
+                error('编辑的内容已经不存在！', url('/admin/Model/index'));
+            }
             if (admin_saved($this->model->modModel($id, $posted[0] . "='" . $posted[1] . "',update_user='" . session('username') . "'"), true)) {
                 success('修改成功！', url('/admin/Model/index'));
             } else {
@@ -186,15 +189,14 @@ class ModelController extends Controller
             );
             
             // 执行添加
+            if (! $this->model->getModel($id)) {
+                error('编辑的内容已经不存在！', url('/admin/Model/index'));
+            }
             if ($this->model->modModel($id, $data)) {
                 $this->log('修改内容模型' . $id . '成功！');
                 success('修改成功！', admin_back_target(url('/admin/Model/index')));
             } else {
-                if ($this->model->getModel($id)) {
-                    success('修改成功！', url('/admin/Model/index'));
-                } else {
-                    error('编辑的内容已经不存在！', url('/admin/Model/index'));
-                }
+                success('修改成功！', url('/admin/Model/index'));
             }
         } else {
             // 调取修改内容

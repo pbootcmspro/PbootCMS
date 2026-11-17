@@ -68,6 +68,12 @@ return TestAssert::runSuite(function () {
         TestAssert::false(strpos($r['stdout'], 'MOD_CALLED:') !== false, $mode . ' no mod call');
     }
 
+    $onlyValue = admin_member_quick_mod_run_probe('value_string_without_field');
+    TestAssert::same(0, $onlyValue['exit_code'], 'value string without field handled');
+    TestAssert::false(strpos($onlyValue['stdout'], '不允许修改该字段') !== false, 'value string without field not treated as quick mod');
+    TestAssert::false(strpos($onlyValue['stdout'], 'STATUS_CALLED:') !== false, 'value string without field no status call');
+    TestAssert::true(strpos($onlyValue['stdout'], '用户账号不能为空') !== false, 'value string without field falls through to full save');
+
     echo "=== status 0/1 allowed ===\n";
 
     $z = admin_member_quick_mod_run_probe('status_0');

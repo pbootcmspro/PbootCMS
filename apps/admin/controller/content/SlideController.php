@@ -174,15 +174,14 @@ class SlideController extends Controller
             
             // 执行添加
             $back = admin_back_target(url('/admin/Slide/index'));
+            if (! $this->model->getSlide($id)) {
+                error('编辑的内容已经不存在！', url('/admin/Slide/index'));
+            }
             if ($this->model->modSlide($id, $data)) {
                 $this->log('修改轮播图' . $id . '成功！');
                 success('修改成功！', $back);
             } else {
-                if ($this->model->getSlide($id)) {
-                    success('修改成功！', $back);
-                } else {
-                    error('编辑的内容已经不存在！', url('/admin/Slide/index'));
-                }
+                success('修改成功！', $back);
             }
         } else {
             // 调取修改内容

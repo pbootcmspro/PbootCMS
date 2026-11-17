@@ -141,6 +141,9 @@ class MemberFieldController extends Controller
         // 单独修改状态
         $posted = admin_posted_field(array('status', 'required'), url('/admin/MemberField/index'));
         if ($posted) {
+            if (! $this->model->getField($id)) {
+                error('编辑的内容已经不存在！', url('/admin/MemberField/index'));
+            }
             if (admin_saved($this->model->modField($id, $posted[0] . "='" . $posted[1] . "',update_user='" . session('username') . "'"), true)) {
                 success('修改成功！', url('/admin/MemberField/index'));
             } else {
@@ -172,16 +175,14 @@ class MemberFieldController extends Controller
             
             // 执行会员字段修改
             $back = admin_back_target(url('/admin/MemberField/index'));
+            if (! $this->model->getField($id)) {
+                error('编辑的内容已经不存在！', url('/admin/MemberField/index'));
+            }
             if ($this->model->modField($id, $data)) {
                 $this->log('修改会员字段成功！');
                 success('修改成功！', $back);
             } else {
-                if ($this->model->getField($id)) {
-                    success('修改成功！', $back);
-                } else {
-                    $this->log('修改会员字段失败！');
-                    error('编辑的内容已经不存在！', url('/admin/MemberField/index'));
-                }
+                success('修改成功！', $back);
             }
         } else {
             // 调取修改内容

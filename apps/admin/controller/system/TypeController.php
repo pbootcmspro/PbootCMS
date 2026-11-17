@@ -150,15 +150,14 @@ class TypeController extends Controller
             
             // 执行添加
             $back = admin_back_target(url('/admin/Type/index'));
+            if (! $this->model->getType($id)) {
+                error('编辑的内容已经不存在！', url('/admin/Type/index'));
+            }
             if ($this->model->modType($id, $data)) {
                 $this->log('修改类型项' . $id . '成功！');
                 success('修改成功！', $back);
             } else {
-                if ($this->model->getType($id)) {
-                    success('修改成功！', $back);
-                } else {
-                    error('编辑的内容已经不存在！', url('/admin/Type/index'));
-                }
+                success('修改成功！', $back);
             }
         } else {
             // 调取修改内容

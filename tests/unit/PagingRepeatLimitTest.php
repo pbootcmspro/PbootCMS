@@ -8,6 +8,8 @@ declare(strict_types=1);
  *
  * fix #286 回归：同一请求多次分页时不重复定义分页常量、不重复注入分页模板变量，
  * 且常量与模板变量来自同一次（首次）分页
+ *
+ * fix #348 回归：请求前已定义 PAGE 时，limit() 仍注入 pagebar 等模板变量
  */
 
 if (! defined('TEST_ROOT')) {
@@ -86,4 +88,30 @@ return TestAssert::runSuite(function () {
     $model->page(1, 5, 3);
     $model->page();
     TestAssert::same(1, $paging->start, '单参数 page() 同样复位');
+
+    echo "=== 预先定义 PAGE 后 limit() 仍注入 pagebar ===\n";
+    $php = PHP_BINARY ?: 'php';
+    $probe = TEST_ROOT . 'scripts' . DIRECTORY_SEPARATOR . 'paging_predefined_page_probe.php';
+    $cmd = $php . ' ' . escapeshellarg($probe);
+    $descriptors = array(
+        1 => array('pipe', 'w'),
+        2 => array('pipe', 'w')
+    );
+    $pipes = array();
+    $proc = proc_open($cmd, $descriptors, $pipes);
+    TestAssert::true($proc !== false, '启动预定义 PAGE 探测进程');
+    $stdout = stream_get_contents($pipes[1]);
+    $stderr = stream_get_contents($pipes[2]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+    $exit = (int) proc_close($proc);
+    if ($stderr !== '' && $stderr !== false) {
+        echo $stderr;
+    }
+    if ($stdout !== '' && $stdout !== false) {
+        echo $stdout;
+    }
+    TestAssert::same(0, $exit, '预定义 PAGE 探测退出码');
+    TestAssert::contains((string) $stdout, 'PAGEBAR_OK', '预定义 PAGE 仍注入 pagebar');
+    TestAssert::contains((string) $stdout, 'PAGEROWS_OK', '预定义 PAGE 仍注入 pagerows');
 });

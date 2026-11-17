@@ -122,6 +122,9 @@ class MemberGroupController extends Controller
         // 单独修改状态
         $posted = admin_posted_field(array('status'), url('/admin/MemberGroup/index'));
         if ($posted) {
+            if (! $this->model->getGroup($id)) {
+                error('编辑的内容已经不存在！', url('/admin/MemberGroup/index'));
+            }
             if (admin_saved($this->model->modGroup($id, $posted[0] . "='" . $posted[1] . "',update_user='" . session('username') . "'"), true)) {
                 success('修改成功！', url('/admin/MemberGroup/index'));
             } else {
@@ -164,15 +167,14 @@ class MemberGroupController extends Controller
             );
             
             // 执行会员等级修改
+            if (! $this->model->getGroup($id)) {
+                error('编辑的内容已经不存在！', url('/admin/MemberGroup/index'));
+            }
             if ($this->model->modGroup($id, $data)) {
                 $this->log('修改会员等级成功！');
                 success('修改成功！', admin_back_target(url('/admin/MemberGroup/index')));
             } else {
-                if ($this->model->getGroup($id)) {
-                    success('修改成功！', url('/admin/MemberGroup/index'));
-                } else {
-                    error('编辑的内容已经不存在！', url('/admin/MemberGroup/index'));
-                }
+                success('修改成功！', url('/admin/MemberGroup/index'));
             }
         } else {
             // 调取修改内容

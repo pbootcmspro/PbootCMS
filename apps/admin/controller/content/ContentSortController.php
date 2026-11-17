@@ -348,6 +348,9 @@ class ContentSortController extends Controller
         // 单独修改状态
         $posted = admin_posted_field(array('status'), url('/admin/ContentSort/index'));
         if ($posted) {
+            if (! $this->model->getSort($scode)) {
+                error('编辑的内容已经不存在！', url('/admin/ContentSort/index'));
+            }
             if (admin_saved($this->model->modSort($scode, $posted[0] . "='" . $posted[1] . "',update_user='" . session('username') . "'"), true)) {
                 $this->log('修改数据内容栏目' . $scode . '状态' . $posted[1] . '成功！');
                 success('修改成功！', url('/admin/ContentSort/index'));
@@ -447,6 +450,9 @@ class ContentSortController extends Controller
             );
             
             // 执行添加
+            if (! $this->model->getSort($scode)) {
+                error('编辑的内容已经不存在！', url('/admin/ContentSort/index'));
+            }
             if ($this->model->modSort($scode, $data, $modsub)) {
                 // 如果修改为单页并且跳转，则删除单页内容，否则判断是否存在内容，不存在则添加
                 if ($type == 1 && $outlink) {
@@ -458,11 +464,7 @@ class ContentSortController extends Controller
                 $this->log('修改数据内容栏目' . $scode . '成功！');
                 success('修改成功！', url('/admin/ContentSort/index'));
             } else {
-                if ($this->model->getSort($scode)) {
-                    success('修改成功！', url('/admin/ContentSort/index'));
-                } else {
-                    error('编辑的内容已经不存在！', url('/admin/ContentSort/index'));
-                }
+                success('修改成功！', url('/admin/ContentSort/index'));
             }
         } else { // 调取修改内容
             $this->assign('mod', true);
