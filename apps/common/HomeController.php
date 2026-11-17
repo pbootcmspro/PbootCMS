@@ -83,15 +83,8 @@ class HomeController extends Controller
         }
         
         // 语言绑定域名检测， 如果匹配到多语言绑定则自动设置当前语言
-        $lgs = Config::get('lgs');
-        if (count($lgs) > 1) {
-            $domain = get_http_host();
-            foreach ($lgs as $value) {
-                if ($value['domain'] == $domain) {
-                    cookie('lg', $value['acode']);
-                    break;
-                }
-            }
+        if (! ! $bind_acode = match_area_bind_acode(Config::get('lgs'), isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '')) {
+            cookie('lg', $bind_acode);
         }
         
         // 未设置语言时使用默认语言
