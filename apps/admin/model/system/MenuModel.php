@@ -74,7 +74,7 @@ class MenuModel extends Model
     }
 
     // 修改菜单
-    public function modMenu($mcode, $data, array $actions = null)
+    public function modMenu($mcode, $data, $actions = null)
     {
         $result = parent::table('ay_menu')->where("mcode='$mcode'")
             ->autoTime()

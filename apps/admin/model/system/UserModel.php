@@ -114,7 +114,7 @@ class UserModel extends Model
     }
 
     // 修改用户资料
-    public function modUser($ucode, $data, array $roles = null)
+    public function modUser($ucode, $data, $roles = null)
     {
         if (! $this->getUser($ucode)) {
             return 0;

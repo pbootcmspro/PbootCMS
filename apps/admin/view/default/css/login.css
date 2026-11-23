@@ -2,7 +2,18 @@ body, html {
 	height: 100%
 }
 body {
-	background: url(../images/bg.jpg);
+	background: #241a44;
+}
+body::before {
+	content: "";
+	position: fixed;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	z-index: -1;
+	pointer-events: none;
+	background: url(../images/bg.svg) no-repeat center / cover;
 }
 .user-login {
 	position: relative;

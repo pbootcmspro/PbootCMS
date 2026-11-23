@@ -152,16 +152,26 @@ function admin_stay_input()
     return "<input type='hidden' name='stay' value='" . $token . "'>";
 }
 
-function admin_switch_btn($idValue, $field, $value, $on, $id = 'id', $title = '')
+function admin_switch_btn($idValue, $field, $value, $on, $id = 'id', $title = '', $titleAlt = '', $after = 'toggle')
 {
     $action = htmlspecialchars(url('/' . M . '/' . C . '/mod/' . $id . '/' . $idValue), ENT_QUOTES, 'UTF-8');
     $token = htmlspecialchars((string) session('formcheck'), ENT_QUOTES, 'UTF-8');
     $field = htmlspecialchars($field, ENT_QUOTES, 'UTF-8');
-    $value = htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
-    $title = htmlspecialchars($title, ENT_QUOTES, 'UTF-8');
+    $rawValue = (string) $value;
+    $value = htmlspecialchars($rawValue, ENT_QUOTES, 'UTF-8');
+    $titleEsc = htmlspecialchars($title, ENT_QUOTES, 'UTF-8');
+    $titleAltEsc = htmlspecialchars($titleAlt, ENT_QUOTES, 'UTF-8');
     $stay = htmlspecialchars(base64_encode(defined('URL') ? URL : ''), ENT_QUOTES, 'UTF-8');
+    if ($after !== 'toggle' && $after !== 'reload' && $after !== 'stay' && $after !== 'nav') {
+        $after = 'toggle';
+    }
     $icon = $on ? 'fa-toggle-on' : 'fa-toggle-off';
-    return "<button type='button' class='pboot-post' data-action='" . $action . "' data-after='reload' data-formcheck='" . $token . "' data-stay='" . $stay . "' data-field='" . $field . "' data-value='" . $value . "' title='" . $title . "' style='background:none;border:0;padding:0;cursor:pointer;color:inherit'><i class='fa " . $icon . "'></i></button>";
+    $titleData = '';
+    if ($title !== '' && $titleAlt !== '') {
+        $opp = ($rawValue === '1') ? '0' : '1';
+        $titleData = " data-title-" . $rawValue . "='" . $titleEsc . "' data-title-" . $opp . "='" . $titleAltEsc . "'";
+    }
+    return "<button type='button' class='pboot-post' data-action='" . $action . "' data-after='" . $after . "' data-formcheck='" . $token . "' data-stay='" . $stay . "' data-field='" . $field . "' data-value='" . $value . "'" . $titleData . " title='" . $titleEsc . "' style='background:none;border:0;padding:0;cursor:pointer;color:inherit'><i class='fa " . $icon . "'></i></button>";
 }
 
 function admin_post_link($action, $label, $after = 'stay', $class = 'layui-btn layui-btn-xs layui-btn-primary', $confirm = '')
@@ -445,12 +455,12 @@ function get_theme()
 }
 
 // 推送百度
-function post_baidu($api, $urls)
+function post_baidu($api, $urls, $connect_timeout = 30, $timeout = 90)
 {
     $ch = curl_init();
     $options = array(
-        CURLOPT_CONNECTTIMEOUT => 30,
-        CURLOPT_TIMEOUT => 90,
+        CURLOPT_CONNECTTIMEOUT => $connect_timeout,
+        CURLOPT_TIMEOUT => $timeout,
         CURLOPT_URL => $api,
         CURLOPT_POST => true,
         CURLOPT_RETURNTRANSFER => true,
@@ -462,6 +472,67 @@ function post_baidu($api, $urls)
     curl_setopt_array($ch, $options);
     $result = json_decode(curl_exec($ch));
     return $result;
+}
+
+// 新增文章是否满足百度普通收录推送条件
+function baidu_zz_should_push($token, $checked, $status, $outlink, $date, $now = null)
+{
+    if (trim((string) $token) === '' || (int) $checked !== 1 || (int) $status !== 1) {
+        return false;
+    }
+    if (trim((string) $outlink) !== '') {
+        return false;
+    }
+    $time = strtotime((string) $date);
+    if ($time === false) {
+        return false;
+    }
+    return $time <= ($now === null ? time() : (int) $now);
+}
+
+// 百度普通收录推送结果文案
+function get_baidu_zz_result($result)
+{
+    if (! is_object($result)) {
+        return array(
+            'ok' => false,
+            'msg' => '百度推送失败：连接超时或无响应'
+        );
+    }
+    if (isset($result->error)) {
+        $code = (int) $result->error;
+        $message = isset($result->message) ? strtolower((string) $result->message) : '';
+        if ($code === 401) {
+            $msg = 'token 无效';
+        } elseif ($code === 400 && strpos($message, 'site error') !== false) {
+            $msg = '站点未在百度验证，或域名/协议与验证站点不一致';
+        } elseif ($code === 400 && strpos($message, 'over quota') !== false) {
+            $msg = '今日额度已用完';
+        } else {
+            $msg = '接口错误（' . $code . '）';
+        }
+        return array(
+            'ok' => false,
+            'msg' => '百度推送失败：' . $msg
+        );
+    }
+    if (isset($result->success) && (int) $result->success > 0 && empty($result->not_same_site) && empty($result->not_valid)) {
+        $remain = isset($result->remain) ? (int) $result->remain : 0;
+        return array(
+            'ok' => true,
+            'msg' => '已推送百度普通收录，今日剩余 ' . $remain . ' 条'
+        );
+    }
+    if (isset($result->success)) {
+        return array(
+            'ok' => false,
+            'msg' => '百度推送失败：地址未被接收'
+        );
+    }
+    return array(
+        'ok' => false,
+        'msg' => '百度推送失败：连接超时或无响应'
+    );
 }
 
 // 校验IndexNow密钥格式：8-128位字母、数字或连字符

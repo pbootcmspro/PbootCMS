@@ -203,6 +203,9 @@ class ConfigController extends Controller
         }
 
         // 配置项在首次保存时才写入数据库，此处补空值避免模板取值报错
+        if (! isset($configs['admin_title']['value'])) {
+            $configs['admin_title']['value'] = '';
+        }
         if (! isset($configs['indexnow_key']['value'])) {
             $configs['indexnow_key']['value'] = '';
         }
@@ -537,7 +540,9 @@ class ConfigController extends Controller
         } elseif ($key != 'submit' && $key != 'formcheck') {
             // 自动新增配置项
             $description = '';
-            if ($key == 'content_iframe_whitelist') {
+            if ($key == 'admin_title') {
+                $description = '后台名称';
+            } elseif ($key == 'content_iframe_whitelist') {
                 $description = 'iframe域名级白名单';
             } elseif ($key == 'ueditor_catch_remote') {
                 $description = '远程图片抓取';

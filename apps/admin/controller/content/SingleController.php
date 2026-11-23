@@ -36,7 +36,7 @@ class SingleController extends Controller
             }
 
             if (! ! ($field = get('field', 'var')) && ! ! ($keyword = get('keyword', 'vars'))) {
-                $result = $this->model->findSingle($mcode, $field, $keyword);
+                $result = $this->model->getList($mcode, $field, $keyword);
             } else {
                 $result = $this->model->getList($mcode);
             }

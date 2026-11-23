@@ -367,7 +367,6 @@ class ContentSortController extends Controller
             $pcode = post('pcode', 'var');
             $name = post('name');
             $mcode = post('mcode');
-            $type = post('type');
             $listtpl = basename(post('listtpl'));
             $contenttpl = basename(post('contenttpl'));
             $status = post('status');
@@ -401,8 +400,9 @@ class ContentSortController extends Controller
                 alert_back('栏目模型必须选择！');
             }
             
+            $type = model('admin.content.Model')->getType($mcode);
             if (! $type) {
-                alert_back('栏目类型不能为空！');
+                alert_back('栏目模型不存在或类型无效！');
             }
             
             if ($filename && ! preg_match('/^[a-zA-Z0-9\-\/]+$/', $filename)) {
@@ -449,16 +449,48 @@ class ContentSortController extends Controller
                 'update_user' => session('username')
             );
             
-            // 执行添加
-            if (! $this->model->getSort($scode)) {
+            // 执行修改
+            $sort = $this->model->getSort($scode);
+            if (! $sort) {
                 error('编辑的内容已经不存在！', url('/admin/ContentSort/index'));
             }
+            
+            // 列表栏目改为单页前，有文章则拒绝（含同步子栏目）
+            if ($type == 1) {
+                $checkScodes = $modsub ? $this->model->getSortAndSubScodes($scode) : array($scode);
+                $conflict = array();
+                foreach ($this->model->getListSortContentCounts($checkScodes) as $row) {
+                    if ($row->cnt > 0) {
+                        $conflict[] = '「' . $row->name . '」' . $row->cnt . '篇';
+                    }
+                }
+                if ($conflict) {
+                    alert_back('以下列表栏目仍有文章，请先移动或删除后再改为单页模型：' . implode('；', $conflict));
+                }
+            }
+            
             if ($this->model->modSort($scode, $data, $modsub)) {
-                // 如果修改为单页并且跳转，则删除单页内容，否则判断是否存在内容，不存在则添加
-                if ($type == 1 && $outlink) {
-                    $this->model->delContent($scode);
-                } elseif ($type == 1 && ! $this->model->findContent($scode)) {
-                    $this->addSingle($scode, $name);
+                if ($type == 1) {
+                    if ($outlink) {
+                        $this->model->delContent($scode);
+                    } elseif (! $this->model->findContent($scode)) {
+                        $this->addSingle($scode, $name);
+                    }
+                    if ($modsub) {
+                        $scodes = $this->model->getSortAndSubScodes($scode);
+                        foreach ($scodes as $subScode) {
+                            if ($subScode == $scode) {
+                                continue;
+                            }
+                            $subSort = $this->model->getSort($subScode);
+                            if (! $subSort || $subSort->outlink) {
+                                continue;
+                            }
+                            if (! $this->model->findContent($subScode)) {
+                                $this->addSingle($subScode, $subSort->name);
+                            }
+                        }
+                    }
                 }
                 
                 $this->log('修改数据内容栏目' . $scode . '成功！');

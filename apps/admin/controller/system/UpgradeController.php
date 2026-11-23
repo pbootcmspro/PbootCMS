@@ -79,16 +79,21 @@ class UpgradeController extends Controller
     // 检查更新
     public function check()
     {
-        // 清理目录，检查下载目录及备份目录
-        path_delete(RUN_PATH . '/upgrade', true);
+        // 保留已下载缓存，仅校验目录可写
         if (! check_dir(RUN_PATH . '/upgrade', true)) {
             json(0, '目录写入权限不足，无法正常升级：runtime/upgrade');
         }
+        $probe = RUN_PATH . '/upgrade/.upgrade_write_probe';
+        if (@file_put_contents($probe, '1') === false) {
+            json(0, '目录写入权限不足，无法正常升级：runtime/upgrade');
+        }
+        @unlink($probe);
         check_dir(DOC_PATH . DATA_DIR . '/backup/upgrade', true);
         
         $files = $this->getServerList();
         $db = get_db_type();
         $upfile = array();
+        $manifest = array();
         foreach ($files as $key => $value) {
             // 过滤掉相对路径
             $value->path = preg_replace_r('{\.\.(\/|\\\\)}', '', $value->path);
@@ -108,7 +113,15 @@ class UpgradeController extends Controller
                     $files[$key]->ltime = '无';
                 }
                 $files[$key]->ctime = date('Y-m-d H:i:s', $files[$key]->ctime);
+                $files[$key]->status = '待下载';
+                $manifest[$value->path] = $value->md5;
                 $upfile[] = $files[$key];
+            }
+        }
+        $ready = $this->syncUpgradeCache(RUN_PATH . '/upgrade', $manifest);
+        foreach ($upfile as $item) {
+            if (isset($ready[$item->path])) {
+                $item->status = '已下载';
             }
         }
         if (! $upfile) {
@@ -116,6 +129,94 @@ class UpgradeController extends Controller
         } else {
             json(1, $upfile);
         }
+    }
+
+    // 缓存绝对路径 → 与清单一致的相对路径（UTF-8）；删除时仍用原始路径
+    private function upgradeCacheRel($root, $full)
+    {
+        $normRoot = str_replace('\\', '/', (string) $root);
+        $normFull = str_replace('\\', '/', (string) $full);
+        if (! mb_check_encoding($normFull, 'utf-8')) {
+            $normFull = mb_convert_encoding($normFull, 'UTF-8', 'GBK');
+        }
+        if (strpos($normFull, $normRoot) === 0) {
+            return substr($normFull, strlen($normRoot));
+        }
+        return $normFull;
+    }
+
+    // 清单 md5 一致 → ready；否则 delete（raw 为原始路径）
+    private function planUpgradeCache(array $manifest, array $cached)
+    {
+        $ready = array();
+        $delete = array();
+        foreach ($cached as $item) {
+            $rel = isset($item['rel']) ? $item['rel'] : '';
+            $raw = isset($item['raw']) ? $item['raw'] : '';
+            $md5 = isset($item['md5']) ? $item['md5'] : '';
+            if ($rel !== '' && isset($manifest[$rel]) && $md5 !== false && $md5 === $manifest[$rel]) {
+                $ready[$rel] = true;
+            } elseif ($raw !== '') {
+                $delete[] = $raw;
+            }
+        }
+        return array(
+            'ready' => $ready,
+            'delete' => $delete
+        );
+    }
+
+    // 同步 runtime/upgrade：保留一致文件，删除截断/过期/清单外文件
+    private function syncUpgradeCache($root, array $manifest)
+    {
+        if (! is_dir($root)) {
+            return array();
+        }
+        $cached = array();
+        $dirs = array();
+        $stack = array($root);
+        while ($stack) {
+            $dir = array_pop($stack);
+            $names = @scandir($dir);
+            if ($names === false) {
+                continue;
+            }
+            foreach ($names as $name) {
+                if ($name === '.' || $name === '..') {
+                    continue;
+                }
+                $full = $dir . '/' . $name;
+                if (is_dir($full)) {
+                    $dirs[] = $full;
+                    $stack[] = $full;
+                    continue;
+                }
+                if (! is_file($full)) {
+                    continue;
+                }
+                $cached[] = array(
+                    'raw' => $full,
+                    'rel' => $this->upgradeCacheRel($root, $full),
+                    'md5' => @md5_file($full)
+                );
+            }
+        }
+        $plan = $this->planUpgradeCache($manifest, $cached);
+        foreach ($plan['delete'] as $raw) {
+            if (is_file($raw)) {
+                @unlink($raw);
+            }
+        }
+        // 先深后浅清理空目录，保留缓存根目录
+        usort($dirs, function ($a, $b) {
+            return strlen($b) - strlen($a);
+        });
+        foreach ($dirs as $dir) {
+            if (is_dir($dir)) {
+                @rmdir($dir);
+            }
+        }
+        return $plan['ready'];
     }
 
     // 执行下载

@@ -189,7 +189,7 @@ return TestAssert::runSuite(function () {
     TestAssert::notContains($ucenter, '-1', 'ucenter does not use the referer sentinel');
 
     $foot = file_get_contents(APP_PATH . '/admin/view/default/common/foot.html');
-    TestAssert::contains($foot, 'comm.js?v=v3.2.34"', 'comm.js cache bust is v3.2.34');
+    TestAssert::contains($foot, 'comm.js?v=v3.2.35"', 'comm.js cache bust is v3.2.35');
 
     $commJs = file_get_contents(APP_PATH . '/admin/view/default/js/comm.js');
     TestAssert::contains($commJs, "data-pboot-ephemeral", 'pboot-post marks ephemeral forms');
@@ -211,6 +211,21 @@ return TestAssert::runSuite(function () {
     TestAssert::contains($commJs, 'dest.pathname === window.location.pathname && dest.search === window.location.search', 'nav ajax success reloads when only hash would change');
     TestAssert::contains($commJs, 'window.history.replaceState', 'nav ajax success syncs hash before same-page reload');
     TestAssert::contains($commJs, "var nextHash = dest.hash || ''", 'nav ajax success uses tourl hash (empty clears add tab)');
+    TestAssert::contains($commJs, "response.code == 1 && after === 'toggle'", 'pbootAjaxSubmit has in-place toggle success branch');
+    TestAssert::contains($commJs, "fa-toggle-on", 'toggle branch flips on icon');
+    TestAssert::contains($commJs, "fa-toggle-off", 'toggle branch flips off icon');
+
+    $fnSource = file_get_contents(APP_PATH . '/common/function.php');
+    TestAssert::contains($fnSource, "function admin_switch_btn(\$idValue, \$field, \$value, \$on, \$id = 'id', \$title = '', \$titleAlt = '', \$after = 'toggle')", 'admin_switch_btn defaults after to toggle');
+    TestAssert::contains($fnSource, "data-after='\" . \$after . \"'", 'admin_switch_btn outputs data-after from param');
+    TestAssert::contains($fnSource, "data-title-", 'admin_switch_btn outputs paired title data attrs');
+    TestAssert::notContains($fnSource, "data-after='reload' data-formcheck='\" . \$token . \"' data-stay='\" . \$stay . \"' data-field=", 'admin_switch_btn no longer hardcodes reload');
+    TestAssert::contains($commJs, "data-title-' + nextVal", 'toggle branch flips title from data attrs');
+    TestAssert::notContains($commJs, 'titlePairs', 'toggle branch no longer hardcodes title pairs');
+
+    $modelTpl = file_get_contents(APP_PATH . '/admin/view/default/content/model.html');
+    TestAssert::contains($modelTpl, "admin_switch_btn(\$value->id,'status','0',1,'id','点击禁用','点击启用','reload')", 'model status disable keeps reload with title pair');
+    TestAssert::contains($modelTpl, "admin_switch_btn(\$value->id,'status','1',0,'id','点击启用','点击禁用','reload')", 'model status enable keeps reload with title pair');
 
     $ueditorTpl = file_get_contents(APP_PATH . '/admin/view/default/common/ueditor.html');
     TestAssert::contains($ueditorTpl, 'function normalizeAllEditorsBeforeSubmit()', 'ueditor exposes normalize before submit');

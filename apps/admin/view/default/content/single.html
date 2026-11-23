@@ -60,9 +60,9 @@
 	                        <td>[value->date]</td>
 	                        <td>
 	                        {if($value->status)}
-		                        {fun=admin_switch_btn($value->id,'status','0',1,'id','点击关闭')}
+		                        {fun=admin_switch_btn($value->id,'status','0',1,'id','点击关闭','点击开启')}
 		                        {else}
-		                        {fun=admin_switch_btn($value->id,'status','1',0,'id','点击开启')}
+		                        {fun=admin_switch_btn($value->id,'status','1',0,'id','点击开启','点击关闭')}
 		                    {/if}
 		                    </td>
 		                    <td>[value->visits]</td>

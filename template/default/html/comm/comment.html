@@ -145,6 +145,8 @@ function submitcomment(obj){
     		 if(confirm(response.data+'是否立即跳转登录？')){
     			 location.href=response.tourl; 
    	   	     }
+    	 }else{
+    		 alert(response.data);
     	 }
     	 $('.codeimg').click();//更新验证码
       }

@@ -235,12 +235,37 @@ class ContentController extends Controller
                 if ($notice = iframe_whitelist_sync_notice_many($syncHtmls, '新增成功！')) {
                     $msg = $notice;
                 }
+                $msg .= $this->pushBaiduZzOnAdd($id, $scode, $filename, $status, $outlink, $date);
                 success($msg, $contentBack);
             } else {
                 $this->log('新增文章失败！');
                 alert_back('新增失败！');
             }
         }
+    }
+
+    // 新增成功后按勾选推送百度普通收录
+    private function pushBaiduZzOnAdd($id, $scode, $filename, $status, $outlink, $date)
+    {
+        $token = $this->config('baidu_zz_token');
+        if (! baidu_zz_should_push($token, post('baidu_zz_push', 'int', '', '', 0), $status, $outlink, $date)) {
+            return '';
+        }
+        if (! $sort = model('admin.content.ContentSort')->getSort($scode)) {
+            return '';
+        }
+        $urlname = model('admin.content.Model')->getUrlname($sort->mcode);
+        $parser = new \app\home\controller\ParserController();
+        $domain = get_http_url();
+        $url = $domain . $parser->parserLink(2, $urlname, 'content', $scode, $sort->filename, $id, $filename);
+        $api = 'http://data.zz.baidu.com/urls?site=' . urlencode($domain) . '&token=' . urlencode($token);
+        $rs = get_baidu_zz_result(post_baidu($api, array($url), 5, 10));
+        if ($rs['ok']) {
+            $this->log('文章' . $id . $rs['msg']);
+        } else {
+            $this->log('文章' . $id . $rs['msg'], 'error');
+        }
+        return $rs['msg'];
     }
 
     // 生成分类选择

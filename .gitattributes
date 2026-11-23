@@ -2,3 +2,4 @@
 tests export-ignore
 docs export-ignore
 docs/guides/** text eol=lf
+*.svg text eol=lf

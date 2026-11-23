@@ -69,9 +69,9 @@
 		                        <td class="table-input"><input type="text" name="sorting[]" value="[value->sorting]" class="layui-input"></td>
 		                       	<td>
 		                            {if($value->status)}
-		                            {fun=admin_switch_btn($value->scode,'status','0',1,'scode','点击禁用')}
+		                            {fun=admin_switch_btn($value->scode,'status','0',1,'scode','点击禁用','点击启用')}
 		                            {else}
-		                            {fun=admin_switch_btn($value->scode,'status','1',0,'scode','点击启用')}
+		                            {fun=admin_switch_btn($value->scode,'status','1',0,'scode','点击启用','点击禁用')}
 		                            {/if}
 		                        </td>
 		                        <td>

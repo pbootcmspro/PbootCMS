@@ -176,7 +176,7 @@ class ContentSortModel extends Model
     {
         if ($modsub) {
             // 同步修改子栏目模型及模板
-            $scodes = $this->getSubScodes($scode);
+            $scodes = $this->getSortAndSubScodes($scode);
             $subdata = array(
                 'mcode' => $data['mcode'],
                 'listtpl' => $data['listtpl'],
@@ -191,6 +191,38 @@ class ContentSortModel extends Model
             ->where("acode='" . session('acode') . "'")
             ->update($data);
         return $result;
+    }
+
+    // 获取栏目及全部子栏目编码
+    public function getSortAndSubScodes($scode)
+    {
+        $this->scodes = array();
+        return $this->getSubScodes($scode);
+    }
+
+    // 批量获取列表栏目内容数量（仅 type=2）
+    public function getListSortContentCounts($scodes)
+    {
+        if (! $scodes) {
+            return array();
+        }
+        $field = array(
+            'a.scode',
+            'a.name',
+            '(select count(*) from ay_content c where c.scode=a.scode) as cnt'
+        );
+        $join = array(
+            'ay_model b',
+            'a.mcode=b.mcode',
+            'LEFT'
+        );
+        $result = parent::table('ay_content_sort a')->field($field)
+            ->in('a.scode', $scodes)
+            ->where("a.acode='" . session('acode') . "'")
+            ->where('b.type=2')
+            ->join($join)
+            ->select();
+        return $result ? $result : array();
     }
 
     // 修改内容栏目排序

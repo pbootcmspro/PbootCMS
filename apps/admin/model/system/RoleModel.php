@@ -84,7 +84,7 @@ class RoleModel extends Model
     }
 
     // 修改角色资料
-    public function modRole($rcode, $data, array $acodes = null, array $levels = null)
+    public function modRole($rcode, $data, $acodes = null, $levels = null)
     {
         $result = parent::table('ay_role')->where("rcode='$rcode'")
             ->autoTime()

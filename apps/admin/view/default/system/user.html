@@ -53,9 +53,9 @@
 	                    		<i class='fa fa-toggle-on' title="超级管理员不可操作"></i>
 	                    	{else}
 		                        {if($value->status)}
-		                        {fun=admin_switch_btn($value->ucode,'status','0',1,'ucode','点击关闭')}
+		                        {fun=admin_switch_btn($value->ucode,'status','0',1,'ucode','点击关闭','点击开启')}
 		                        {else}
-		                        {fun=admin_switch_btn($value->ucode,'status','1',0,'ucode','点击开启')}
+		                        {fun=admin_switch_btn($value->ucode,'status','1',0,'ucode','点击开启','点击关闭')}
 		                        {/if}
 	                        {/if}
 	                    </td>

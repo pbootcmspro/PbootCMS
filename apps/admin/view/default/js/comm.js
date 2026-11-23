@@ -259,6 +259,24 @@ $(document).ready(function (e) {
 					pbootDisposeForm(form);
 					return;
 				}
+				if (response.code == 1 && after === 'toggle') {
+					if (sourceBtn) {
+						var submitted = sourceBtn.getAttribute('data-value') || '0';
+						var nextVal = submitted === '1' ? '0' : '1';
+						var icon = sourceBtn.querySelector('i.fa');
+						if (icon) {
+							icon.className = 'fa ' + (submitted === '1' ? 'fa-toggle-on' : 'fa-toggle-off');
+						}
+						sourceBtn.setAttribute('data-value', nextVal);
+						var nextTitle = sourceBtn.getAttribute('data-title-' + nextVal);
+						if (nextTitle !== null) {
+							sourceBtn.setAttribute('title', nextTitle);
+						}
+					}
+					pbootUnlock(form, sourceBtn);
+					pbootDisposeForm(form);
+					return;
+				}
 				if (response.code == 1) {
 					var tourl = response.tourl || '';
 					var match = form.getAttribute('data-nav-match');

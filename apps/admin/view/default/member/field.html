@@ -31,16 +31,16 @@
 	                    	<td>[value->length]</td>
 	                    	<td>
 		                        {if($value->required)}
-		                        {fun=admin_switch_btn($value->id,'required','0',1,'id','点击关闭必填')}
+		                        {fun=admin_switch_btn($value->id,'required','0',1,'id','点击关闭必填','点击开启必填')}
 		                        {else}
-		                        {fun=admin_switch_btn($value->id,'required','1',0,'id','点击开启必填')}
+		                        {fun=admin_switch_btn($value->id,'required','1',0,'id','点击开启必填','点击关闭必填')}
 		                        {/if}
 	                    	</td>
 	                    	<td>
 		                        {if($value->status)}
-		                        {fun=admin_switch_btn($value->id,'status','0',1,'id','点击禁用')}
+		                        {fun=admin_switch_btn($value->id,'status','0',1,'id','点击禁用','点击启用')}
 		                        {else}
-		                        {fun=admin_switch_btn($value->id,'status','1',0,'id','点击启用')}
+		                        {fun=admin_switch_btn($value->id,'status','1',0,'id','点击启用','点击禁用')}
 		                        {/if}
 	                    	</td>
 	                    	<td>[value->sorting]</td>

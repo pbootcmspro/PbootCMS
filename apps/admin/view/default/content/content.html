@@ -77,23 +77,23 @@
 		                        <td class="table-input"><input type="text" lay-ignore class="layui-input" name="sorting[]" value="[value->sorting]"></td>
 		                        <td>
 		                        {if($value->status)}
-			                        {fun=admin_switch_btn($value->id,'status','0',1,'id','点击关闭')}
+			                        {fun=admin_switch_btn($value->id,'status','0',1,'id','点击关闭','点击开启')}
 			                        {else}
-			                        {fun=admin_switch_btn($value->id,'status','1',0,'id','点击开启')}
+			                        {fun=admin_switch_btn($value->id,'status','1',0,'id','点击开启','点击关闭')}
 			                    {/if}
 			                    </td>
 			                    <td>
 		                        {if($value->istop)}
-			                        {fun=admin_switch_btn($value->id,'istop','0',1,'id','点击关闭')}
+			                        {fun=admin_switch_btn($value->id,'istop','0',1,'id','点击关闭','点击开启')}
 			                        {else}
-			                        {fun=admin_switch_btn($value->id,'istop','1',0,'id','点击开启')}
+			                        {fun=admin_switch_btn($value->id,'istop','1',0,'id','点击开启','点击关闭')}
 			                    {/if}
 			                    </td>
 			                    <td>
 		                        {if($value->isrecommend)}
-			                        {fun=admin_switch_btn($value->id,'isrecommend','0',1,'id','点击关闭')}
+			                        {fun=admin_switch_btn($value->id,'isrecommend','0',1,'id','点击关闭','点击开启')}
 			                        {else}
-			                        {fun=admin_switch_btn($value->id,'isrecommend','1',0,'id','点击开启')}
+			                        {fun=admin_switch_btn($value->id,'isrecommend','1',0,'id','点击开启','点击关闭')}
 			                    {/if}
 			                    </td>
 			                    <td>[value->visits]</td>
@@ -387,6 +387,15 @@
 			                    	<input type="checkbox" name="isheadline" value="1" title="头条" lay-skin="tag">
 			                     </div>
 			                </div>
+
+			                {if([$baidu_zz_token])}
+			                <div class="layui-form-item">
+			                     <label class="layui-form-label">百度收录</label>
+			                     <div class="layui-input-block">
+			                     	<input type="checkbox" name="baidu_zz_push" value="1" title="保存后推送到百度普通收录" lay-skin="primary">
+			                     </div>
+			                </div>
+			                {/if}
 			                
 			                <div class="layui-form-item">
 			                     <label class="layui-form-label">浏览权限</label>

@@ -27,6 +27,18 @@ class ModelModel extends Model
         return parent::table('ay_model')->where("mcode='$mcode'")->value('name');
     }
 
+    // 获取模型类型（1单页 2列表）
+    public function getType($mcode)
+    {
+        return parent::table('ay_model')->where("mcode='$mcode'")->value('type');
+    }
+
+    // 获取模型 URL 名称
+    public function getUrlname($mcode)
+    {
+        return parent::table('ay_model')->where("mcode='$mcode'")->value('urlname');
+    }
+
     // 获取内容模型选择
     public function getSelectAll()
     {

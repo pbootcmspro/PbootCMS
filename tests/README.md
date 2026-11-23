@@ -26,7 +26,7 @@ php tests/unit/ValidateIfConditionTest.php
 | `unit/` | 单函数/单方法 |
 | `integration/` | 多模块管线 |
 | `contract/` | 源码/行为不变量 |
-| `scripts/` | 子进程探测、自举补丁打包（`build_php8_bootstrap_patch.php`） |
+| `scripts/` | 子进程探测、自举补丁打包（`build_php8_bootstrap_patch.php`）、后台登录背景生成（`build_login_bg_svg.php`） |
 
 ## 安全测试约束
 
@@ -47,4 +47,5 @@ php tests/unit/ValidateIfConditionTest.php
 - Issue #283 — 编译文件、页面缓存与配置缓存原子写入，冷启动补注入配置缓存（`WriteFileAtomicTest` / `RuntimeCacheAtomicWriteContractTest`）
 - Issue #298 — 清理冗余图片收集正文任意上传文件、附件与内容扩展字段引用（`ImageExtRefCollectTest`）
 - Issue #330 — AI 端点统一解析、草稿测试与旧 Key 保护、保存前校验不部分入库、OpenAI 兼容服务商（`AiEndpointResolveTest` / `AiRequestBehaviorTest` / `AiConfigSaveValidationTest` / `node tests/ai-config-page.test.js`）
+- Issue #371 — 后台登录页背景改为脚本生成的矢量图 `bg.svg`，重新生成：`php tests/scripts/build_login_bg_svg.php`（`LoginBgSvgTest`）
 

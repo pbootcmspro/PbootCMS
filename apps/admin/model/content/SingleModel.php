@@ -14,7 +14,7 @@ class SingleModel extends Model
 {
 
     // 获取文章列表
-    public function getList($mcode)
+    public function getList($mcode, $sfield = '', $keyword = '')
     {
         $field = array(
             'a.id',
@@ -43,57 +43,22 @@ class SingleModel extends Model
                 'LEFT'
             )
         );
-        return parent::table('ay_content a')->distinct()
+        $rows = parent::table('ay_content a')->distinct()
             ->field($field)
             ->where("b.mcode='$mcode'")
             ->where("a.acode='" . session('acode') . "'")
             ->where('c.type=1')
+            ->like($sfield, $keyword)
             ->join($join)
-            ->where('a.id IN(SELECT MAX(d.id) FROM ay_content d WHERE d.scode=a.scode)')
             ->order('a.id DESC')
             ->select();
-    }
-
-    // 查找文章
-    public function findSingle($mcode, $field, $keyword)
-    {
-        $fields = array(
-            'a.id',
-            'a.scode',
-            'b.name as sortname',
-            'a.title',
-            'a.date',
-            'a.status',
-            'a.visits',
-            'b.mcode',
-            'a.ico',
-            'a.pics',
-            'a.outlink',
-            'b.filename',
-            'c.urlname'
-        );
-        $join = array(
-            array(
-                'ay_content_sort b',
-                'a.scode=b.scode',
-                'LEFT'
-            ),
-            array(
-                'ay_model c',
-                'b.mcode=c.mcode',
-                'LEFT'
-            )
-        );
-        return parent::table('ay_content a')->distinct()
-            ->field($fields)
-            ->where("b.mcode='$mcode'")
-            ->where("a.acode='" . session('acode') . "'")
-            ->where('c.type=1')
-            ->like($field, $keyword)
-            ->join($join)
-            ->group('b.name')
-            ->order('a.id DESC')
-            ->select();
+        $result = array();
+        foreach ($rows as $row) {
+            if (! isset($result[$row->scode])) {
+                $result[$row->scode] = $row;
+            }
+        }
+        return array_values($result);
     }
 
     // 检查文章
